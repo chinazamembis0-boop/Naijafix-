@@ -948,19 +948,46 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
         return
       }
 
+      const {
+        data: existingProfile,
+        error: existingProfileError,
+      } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', authenticatedUser.id)
+        .maybeSingle()
+
+      if (existingProfileError) {
+        console.error(
+          'Existing profile check failed:',
+          existingProfileError
+        )
+
+        alert(
+          'Account was created, but the NaijaFix profile could not be loaded: ' +
+            existingProfileError.message
+        )
+
+        setLoading(false)
+        return
+      }
+
       const { data: profile, error: profileError } =
         await supabase
           .from('profiles')
-          .insert({
-            user_id: authenticatedUser.id,
-            full_name: name,
-            email,
-            phone,
-            role,
-            avatar_url: null,
-          })
+          .upsert(
+            {
+              user_id: authenticatedUser.id,
+              full_name: existingProfile?.full_name || name,
+              email: existingProfile?.email || email,
+              phone: existingProfile?.phone || phone,
+              role: existingProfile?.role || role,
+              avatar_url: existingProfile?.avatar_url ?? null,
+            },
+            { onConflict: 'user_id' }
+          )
           .select('*')
-          .single()
+          .maybeSingle()
 
       if (profileError) {
         console.error(
@@ -6255,40 +6282,62 @@ function App() {
         return
       }
 
-      const { data: profile } =
+      const { data: profile, error: profileError } =
         await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', user.id)
           .maybeSingle()
 
-      if (profile) {
-        const appUser = {
-          id: profile.id,
-          user_id: user.id,
-          name:
-            profile.full_name || '',
-          email:
-            profile.email ||
-            user.email ||
-            '',
-          phone:
-            profile.phone || '',
-          role:
-            profile.role ||
-            'customer',
-          avatar_url:
-            profile.avatar_url ||
-            '',
-        }
-
-        setCurrentUser(appUser)
-
-        localStorage.setItem(
-          'naijafixUser',
-          JSON.stringify(appUser)
+      if (profileError) {
+        console.error(
+          'Failed to load user profile during bootstrap:',
+          profileError
         )
+
+        alert(
+          'Your account is signed in, but your NaijaFix profile could not be loaded: ' +
+            profileError.message
+        )
+
+        setCurrentUser(null)
+        return
       }
+
+      if (!profile) {
+        alert(
+          'You are signed in to NaijaFix, but no NaijaFix profile was found for this account. Please contact support.'
+        )
+
+        setCurrentUser(null)
+        return
+      }
+
+      const appUser = {
+        id: profile.id,
+        user_id: user.id,
+        name:
+          profile.full_name || '',
+        email:
+          profile.email ||
+          user.email ||
+          '',
+        phone:
+          profile.phone || '',
+        role:
+          profile.role ||
+          'customer',
+        avatar_url:
+          profile.avatar_url ||
+          '',
+      }
+
+      setCurrentUser(appUser)
+
+      localStorage.setItem(
+        'naijafixUser',
+        JSON.stringify(appUser)
+      )
     }
 
     loadCurrentUser()

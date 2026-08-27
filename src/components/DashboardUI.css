@@ -1240,6 +1240,10 @@
   .dash-admin-sidebar {
     width: 200px;
   }
+
+  .dash-shell-main {
+    margin-left: 200px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1247,54 +1251,64 @@
     flex-direction: column;
   }
 
+  /* Collapse the sidebar into a single compact top bar (brand + logout).
+     The duplicate admin nav is hidden because the TabNav below already
+     provides every tab (Overview first), so the Overview content is no
+     longer buried behind two stacked nav bars. */
   .dash-admin-sidebar {
     position: relative;
     width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
     flex-shrink: 0;
+    padding: 10px 14px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+    z-index: 35;
+  }
+
+  .dash-admin-sidebar-header {
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .dash-admin-nav {
+    display: none;
+  }
+
+  .dash-admin-sidebar-footer {
+    display: block;
+    border-top: 0;
+    padding: 0;
   }
 
   .dash-shell-main {
     margin-left: 0;
   }
 
-  .dash-admin-nav {
-    flex-direction: row;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    flex-wrap: nowrap;
-  }
-
-  .dash-admin-nav::-webkit-scrollbar {
-    display: none;
-  }
-
-  .dash-admin-nav-btn {
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .dash-admin-nav-badge {
-    display: none;
-  }
-
-  .dash-admin-sidebar-footer {
-    display: none;
-  }
-
-  .dash-shell-content {
-    padding: 16px 14px 90px;
-  }
-
+  /* The TabNav is the single top navigation on mobile. Keep the Overview
+     button fully visible and let the row scroll horizontally if too wide. */
   .dash-tab-nav {
     flex-wrap: nowrap;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    position: sticky;
+    top: 0;
+    z-index: 30;
   }
 
   .dash-tab-nav::-webkit-scrollbar {
     display: none;
+  }
+
+  .dash-tab-btn {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .dash-shell-content {
+    padding: 14px 14px 90px;
   }
 
   .dash-stat-grid {
