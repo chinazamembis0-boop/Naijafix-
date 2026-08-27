@@ -998,7 +998,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
         JSON.stringify(appUser)
       )
 
-      if (!data.session) {
+      if (!signUpData?.session) {
         alert(
           'Account created successfully. Please check your email and confirm your account before logging in.'
         )
