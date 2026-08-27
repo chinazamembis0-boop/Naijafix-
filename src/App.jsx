@@ -897,7 +897,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
     setLoading(true)
 
     try {
-      const { data, error } =
+      const { data: signUpData, error: signUpError } =
         await supabase.auth.signUp({
           email,
           password,
@@ -909,18 +909,21 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
           },
         })
 
-      if (error) {
-        console.error('Signup failed:', error)
-        alert('Signup failed: ' + error.message)
+      if (signUpError) {
+        console.error('Signup failed:', signUpError)
+        alert('Signup failed: ' + signUpError.message)
         setLoading(false)
         return
       }
 
-      const authenticatedUser = data?.user
+      const {
+        data: { user: authenticatedUser },
+        error: authError,
+      } = await supabase.auth.getUser()
 
-      if (!authenticatedUser) {
+      if (authError || !authenticatedUser?.id) {
         alert(
-          'Your account was created, but Supabase did not return a user ID.'
+          'Account created. Please confirm your email before setting up your profile.'
         )
         setLoading(false)
         return
