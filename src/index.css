@@ -1,0 +1,65 @@
+:root {
+  --nf-green: #087f3d;
+  --nf-green-dark: #066630;
+  --nf-green-light: #e5f7ec;
+  --nf-green-mint: #f0fdf4;
+  --nf-dark: #17221d;
+  --nf-dark-soft: #2a3530;
+  --nf-text: #17221d;
+  --nf-text-muted: #68746d;
+  --nf-text-light: #607068;
+  --nf-bg: #f5f7f6;
+  --nf-white: #ffffff;
+  --nf-border: #e0e7e2;
+  --nf-border-light: #e2e8e4;
+  --nf-border-input: #d8e1dc;
+  --nf-yellow: #fff4d6;
+  --nf-yellow-text: #8a6500;
+  --nf-red: #b52b2b;
+  --nf-red-light: #fde9e9;
+  --nf-blue: #e8f0fe;
+  --nf-blue-text: #1a56db;
+  --nf-radius-sm: 8px;
+  --nf-radius: 12px;
+  --nf-radius-lg: 16px;
+  --nf-radius-xl: 20px;
+  --shadow-sm: 0 1px 3px rgba(23, 34, 29, .06);
+  --shadow: 0 2px 8px rgba(23, 34, 29, .08);
+  --shadow-md: 0 4px 16px rgba(23, 34, 29, .1);
+  --shadow-lg: 0 8px 30px rgba(23, 34, 29, .12);
+  --font-sans: 'Trebuchet MS', 'Segoe UI', sans-serif;
+  --font-serif: Georgia, 'Times New Roman', serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--nf-bg);
+  color: var(--nf-text);
+}
+
+#root {
+  min-height: 100svh;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-serif);
+}
