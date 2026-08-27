@@ -309,6 +309,35 @@ footer .brand span {
   border-color: #087f3d;
 }
 
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 48px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  padding: 10px;
+  color: #68746d;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.password-toggle:hover {
+  color: #17221d;
+}
+
 .primary-full {
   width: 100%;
   padding: 14px;
