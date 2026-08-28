@@ -348,6 +348,23 @@ async function getSignedStorageUrl(bucket, path) {
   return data.signedUrl
 }
 
+function normalizeNigerianPhone(value) {
+  const digits = String(value || '').replace(/\D/g, '')
+  if (!digits) return ''
+  if (digits.startsWith('234')) return '+' + digits
+  if (digits.startsWith('0')) return '+234' + digits.slice(1)
+  return '+234' + digits
+}
+
+function isLikelyPhone(value) {
+  const digits = String(value || '').replace(/\D/g, '')
+  return digits.length >= 10 && digits.length <= 15
+}
+
+function isEmail(value) {
+  return String(value || '').includes('@')
+}
+
 async function uploadPrivateFile(bucket, userId, file) {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-')
   const path = `${userId}/${Date.now()}-${safeName}`
@@ -571,7 +588,7 @@ function Home({
 }
 
 function Login({ onBack, onSignup, onDashboard }) {
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -581,21 +598,22 @@ function Login({ onBack, onSignup, onDashboard }) {
   const handleLogin = async (event) => {
     event.preventDefault()
 
-    const cleanEmail = email.trim()
+    const rawIdentifier = identifier.trim()
 
-    if (!cleanEmail || !password) {
-      alert('Please enter your email and password.')
+    if (!rawIdentifier || !password) {
+      alert('Please enter your email or phone number and password.')
       return
     }
 
     setLoading(true)
 
     try {
+      const authPayload = isEmail(rawIdentifier)
+        ? { email: rawIdentifier, password }
+        : { phone: normalizeNigerianPhone(rawIdentifier), password }
+
       const { data, error } =
-        await supabase.auth.signInWithPassword({
-          email: cleanEmail,
-          password,
-        })
+        await supabase.auth.signInWithPassword(authPayload)
 
       if (error) {
         console.error('Login failed:', error)
@@ -652,7 +670,7 @@ function Login({ onBack, onSignup, onDashboard }) {
         email:
           profile.email ||
           authenticatedUser.email ||
-          cleanEmail,
+          rawIdentifier,
         phone: profile.phone || '',
         role: profile.role || 'customer',
         avatar_url: profile.avatar_url || '',
@@ -682,17 +700,17 @@ function Login({ onBack, onSignup, onDashboard }) {
   const handleForgotPassword = async (event) => {
     event.preventDefault()
 
-    const cleanEmail = email.trim()
+    const rawIdentifier = identifier.trim()
 
-    if (!cleanEmail) {
-      alert('Please enter your email address.')
+    if (!rawIdentifier || isLikelyPhone(rawIdentifier)) {
+      alert('Please enter your email address to reset your password.')
       return
     }
 
     setLoading(true)
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+      const { error } = await supabase.auth.resetPasswordForEmail(rawIdentifier, {
         redirectTo: window.location.origin,
       })
 
@@ -732,9 +750,9 @@ function Login({ onBack, onSignup, onDashboard }) {
             <input
               type="email"
               placeholder="you@example.com"
-              value={email}
+              value={identifier}
               onChange={(event) =>
-                setEmail(event.target.value)
+                setIdentifier(event.target.value)
               }
               autoComplete="email"
             />
@@ -774,7 +792,7 @@ function Login({ onBack, onSignup, onDashboard }) {
           <h2>Check your email</h2>
 
           <p>
-            If an account exists for {email || 'that address'}, we sent a password reset link.
+            If an account exists for {identifier || 'that address'}, we sent a password reset link.
           </p>
 
           <p className="auth-switch">
@@ -806,14 +824,14 @@ function Login({ onBack, onSignup, onDashboard }) {
         </p>
 
         <form onSubmit={handleLogin}>
-          <label>Email address</label>
+          <label>Email or phone number</label>
 
           <input
-            type="email"
-            placeholder="you@example.com"
-            value={email}
+            type="text"
+            placeholder="you@example.com or 08012345678"
+            value={identifier}
             onChange={(event) =>
-              setEmail(event.target.value)
+              setIdentifier(event.target.value)
             }
             autoComplete="email"
           />
@@ -889,6 +907,11 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
 
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [otpSent, setOtpSent] = useState(false)
+  const [otp, setOtp] = useState('')
+  const [otpLoading, setOtpLoading] = useState(false)
+  const [pendingPhone, setPendingPhone] = useState('')
+  const [pendingMeta, setPendingMeta] = useState(null)
 
   const updateForm = (field, value) => {
     setForm((current) => ({
@@ -906,7 +929,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
     const password = form.password
     const role = form.role
 
-    if (!name || !email || !phone || !password) {
+    if (!name || !(email || phone) || !password) {
       alert('Please fill in all required fields.')
       return
     }
@@ -919,97 +942,145 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
     setLoading(true)
 
     try {
-      const { data: signUpData, error: signUpError } =
-        await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: name,
-              phone,
+      if (email) {
+        const { data: signUpData, error: signUpError } =
+          await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                full_name: name,
+                phone,
+              },
             },
-          },
-        })
+          })
 
-      if (signUpError) {
-        console.error('Signup failed:', signUpError)
-        alert('Signup failed: ' + signUpError.message)
-        setLoading(false)
-        return
-      }
+        if (signUpError) {
+          console.error('Signup failed:', signUpError)
+          alert('Signup failed: ' + signUpError.message)
+          setLoading(false)
+          return
+        }
 
-      const authenticatedUser = signUpData.user
+        const authenticatedUser = signUpData.user
 
-      if (!authenticatedUser?.id) {
-        alert(
-          'Something went wrong during signup. Please try again.'
+        if (!authenticatedUser?.id) {
+          alert(
+            'Something went wrong during signup. Please try again.'
+          )
+          setLoading(false)
+          return
+        }
+
+        const ok = await finishSignup(
+          authenticatedUser.id,
+          name,
+          email,
+          phone,
+          role
         )
-        setLoading(false)
-        return
-      }
 
-      const {
-        data: existingProfile,
-        error: existingProfileError,
-      } = await supabase
+        if (ok) {
+          alert('Welcome to NaijaFix!')
+          onLogin()
+        }
+      } else {
+        const normalizedPhone = normalizeNigerianPhone(phone)
+
+        const { error: signUpError } =
+          await supabase.auth.signUp({
+            phone: normalizedPhone,
+            password,
+            options: {
+              data: {
+                full_name: name,
+              },
+            },
+          })
+
+        if (signUpError) {
+          console.error('Phone signup failed:', signUpError)
+          alert('Signup failed: ' + signUpError.message)
+          setLoading(false)
+          return
+        }
+
+        setPendingPhone(normalizedPhone)
+        setPendingMeta({ name, phone: normalizedPhone, role })
+        setOtpSent(true)
+      }
+    } catch (error) {
+      console.error('Unexpected signup error:', error)
+
+      alert(
+        'Something went wrong during signup: ' +
+          (error?.message || 'Unknown error')
+      )
+    }
+
+    setLoading(false)
+  }
+
+  const finishSignup = async (userId, name, email, phone, role) => {
+    const { data: existingProfile, error: existingProfileError } =
+      await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', authenticatedUser.id)
+        .eq('user_id', userId)
         .maybeSingle()
 
-      if (existingProfileError) {
-        console.error(
-          'Existing profile check failed:',
-          existingProfileError
+    if (existingProfileError) {
+      console.error(
+        'Existing profile check failed:',
+        existingProfileError
+      )
+
+      alert(
+        'Account was created, but the NaijaFix profile could not be loaded: ' +
+          existingProfileError.message
+      )
+
+      return false
+    }
+
+    const { data: profile, error: profileError } =
+      await supabase
+        .from('profiles')
+        .upsert(
+          {
+            user_id: userId,
+            full_name: existingProfile?.full_name || name,
+            email: existingProfile?.email || email,
+            phone: existingProfile?.phone || phone,
+            role: existingProfile?.role || role,
+            avatar_url: existingProfile?.avatar_url ?? null,
+          },
+          { onConflict: 'user_id' }
         )
+        .select('*')
+        .maybeSingle()
 
-        alert(
-          'Account was created, but the NaijaFix profile could not be loaded: ' +
-            existingProfileError.message
-        )
+    if (profileError) {
+      console.error(
+        'Profile creation failed:',
+        profileError
+      )
 
-        setLoading(false)
-        return
-      }
+      alert(
+        'Account was created, but the NaijaFix profile could not be saved: ' +
+          profileError.message
+      )
 
-      const { data: profile, error: profileError } =
+      return false
+    }
+
+    if (role === 'provider') {
+      const { error: providerError } =
         await supabase
-          .from('profiles')
+          .from('providers')
           .upsert(
             {
-              user_id: authenticatedUser.id,
-              full_name: existingProfile?.full_name || name,
-              email: existingProfile?.email || email,
-              phone: existingProfile?.phone || phone,
-              role: existingProfile?.role || role,
-              avatar_url: existingProfile?.avatar_url ?? null,
-            },
-            { onConflict: 'user_id' }
-          )
-          .select('*')
-          .maybeSingle()
-
-      if (profileError) {
-        console.error(
-          'Profile creation failed:',
-          profileError
-        )
-
-        alert(
-          'Account was created, but the NaijaFix profile could not be saved: ' +
-            profileError.message
-        )
-
-        setLoading(false)
-        return
-      }
-
-      if (role === 'provider') {
-        const { error: providerError } =
-          await supabase
-            .from('providers')
-            .insert({
-              user_id: authenticatedUser.id,
+              user_id: userId,
               business_name: name,
               category: 'General',
               location: phone || 'Nigeria',
@@ -1019,45 +1090,171 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
               rating: null,
               avatar_url: null,
               emergency_available: false,
-            })
-
-        if (providerError) {
-          console.error(
-            'Provider profile creation failed:',
-            providerError
+            },
+            { onConflict: 'user_id', ignoreDuplicates: true }
           )
-        }
+
+      if (providerError) {
+        console.error(
+          'Provider profile creation failed:',
+          providerError
+        )
+
+        alert(
+          'Account was created, but the provider profile could not be saved: ' +
+            providerError.message
+        )
+
+        return false
       }
-
-      const appUser = {
-        id: profile.id,
-        user_id: authenticatedUser.id,
-        name: profile.full_name || name,
-        email: profile.email || email,
-        phone: profile.phone || phone,
-        role: profile.role || 'customer',
-        avatar_url: profile.avatar_url || '',
-      }
-
-      localStorage.setItem(
-        'naijafixUser',
-        JSON.stringify(appUser)
-      )
-
-      alert('Welcome to NaijaFix!')
-
-      setLoading(false)
-      onLogin()
-    } catch (error) {
-      console.error('Unexpected signup error:', error)
-
-      alert(
-        'Something went wrong during signup: ' +
-          (error?.message || 'Unknown error')
-      )
-
-      setLoading(false)
     }
+
+    const appUser = {
+      id: profile.id,
+      user_id: userId,
+      name: profile.full_name || name,
+      email: profile.email || email,
+      phone: profile.phone || phone,
+      role: profile.role || 'customer',
+      avatar_url: profile.avatar_url || '',
+    }
+
+    localStorage.setItem(
+      'naijafixUser',
+      JSON.stringify(appUser)
+    )
+
+    return true
+  }
+
+  const handleVerifyOtp = async (event) => {
+    event.preventDefault()
+
+    if (!otp.trim() || !pendingPhone) {
+      alert('Please enter the verification code.')
+      return
+    }
+
+    setOtpLoading(true)
+
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        phone: pendingPhone,
+        token: otp.trim(),
+        type: 'signup',
+      })
+
+      if (error) {
+        console.error('OTP verification failed:', error)
+        alert('Verification failed: ' + error.message)
+        setOtpLoading(false)
+        return
+      }
+
+      const authenticatedUser = data?.user
+
+      if (!authenticatedUser?.id) {
+        alert('Verification succeeded, but no user was returned.')
+        setOtpLoading(false)
+        return
+      }
+
+      const ok = await finishSignup(
+        authenticatedUser.id,
+        pendingMeta?.name || '',
+        '',
+        pendingMeta?.phone || pendingPhone,
+        pendingMeta?.role || 'customer'
+      )
+
+      if (ok) {
+        alert('Welcome to NaijaFix!')
+        onLogin()
+      }
+    } catch (error) {
+      console.error('Unexpected OTP error:', error)
+      alert('Something went wrong during verification: ' + (error?.message || 'Unknown error'))
+    }
+
+    setOtpLoading(false)
+  }
+
+  const handleResendOtp = async () => {
+    if (!pendingPhone) return
+    setOtpLoading(true)
+    try {
+      const { error } = await supabase.auth.signUp({
+        phone: pendingPhone,
+        password: form.password,
+      })
+      if (error) {
+        alert('Could not resend code: ' + error.message)
+      } else {
+        alert('A new verification code has been sent.')
+      }
+    } catch (error) {
+      alert('Something went wrong: ' + (error?.message || 'Unknown error'))
+    }
+    setOtpLoading(false)
+  }
+
+  if (otpSent) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card">
+          <button className="back-link" onClick={onBack}>
+            ← Back
+          </button>
+
+          <Logo />
+
+          <h2>Verify your phone</h2>
+
+          <p>
+            We sent a verification code to {pendingPhone}
+          </p>
+
+          <form onSubmit={handleVerifyOtp}>
+            <label>Verification code</label>
+
+            <input
+              type="text"
+              placeholder="123456"
+              value={otp}
+              onChange={(event) => setOtp(event.target.value)}
+              autoComplete="one-time-code"
+            />
+
+            <button
+              className="primary-full"
+              type="submit"
+              disabled={otpLoading}
+            >
+              {otpLoading ? 'Verifying...' : 'Verify'}
+            </button>
+          </form>
+
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={handleResendOtp}
+            disabled={otpLoading}
+            style={{ marginTop: 10 }}
+          >
+            Resend code
+          </button>
+
+          <p className="auth-switch">
+            Wrong number?
+
+            <button onClick={() => { setOtpSent(false); setPendingPhone(''); setPendingMeta(null); }}>
+              {' '}
+              Change
+            </button>
+          </p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -1088,7 +1285,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
             autoComplete="name"
           />
 
-          <label>Email address</label>
+          <label>Email address (optional)</label>
 
           <input
             type="email"
@@ -1200,6 +1397,32 @@ function Dashboard({
   const [activityLoading, setActivityLoading] = useState(true)
   const [supportReports, setSupportReports] = useState([])
   const [customerVerification, setCustomerVerification] = useState(null)
+  const [dashboardAvatarUrl, setDashboardAvatarUrl] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+
+    const run = async () => {
+      const avatar = user?.avatar_url
+      if (!avatar) {
+        setDashboardAvatarUrl('')
+        return
+      }
+
+      try {
+        const url = await getSignedStorageUrl('profile-photos', avatar)
+        if (!cancelled) setDashboardAvatarUrl(url)
+      } catch {
+        if (!cancelled) setDashboardAvatarUrl('')
+      }
+    }
+
+    run()
+
+    return () => {
+      cancelled = true
+    }
+  }, [user?.avatar_url])
 
   const loadUnreadNotifications = useCallback(async () => {
     if (!user?.user_id) {
@@ -1367,7 +1590,7 @@ function Dashboard({
         greeting="NAIJAFIX"
         name={`Welcome back, ${user?.name?.split(' ')[0] || 'there'} 👋`}
         subtitle="What service do you need today?"
-        avatarUrl={user?.avatar_url}
+        avatarUrl={dashboardAvatarUrl}
         onProfile={onProfile}
         onNotification={onNotifications}
         notificationCount={unreadNotifications}
@@ -1384,11 +1607,7 @@ function Dashboard({
         <DashboardCard>
           <div className="dash-profile-header">
             <div className="dash-profile-avatar">
-              {user?.avatar_url ? (
-                <img src={user.avatar_url} alt="Profile" />
-              ) : (
-                (user?.name?.charAt(0) || 'U').toUpperCase()
-              )}
+              {dashboardAvatarUrl ? <img src={dashboardAvatarUrl} alt="Profile" /> : (user?.name?.charAt(0) || 'U').toUpperCase()}
             </div>
             <div className="dash-profile-info">
               <h3>{user?.name || 'Customer'}</h3>
@@ -3947,6 +4166,58 @@ function ProviderDashboard({
       setLoading(true)
 
       const {
+        data: existingProvider,
+        error: existingProviderError,
+      } = await supabase
+        .from('providers')
+        .select('user_id')
+        .eq('user_id', user.user_id)
+        .maybeSingle()
+
+      if (existingProviderError) {
+        console.error(
+          'Failed to check existing provider profile:',
+          existingProviderError
+        )
+        setProviderProfile(null)
+        setBookings([])
+        setLoading(false)
+        return
+      }
+
+      if (!existingProvider) {
+        const { error: createProviderError } =
+          await supabase
+            .from('providers')
+            .upsert(
+              {
+                user_id: user.user_id,
+                business_name: user.name || 'My Business',
+                category: 'General',
+                location: 'Nigeria',
+                phone: user.phone || '',
+                description: '',
+                verified: false,
+                rating: null,
+                avatar_url: null,
+                emergency_available: false,
+              },
+              { onConflict: 'user_id', ignoreDuplicates: true }
+            )
+
+        if (createProviderError) {
+          console.error(
+            'Failed to create provider profile:',
+            createProviderError
+          )
+          setProviderProfile(null)
+          setBookings([])
+          setLoading(false)
+          return
+        }
+      }
+
+      const {
         data: provider,
         error: providerError,
       } = await supabase
@@ -4081,6 +4352,7 @@ function ProviderDashboard({
       const { error } = await supabase.from('providers').update({ avatar_url: path }).eq('user_id', user.user_id)
       if (error) throw error
       setPhotoUrl(await getSignedStorageUrl('profile-photos', path))
+      setProviderProfile((current) => ({ ...current, avatar_url: path }))
     } catch (error) { alert('Could not update provider photo: ' + error.message) }
     setFeatureLoading(false)
   }
@@ -6341,6 +6613,19 @@ function App() {
     }
 
     loadCurrentUser()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        loadCurrentUser()
+      } else if (event === 'SIGNED_OUT') {
+        setCurrentUser(null)
+        localStorage.removeItem('naijafixUser')
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
   const goToService = (service) => {
