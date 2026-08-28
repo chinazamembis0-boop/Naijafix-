@@ -4156,7 +4156,9 @@ function ProviderDashboard({
 
   useEffect(() => {
     const loadProviderBookings = async () => {
+      console.log('[loadProviderBookings] user.user_id =', user?.user_id)
       if (!user?.user_id) {
+        console.log('PROVIDER PROFILE NULL - BRANCH: no user.user_id')
         setProviderProfile(null)
         setBookings([])
         setLoading(false)
@@ -4174,11 +4176,14 @@ function ProviderDashboard({
         .eq('user_id', user.user_id)
         .maybeSingle()
 
+      console.log('[loadProviderBookings] existingProvider =', existingProvider)
+      console.log('[loadProviderBookings] existingProviderError =', existingProviderError)
       if (existingProviderError) {
         console.error(
           'Failed to check existing provider profile:',
           existingProviderError
         )
+        console.log('PROVIDER PROFILE NULL - BRANCH: existingProviderError')
         setProviderProfile(null)
         setBookings([])
         setLoading(false)
@@ -4205,11 +4210,13 @@ function ProviderDashboard({
               { onConflict: 'user_id', ignoreDuplicates: true }
             )
 
+        console.log('[loadProviderBookings] createProviderError =', createProviderError)
         if (createProviderError) {
           console.error(
             'Failed to create provider profile:',
             createProviderError
           )
+          console.log('PROVIDER PROFILE NULL - BRANCH: createProviderError')
           setProviderProfile(null)
           setBookings([])
           setLoading(false)
@@ -4226,24 +4233,30 @@ function ProviderDashboard({
         .eq('user_id', user.user_id)
         .maybeSingle()
 
+      console.log('[loadProviderBookings] provider =', provider)
+      console.log('[loadProviderBookings] providerError =', providerError)
       if (providerError) {
         console.error(
           'Failed to load provider profile:',
           providerError
         )
+        console.log('PROVIDER PROFILE NULL - BRANCH: providerError')
         setProviderProfile(null)
         setBookings([])
         setLoading(false)
         return
       }
 
+      console.log('[loadProviderBookings] provider =', provider)
       if (!provider) {
+        console.log('PROVIDER PROFILE NULL - BRANCH: no provider row')
         setProviderProfile(null)
         setBookings([])
         setLoading(false)
         return
       }
 
+      console.log('PROVIDER PROFILE LOADED')
       setProviderProfile(provider)
       try {
         setPhotoUrl(await getSignedStorageUrl('profile-photos', provider.avatar_url))
