@@ -1285,7 +1285,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
             autoComplete="name"
           />
 
-          <label>Email address (optional)</label>
+          <label>Email address (optional — or use phone)</label>
 
           <input
             type="email"
@@ -1297,7 +1297,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
             autoComplete="email"
           />
 
-          <label>Phone number</label>
+          <label>Phone number (optional — or use email)</label>
 
           <input
             type="tel"
@@ -1390,6 +1390,7 @@ function Dashboard({
   onConversations,
   onFavorites,
   onProvider,
+  onLogout,
 }) {
   const [search, setSearch] = useState('')
   const [recentBookings, setRecentBookings] = useState([])
@@ -1733,6 +1734,14 @@ function Dashboard({
         <DashboardCard>
           <ReportForm user={user} />
         </DashboardCard>
+
+        {onLogout && (
+          <DashboardCard>
+            <button className="dash-btn dash-btn-danger dash-btn-full" onClick={onLogout}>
+              Log out
+            </button>
+          </DashboardCard>
+        )}
 
         <SectionHeader label="MESSAGES" title="Your conversations" />
         <EmptyState
@@ -3931,6 +3940,7 @@ function ProviderDashboard({
   onConversations,
   onBookings,
   onProfile,
+  onLogout,
 }) {
   const [bookings, setBookings] = useState([])
   const [providerProfile, setProviderProfile] = useState(null)
@@ -5078,6 +5088,14 @@ function ProviderDashboard({
         <DashboardCard>
           <ReportForm user={user} />
         </DashboardCard>
+
+        {onLogout && (
+          <DashboardCard>
+            <button className="dash-btn dash-btn-danger dash-btn-full" onClick={onLogout}>
+              Log out
+            </button>
+          </DashboardCard>
+        )}
       </main>
 
       <BottomNav
@@ -6780,6 +6798,7 @@ function App() {
           const el = document.querySelector('.dash-profile-header')
           el?.scrollIntoView({ behavior: 'smooth' })
         }}
+        onLogout={handleLogout}
       />
     )
   }
@@ -6814,6 +6833,7 @@ function App() {
           setSelectedProvider(provider)
           setPage('provider')
         }}
+        onLogout={handleLogout}
       />
     )
   }
