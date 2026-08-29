@@ -416,16 +416,34 @@ export function ProfileSummary({ name, email, phone, role, avatarUrl, onEdit, ed
   )
 }
 
-export function ServiceGrid({ services, onSelect, columns }) {
+export function ServiceGrid({ services, onSelect, columns, showImages = false }) {
   return (
     <div className="dash-service-grid" style={columns ? { gridTemplateColumns: `repeat(${columns}, 1fr)` } : undefined}>
       {services.map((service) => (
         <button
           key={service.id}
-          className="dash-service-card"
+          className={`dash-service-card ${showImages && service.image ? 'dash-service-card--image' : ''}`}
           onClick={() => onSelect?.(service)}
         >
-          <div className="dash-service-card-icon">{service.icon || '🛠️'}</div>
+          {showImages && service.image ? (
+            <div className="dash-service-card-image-wrapper">
+              <img
+                src={service.image}
+                alt={service.name}
+                className="dash-service-card-image"
+                loading="lazy"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                  e.currentTarget.nextSibling.style.display = 'flex'
+                }}
+              />
+              <div className="dash-service-card-image-fallback" style={{ display: 'none' }}>
+                <span>{service.icon || '🛠️'}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="dash-service-card-icon">{service.icon || '🛠️'}</div>
+          )}
           <div className="dash-service-card-name">{service.name}</div>
         </button>
       ))}

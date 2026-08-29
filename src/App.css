@@ -203,6 +203,46 @@ button {
   margin-bottom: 15px;
 }
 
+.service-card--image {
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.service-card-image-wrapper {
+  width: 100%;
+  height: 110px;
+  overflow: hidden;
+  position: relative;
+  background: #e8f0ee;
+}
+
+.service-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.service-card-image-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+  background: #e8f0ee;
+}
+
+.service-card--image strong {
+  padding: 10px 12px 4px;
+}
+
+.service-card--image span {
+  padding: 0 12px 12px;
+}
+
 .service-card strong,
 .service-card span {
   display: block;
@@ -256,6 +296,129 @@ footer {
 
 footer .brand span {
   color: #aeb8b2;
+}
+
+/* ADVERTISING BANNERS */
+
+.nf-ad-banner {
+  background: white;
+  border: 1px solid #e0e7e2;
+  border-radius: 15px;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+
+.nf-ad-banner:hover {
+  box-shadow: 0 4px 16px rgba(23, 34, 29, .1);
+}
+
+.nf-ad-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+}
+
+.nf-ad-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #087f3d;
+  text-transform: uppercase;
+}
+
+.nf-ad-dismiss {
+  background: transparent;
+  border: 0;
+  font-size: 20px;
+  color: #68746d;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.nf-ad-dismiss:hover {
+  background: #f5f7f6;
+  color: #17221d;
+}
+
+.nf-ad-image-wrapper {
+  width: 100%;
+  height: 160px;
+  overflow: hidden;
+  background: #e8f0ee;
+}
+
+.nf-ad-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.nf-ad-image-fallback {
+  width: 100%;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #e7f7ed, #ffffff);
+}
+
+.nf-ad-fallback-icon {
+  font-size: 36px;
+}
+
+.nf-ad-content {
+  padding: 14px 16px;
+}
+
+.nf-ad-title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.nf-ad-description {
+  margin: 0 0 12px;
+  color: #68746d;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.nf-ad-cta {
+  background: #087f3d;
+  color: white;
+  border: 0;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.nf-ad-cta:hover {
+  background: #066630;
+}
+
+.nf-ad-placement {
+  margin-bottom: 16px;
+}
+
+@media (max-width: 480px) {
+  .nf-ad-image-wrapper {
+    height: 130px;
+  }
+
+  .nf-ad-content {
+    padding: 12px;
+  }
+
+  .nf-ad-title {
+    font-size: 14px;
+  }
 }
 
 /* AUTH */

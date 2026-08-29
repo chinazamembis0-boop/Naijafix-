@@ -25,6 +25,8 @@ import {
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { getServiceImage } from './components/ServiceImages.js'
+import { AdPlacement } from './components/AdBanner.jsx'
 
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -348,23 +350,6 @@ async function getSignedStorageUrl(bucket, path) {
   return data.signedUrl
 }
 
-function normalizeNigerianPhone(value) {
-  const digits = String(value || '').replace(/\D/g, '')
-  if (!digits) return ''
-  if (digits.startsWith('234')) return '+' + digits
-  if (digits.startsWith('0')) return '+234' + digits.slice(1)
-  return '+234' + digits
-}
-
-function isLikelyPhone(value) {
-  const digits = String(value || '').replace(/\D/g, '')
-  return digits.length >= 10 && digits.length <= 15
-}
-
-function isEmail(value) {
-  return String(value || '').includes('@')
-}
-
 async function uploadPrivateFile(bucket, userId, file) {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-')
   const path = `${userId}/${Date.now()}-${safeName}`
@@ -531,16 +516,26 @@ function Home({
           <div className="service-grid">
             {visibleServices.slice(0, 8).map((service) => (
               <button
-                className="service-card"
+                className="service-card service-card--image"
                 key={service.id}
                 onClick={() => onService(service)}
               >
-                <div className="service-icon">
-                  {getServiceIcon(service)}
+                <div className="service-card-image-wrapper">
+                  <img
+                    src={getServiceImage(service)}
+                    alt={service.name}
+                    className="service-card-image"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                      e.currentTarget.nextSibling.style.display = 'flex'
+                    }}
+                  />
+                  <div className="service-card-image-fallback" style={{ display: 'none' }}>
+                    {getServiceIcon(service)}
+                  </div>
                 </div>
-
                 <strong>{service.name}</strong>
-
                 <span>
                   {service.description ||
                     'Professional local service'}
@@ -577,6 +572,13 @@ function Home({
             <p>Discover providers around your area.</p>
           </div>
         </section>
+
+        <section className="section" style={{ paddingTop: 0 }}>
+          <AdPlacement
+            position="inline"
+            onAction={() => onSignup?.()}
+          />
+        </section>
       </main>
 
       <footer>
@@ -588,7 +590,7 @@ function Home({
 }
 
 function Login({ onBack, onSignup, onDashboard }) {
-  const [identifier, setIdentifier] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -598,19 +600,17 @@ function Login({ onBack, onSignup, onDashboard }) {
   const handleLogin = async (event) => {
     event.preventDefault()
 
-    const rawIdentifier = identifier.trim()
+    const emailTrimmed = email.trim()
 
-    if (!rawIdentifier || !password) {
-      alert('Please enter your email or phone number and password.')
+    if (!emailTrimmed || !password) {
+      alert('Please enter your email address and password.')
       return
     }
 
     setLoading(true)
 
     try {
-      const authPayload = isEmail(rawIdentifier)
-        ? { email: rawIdentifier, password }
-        : { phone: normalizeNigerianPhone(rawIdentifier), password }
+      const authPayload = { email: emailTrimmed, password }
 
       const { data, error } =
         await supabase.auth.signInWithPassword(authPayload)
@@ -670,7 +670,7 @@ function Login({ onBack, onSignup, onDashboard }) {
         email:
           profile.email ||
           authenticatedUser.email ||
-          rawIdentifier,
+          emailTrimmed,
         phone: profile.phone || '',
         role: profile.role || 'customer',
         avatar_url: profile.avatar_url || '',
@@ -700,9 +700,9 @@ function Login({ onBack, onSignup, onDashboard }) {
   const handleForgotPassword = async (event) => {
     event.preventDefault()
 
-    const rawIdentifier = identifier.trim()
+    const emailTrimmed = email.trim()
 
-    if (!rawIdentifier || isLikelyPhone(rawIdentifier)) {
+    if (!emailTrimmed) {
       alert('Please enter your email address to reset your password.')
       return
     }
@@ -710,7 +710,7 @@ function Login({ onBack, onSignup, onDashboard }) {
     setLoading(true)
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(rawIdentifier, {
+      const { error } = await supabase.auth.resetPasswordForEmail(emailTrimmed, {
         redirectTo: window.location.origin,
       })
 
@@ -750,9 +750,9 @@ function Login({ onBack, onSignup, onDashboard }) {
             <input
               type="email"
               placeholder="you@example.com"
-              value={identifier}
+              value={email}
               onChange={(event) =>
-                setIdentifier(event.target.value)
+                setEmail(event.target.value)
               }
               autoComplete="email"
             />
@@ -792,7 +792,7 @@ function Login({ onBack, onSignup, onDashboard }) {
           <h2>Check your email</h2>
 
           <p>
-            If an account exists for {identifier || 'that address'}, we sent a password reset link.
+            If an account exists for {email || 'that address'}, we sent a password reset link.
           </p>
 
           <p className="auth-switch">
@@ -824,14 +824,14 @@ function Login({ onBack, onSignup, onDashboard }) {
         </p>
 
         <form onSubmit={handleLogin}>
-          <label>Email or phone number</label>
+          <label>Email address</label>
 
           <input
-            type="text"
-            placeholder="you@example.com or 08012345678"
-            value={identifier}
+            type="email"
+            placeholder="you@example.com"
+            value={email}
             onChange={(event) =>
-              setIdentifier(event.target.value)
+              setEmail(event.target.value)
             }
             autoComplete="email"
           />
@@ -907,11 +907,6 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
 
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [otpSent, setOtpSent] = useState(false)
-  const [otp, setOtp] = useState('')
-  const [otpLoading, setOtpLoading] = useState(false)
-  const [pendingPhone, setPendingPhone] = useState('')
-  const [pendingMeta, setPendingMeta] = useState(null)
 
   const updateForm = (field, value) => {
     setForm((current) => ({
@@ -929,7 +924,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
     const password = form.password
     const role = form.role
 
-    if (!name || !(email || phone) || !password) {
+    if (!name || !email || !password) {
       alert('Please fill in all required fields.')
       return
     }
@@ -942,18 +937,17 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
     setLoading(true)
 
     try {
-      if (email) {
-        const { data: signUpData, error: signUpError } =
-          await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-              data: {
-                full_name: name,
-                phone,
-              },
+      const { data: signUpData, error: signUpError } =
+        await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: name,
+              phone,
             },
-          })
+          },
+        })
 
         if (signUpError) {
           console.error('Signup failed:', signUpError)
@@ -984,31 +978,6 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
           alert('Welcome to NaijaFix!')
           onLogin()
         }
-      } else {
-        const normalizedPhone = normalizeNigerianPhone(phone)
-
-        const { error: signUpError } =
-          await supabase.auth.signUp({
-            phone: normalizedPhone,
-            password,
-            options: {
-              data: {
-                full_name: name,
-              },
-            },
-          })
-
-        if (signUpError) {
-          console.error('Phone signup failed:', signUpError)
-          alert('Signup failed: ' + signUpError.message)
-          setLoading(false)
-          return
-        }
-
-        setPendingPhone(normalizedPhone)
-        setPendingMeta({ name, phone: normalizedPhone, role })
-        setOtpSent(true)
-      }
     } catch (error) {
       console.error('Unexpected signup error:', error)
 
@@ -1127,136 +1096,6 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
     return true
   }
 
-  const handleVerifyOtp = async (event) => {
-    event.preventDefault()
-
-    if (!otp.trim() || !pendingPhone) {
-      alert('Please enter the verification code.')
-      return
-    }
-
-    setOtpLoading(true)
-
-    try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone: pendingPhone,
-        token: otp.trim(),
-        type: 'signup',
-      })
-
-      if (error) {
-        console.error('OTP verification failed:', error)
-        alert('Verification failed: ' + error.message)
-        setOtpLoading(false)
-        return
-      }
-
-      const authenticatedUser = data?.user
-
-      if (!authenticatedUser?.id) {
-        alert('Verification succeeded, but no user was returned.')
-        setOtpLoading(false)
-        return
-      }
-
-      const ok = await finishSignup(
-        authenticatedUser.id,
-        pendingMeta?.name || '',
-        '',
-        pendingMeta?.phone || pendingPhone,
-        pendingMeta?.role || 'customer'
-      )
-
-      if (ok) {
-        alert('Welcome to NaijaFix!')
-        onLogin()
-      }
-    } catch (error) {
-      console.error('Unexpected OTP error:', error)
-      alert('Something went wrong during verification: ' + (error?.message || 'Unknown error'))
-    }
-
-    setOtpLoading(false)
-  }
-
-  const handleResendOtp = async () => {
-    if (!pendingPhone) return
-    setOtpLoading(true)
-    try {
-      const { error } = await supabase.auth.signUp({
-        phone: pendingPhone,
-        password: form.password,
-      })
-      if (error) {
-        alert('Could not resend code: ' + error.message)
-      } else {
-        alert('A new verification code has been sent.')
-      }
-    } catch (error) {
-      alert('Something went wrong: ' + (error?.message || 'Unknown error'))
-    }
-    setOtpLoading(false)
-  }
-
-  if (otpSent) {
-    return (
-      <div className="auth-page">
-        <div className="auth-card">
-          <button className="back-link" onClick={onBack}>
-            ← Back
-          </button>
-
-          <Logo />
-
-          <h2>Verify your phone</h2>
-
-          <p>
-            We sent a verification code to {pendingPhone}
-          </p>
-
-          <form onSubmit={handleVerifyOtp}>
-            <label>Verification code</label>
-
-            <input
-              type="text"
-              placeholder="123456"
-              value={otp}
-              onChange={(event) => setOtp(event.target.value)}
-              autoComplete="one-time-code"
-            />
-
-            <button
-              className="primary-full"
-              type="submit"
-              disabled={otpLoading}
-            >
-              {otpLoading ? 'Verifying...' : 'Verify'}
-            </button>
-          </form>
-
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={handleResendOtp}
-            disabled={otpLoading}
-            style={{ marginTop: 10 }}
-          >
-            Resend code
-          </button>
-
-          <p className="auth-switch">
-            Wrong number?
-
-            <button onClick={() => { setOtpSent(false); setPendingPhone(''); setPendingMeta(null); }}>
-              {' '}
-              Change
-            </button>
-          </p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="auth-page">
       <div className="auth-card">
@@ -1285,7 +1124,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
             autoComplete="name"
           />
 
-          <label>Email address (optional — or use phone)</label>
+          <label>Email address</label>
 
           <input
             type="email"
@@ -1297,7 +1136,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
             autoComplete="email"
           />
 
-          <label>Phone number (optional — or use email)</label>
+          <label>Phone number (optional)</label>
 
           <input
             type="tel"
@@ -1648,12 +1487,15 @@ function Dashboard({
 
         <SectionHeader label="SERVICES" title="Find a service" />
         <ServiceGrid
-          services={filteredServices.slice(0, 8).map(s => ({ ...s, icon: getServiceIcon(s) }))}
+          services={filteredServices.slice(0, 8).map(s => ({ ...s, icon: getServiceIcon(s), image: getServiceImage(s) }))}
           onSelect={onService}
+          showImages
         />
         {filteredServices.length === 0 && (
           <EmptyState icon="🔎" title="No service found" description="Try searching for another service." />
         )}
+
+        <AdPlacement position="inline" onAction={() => onService?.(services?.[0])} />
 
         {popularProviders.length > 0 && (
           <>
@@ -2018,6 +1860,10 @@ function Services({
             </p>
           </div>
         )}
+
+        <div style={{ marginTop: 20 }}>
+          <AdPlacement position="inline" />
+        </div>
       </main>
     </div>
   )
@@ -4752,6 +4598,8 @@ function ProviderDashboard({
           <StatCard icon="❌" value={declinedBookings.length} label="Declined" color="red" />
           <StatCard icon="📋" value={supportReports.length} label="Reports" color="blue" />
         </StatGrid>
+
+        <AdPlacement position="inline" />
 
         <SectionHeader label="OVERVIEW" title="Service requests" />
         {!loading && !providerProfile ? (
