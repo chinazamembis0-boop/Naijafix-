@@ -4012,9 +4012,7 @@ function ProviderDashboard({
 
   useEffect(() => {
     const loadProviderBookings = async () => {
-      console.log('[loadProviderBookings] user.user_id =', user?.user_id)
       if (!user?.user_id) {
-        console.log('PROVIDER PROFILE NULL - BRANCH: no user.user_id')
         setProviderProfile(null)
         setBookings([])
         setLoading(false)
@@ -4023,99 +4021,34 @@ function ProviderDashboard({
 
       setLoading(true)
 
-      const {
-        data: existingProvider,
-        error: existingProviderError,
-      } = await supabase
-        .from('providers')
-        .select('user_id')
-        .eq('user_id', user.user_id)
-        .maybeSingle()
-
-      console.log('[loadProviderBookings] existingProvider =', existingProvider)
-      console.log('[loadProviderBookings] existingProviderError =', existingProviderError)
-      if (existingProviderError) {
-        console.error(
-          'Failed to check existing provider profile:',
-          existingProviderError
-        )
-        console.log('PROVIDER PROFILE NULL - BRANCH: existingProviderError')
-        setProviderProfile(null)
-        setBookings([])
-        setLoading(false)
-        return
-      }
-
-      if (!existingProvider) {
-        const { error: createProviderError } =
-          await supabase
-            .from('providers')
-            .upsert(
-              {
-                user_id: user.user_id,
-                business_name: user.name || 'My Business',
-                category: 'General',
-                location: 'Nigeria',
-                phone: user.phone || '',
-                description: '',
-                verified: false,
-                rating: null,
-                avatar_url: null,
-                emergency_available: false,
-              },
-              { onConflict: 'user_id', ignoreDuplicates: true }
-            )
-
-        console.log('[loadProviderBookings] createProviderError =', createProviderError)
-        if (createProviderError) {
-          console.error(
-            'Failed to create provider profile:',
-            createProviderError
-          )
-          console.log('PROVIDER PROFILE NULL - BRANCH: createProviderError')
-          setProviderProfile(null)
-          setBookings([])
-          setLoading(false)
-          return
-        }
-      }
-
-      const {
-        data: provider,
-        error: providerError,
-      } = await supabase
+      const { data: provider, error: providerError } = await supabase
         .from('providers')
         .select('*')
         .eq('user_id', user.user_id)
         .maybeSingle()
 
-      console.log('[loadProviderBookings] provider =', provider)
-      console.log('[loadProviderBookings] providerError =', providerError)
       if (providerError) {
-        console.error(
-          'Failed to load provider profile:',
-          providerError
-        )
-        console.log('PROVIDER PROFILE NULL - BRANCH: providerError')
+        console.error('Failed to load provider profile:', providerError)
         setProviderProfile(null)
         setBookings([])
         setLoading(false)
         return
       }
 
-      console.log('[loadProviderBookings] provider =', provider)
       if (!provider) {
-        console.log('PROVIDER PROFILE NULL - BRANCH: no provider row')
         setProviderProfile(null)
         setBookings([])
         setLoading(false)
         return
       }
 
-      console.log('PROVIDER PROFILE LOADED')
       setProviderProfile(provider)
       try {
-        setPhotoUrl(await getSignedStorageUrl('profile-photos', provider.avatar_url))
+        if (provider.avatar_url) {
+          setPhotoUrl(await getSignedStorageUrl('profile-photos', provider.avatar_url))
+        } else {
+          setPhotoUrl('')
+        }
       } catch (error) {
         console.error('Failed to load provider photo:', error)
         setPhotoUrl('')
@@ -4142,15 +4075,10 @@ function ProviderDashboard({
         .from('bookings')
         .select('*')
         .eq('provider_user_id', user.user_id)
-        .order('created_at', {
-          ascending: false,
-        })
+        .order('created_at', { ascending: false })
 
       if (error) {
-        console.error(
-          'Failed to load provider bookings:',
-          error
-        )
+        console.error('Failed to load provider bookings:', error)
         setBookings([])
       } else {
         setBookings(data || [])
@@ -4554,12 +4482,44 @@ function ProviderDashboard({
   const acceptedBookings = bookings.filter(b => String(b.status || '').toLowerCase() === 'accepted')
   const declinedBookings = bookings.filter(b => String(b.status || '').toLowerCase() === 'declined')
 
+  const createProviderProfile = async () => {
+    if (!user?.user_id) return
+    setFeatureLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('providers')
+        .upsert(
+          {
+            user_id: user.user_id,
+            business_name: user.name || 'My Business',
+            category: 'General',
+            location: 'Nigeria',
+            phone: user.phone || '',
+            description: '',
+            verified: false,
+            rating: null,
+            avatar_url: null,
+            emergency_available: false,
+          },
+          { onConflict: 'user_id', ignoreDuplicates: false }
+        )
+        .select('*')
+        .single()
+
+      if (error) throw error
+      setProviderProfile(data)
+    } catch (error) {
+      alert('Could not create provider profile: ' + error.message)
+    }
+    setFeatureLoading(false)
+  }
+
   return (
     <div className="dash-shell-main" style={{ minHeight: '100vh', background: 'var(--nf-bg)' }}>
       <TopBar
-        greeting="NAIJAFIX PROVIDER"
-        name={`Welcome back, ${user?.name?.split(' ')[0] || 'provider'}`}
-        subtitle={providerProfile?.business_name || 'Review your service requests'}
+        greeting="NAIJAFIX"
+        name={`Welcome back, ${user?.name?.split(' ')[0] || 'provider'} 👋`}
+        subtitle={providerProfile?.business_name || 'Manage your service business'}
         avatarUrl={photoUrl}
         onNotification={onNotifications}
         notificationCount={unreadNotifications}
@@ -4571,371 +4531,175 @@ function ProviderDashboard({
       />
 
       <main className="dash-shell-content" style={{ paddingBottom: 100 }}>
-        <DashboardCard>
-          <div className="dash-profile-header">
-            <div className="dash-profile-avatar">
-              {photoUrl ? <img src={photoUrl} alt="Business" /> : providerProfile?.business_name?.charAt(0) || 'P'}
-            </div>
-            <div className="dash-profile-info">
-              <h3>{providerProfile?.business_name || user?.name || 'Provider'}</h3>
-              <p>{user?.email || ''}</p>
-              {providerProfile?.phone && <p>📞 {providerProfile.phone}</p>}
-              {providerProfile?.category && <p>🏷️ {providerProfile.category}</p>}
-              {providerProfile?.location && <p>📍 {providerProfile.location}</p>}
-              <StatusBadge status={verification?.status || 'unverified'} />
-            </div>
-          </div>
-          <div className="dash-btn-group">
-            <button className="dash-btn dash-btn-outline dash-btn-full" onClick={startEditingProvider}>
-              Edit Profile
-            </button>
-          </div>
-        </DashboardCard>
-
-        <StatGrid>
-          <StatCard icon="⏳" value={pendingBookings.length} label="Pending" color="yellow" />
-          <StatCard icon="✅" value={acceptedBookings.length} label="Accepted" color="green" />
-          <StatCard icon="❌" value={declinedBookings.length} label="Declined" color="red" />
-          <StatCard icon="📋" value={supportReports.length} label="Reports" color="blue" />
-        </StatGrid>
-
-        <AdPlacement position="inline" />
-
-        <SectionHeader label="OVERVIEW" title="Service requests" />
         {!loading && !providerProfile ? (
-          <EmptyState icon="⚠️" title="No provider profile linked to this account" />
-        ) : loading ? (
-          <LoadingState text="Loading service requests..." />
-        ) : bookings.length === 0 ? (
-          <EmptyState icon="📅" title="No service requests yet" />
-        ) : (
-          bookings.map((booking) => {
-            const status = String(booking.status || 'Pending').toLowerCase()
-            const isPending = status === 'pending'
-            const isAccepted = status === 'accepted'
-            const isOnTheWay = status === 'provider_on_the_way'
-            const isInProgress = status === 'in_progress'
-            return (
-              <BookingCard
-                key={booking.id}
-                booking={booking}
-                onAccept={isPending ? () => updateBookingStatus(booking.id, 'Accepted') : null}
-                onDecline={isPending ? () => {
-                  const reason = window.prompt('Please provide a reason for declining this booking:')
-                  if (reason === null) return
-                  updateBookingStatus(booking.id, 'Declined', reason.trim() || 'No reason provided')
-                } : null}
-                onProviderOnTheWay={isAccepted ? () => updateBookingStatus(booking.id, 'Provider on the way') : null}
-                onMarkInProgress={isOnTheWay || isAccepted ? () => updateBookingStatus(booking.id, 'In progress') : null}
-                onMarkCompleted={isInProgress || isOnTheWay || isAccepted ? () => updateBookingStatus(booking.id, 'Completed') : null}
-                onAcceptTime={isAccepted && booking.preferred_time && !booking.time_accepted ? () => acceptScheduledTime(booking) : null}
-                onProposeTime={isAccepted && booking.preferred_time && !booking.time_accepted ? (time) => proposeAlternativeTime({ ...booking, proposed_time: time }) : null}
-                proposedTime={proposedTimes[booking.id]}
-                onProposedTimeChange={(value) => setProposedTimes((current) => ({ ...current, [booking.id]: value }))}
-              />
-            )
-          })
-        )}
-
-        <SectionHeader label="BUSINESS PROFILE" title="Your business profile" />
-        <DashboardCard>
-          {editingProvider ? (
-            <div>
-              <div className="dash-profile-header">
-                <div className="dash-profile-avatar">
-                  {photoUrl ? <img src={photoUrl} alt="Business" /> : providerProfile?.business_name?.charAt(0) || 'P'}
-                </div>
-              </div>
-              <div className="dash-form-group">
-                <label className="dash-form-label">Business name</label>
-                <input className="dash-form-input" value={editBusinessName} onChange={(e) => setEditBusinessName(e.target.value)} />
-              </div>
-              <div className="dash-form-group">
-                <label className="dash-form-label">Description</label>
-                <input className="dash-form-input" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
-              </div>
-              <div className="dash-form-group">
-                <label className="dash-form-label">Category</label>
-                <input className="dash-form-input" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} />
-              </div>
-              <div className="dash-form-group">
-                <label className="dash-form-label">Location</label>
-                <input className="dash-form-input" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} />
-              </div>
-              <div className="dash-form-group">
-                <label className="dash-form-label">Phone</label>
-                <input className="dash-form-input" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
-              </div>
-              <div className="dash-form-group">
-                <label className="dash-form-label">Emergency services available</label>
-                <select className="dash-form-input" value={providerProfile?.emergency_available ? 'yes' : 'no'} onChange={(e) => {
-                  const val = e.target.value === 'yes'
-                  setProviderProfile((current) => ({ ...current, emergency_available: val }))
-                }}>
-                  <option value="no">No</option>
-                  <option value="yes">Yes</option>
-                </select>
-              </div>
-              <div className="dash-btn-group">
-                <button className="dash-btn dash-btn-primary" onClick={saveProviderProfile} disabled={savingProvider}>
-                  {savingProvider ? 'Saving...' : 'Save'}
-                </button>
-                <button className="dash-btn dash-btn-outline" onClick={() => setEditingProvider(false)} disabled={savingProvider}>
-                  Cancel
-                </button>
-              </div>
+          <DashboardCard>
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>🏢</div>
+              <h3 style={{ marginBottom: 8 }}>Complete Your Provider Profile</h3>
+              <p style={{ color: 'var(--nf-text-muted)', marginBottom: 20, maxWidth: 400, margin: '0 auto 20px' }}>
+                Set up your business profile to start receiving service requests from customers.
+              </p>
+              <button
+                className="dash-btn dash-btn-primary"
+                onClick={createProviderProfile}
+                disabled={featureLoading}
+              >
+                {featureLoading ? 'Creating...' : 'Create Provider Profile'}
+              </button>
             </div>
-          ) : (
-            <div>
+          </DashboardCard>
+        ) : (
+          <>
+            <DashboardCard>
               <div className="dash-profile-header">
                 <div className="dash-profile-avatar">
                   {photoUrl ? <img src={photoUrl} alt="Business" /> : providerProfile?.business_name?.charAt(0) || 'P'}
                 </div>
                 <div className="dash-profile-info">
-                  <h3>{providerProfile?.business_name || 'Provider profile'}</h3>
-                  {providerProfile?.description && <p>{providerProfile.description}</p>}
-                  {providerProfile?.category && <p>🛠️ {providerProfile.category}</p>}
-                  {providerProfile?.location && <p>📍 {providerProfile.location}</p>}
+                  <h3>{providerProfile?.business_name || user?.name || 'Provider'}</h3>
+                  <p>{user?.email || ''}</p>
                   {providerProfile?.phone && <p>📞 {providerProfile.phone}</p>}
+                  {providerProfile?.category && <p>🏷️ {providerProfile.category}</p>}
+                  <StatusBadge status={verification?.status || 'unverified'} />
                 </div>
               </div>
-              <button className="dash-btn dash-btn-outline dash-btn-full" onClick={startEditingProvider}>
-                Edit profile
-              </button>
-            </div>
-          )}
-          <label className="dash-btn dash-btn-outline dash-btn-full" style={{ marginTop: 10 }}>
-            {featureLoading ? 'Uploading...' : 'Upload business photo'}
-            <input type="file" accept="image/*" hidden disabled={featureLoading} onChange={(event) => uploadProviderPhoto(event.target.files?.[0])} />
-          </label>
-        </DashboardCard>
-
-        <SectionHeader label="VERIFICATION" title="Provider verification" />
-        <VerificationCard verification={verification} type="provider">
-          {verification?.status === 'rejected' && (
-            <div style={{ marginTop: 12 }}>
-              <label className="dash-btn dash-btn-primary dash-btn-full">
-                Resubmit Verification
-                <input type="file" accept="image/*,.pdf" hidden disabled={featureLoading} onChange={handleResubmitDocSelect} />
-              </label>
-              {resubmitDocPreview && (
-                <DocPreview url={resubmitDocPreview} name={resubmitDocName} onClear={clearResubmitDoc} />
-              )}
-              {resubmitDocFile && (
-                <button className="dash-btn dash-btn-primary dash-btn-full" onClick={() => resubmitVerification(resubmitDocFile)} disabled={featureLoading}>
-                  {featureLoading ? 'Submitting...' : 'Submit new verification'}
+              <div className="dash-btn-group">
+                <button className="dash-btn dash-btn-outline dash-btn-full" onClick={startEditingProvider}>
+                  Edit Profile
                 </button>
-              )}
-            </div>
-          )}
-          {verification?.status !== 'rejected' && verification?.status !== 'approved' && (
-            <div style={{ marginTop: 12 }}>
-              {verificationDocPreview && (
-                <DocPreview url={verificationDocPreview} name={verificationDocName} onClear={clearVerificationDoc} />
-              )}
-              {!verificationDocPreview && !verification?.id_document_url && (
-                <label className="dash-btn dash-btn-outline dash-btn-full">
-                  Select document
-                  <input type="file" accept="image/*,.pdf" hidden disabled={featureLoading} onChange={handleVerificationDocSelect} />
-                </label>
-              )}
-              {verificationDocFile && (
-                <button className="dash-btn dash-btn-primary dash-btn-full" onClick={() => submitVerification(verificationDocFile)} disabled={featureLoading}>
-                  {featureLoading ? 'Submitting...' : 'Submit verification'}
+                <button className="dash-btn dash-btn-outline dash-btn-full" onClick={onNotifications}>
+                  Notifications {unreadNotifications > 0 && `(${unreadNotifications})`}
                 </button>
-              )}
-              {verification?.id_document_url && !verificationDocPreview && (
-                <p style={{ marginTop: 8, fontSize: 13, color: 'var(--nf-green)' }}>✓ Document submitted</p>
-              )}
-            </div>
-          )}
-        </VerificationCard>
+              </div>
+            </DashboardCard>
 
-        <SectionHeader label="WORK SAMPLES" title="Your work samples" />
-        <DashboardCard>
-          <div className="dash-form-group">
-            <label className="dash-form-label">Caption (optional)</label>
-            <input className="dash-form-input" placeholder="Caption" value={sampleCaption} onChange={(e) => setSampleCaption(e.target.value)} />
-          </div>
-          <label className="dash-btn dash-btn-outline dash-btn-full">
-            Upload sample
-            <input type="file" accept="image/*" hidden disabled={featureLoading} onChange={(event) => { const file = event.target.files?.[0]; if (file) { uploadSample(file, sampleCaption); } }} />
-          </label>
-          {samples.length > 0 && (
-            <div className="dash-sample-grid">
-              {samples.map((sample) => (
-                <div className="dash-sample-item" key={sample.id}>
-                  <img src={sample.signedUrl} alt={sample.caption || 'Work sample'} />
-                  <p>{sample.caption}</p>
-                  <button type="button" className="dash-btn dash-btn-danger dash-btn-sm" onClick={async () => { await supabase.from('provider_work_samples').delete().eq('id', sample.id); setSamples((current) => current.filter((item) => item.id !== sample.id)) }}>
-                    Delete
+            <StatGrid>
+              <StatCard icon="⏳" value={pendingBookings.length} label="Pending" color="yellow" />
+              <StatCard icon="✅" value={acceptedBookings.length} label="Accepted" color="green" />
+              <StatCard icon="❌" value={declinedBookings.length} label="Declined" color="red" />
+              <StatCard icon="⭐" value={providerReviews.length} label="Reviews" color="blue" />
+            </StatGrid>
+
+            <AdPlacement position="inline" />
+
+            <SectionHeader
+              label="SERVICE REQUESTS"
+              title="Recent requests"
+              action={<button className="dash-btn dash-btn-outline dash-btn-sm" onClick={onBookings}>View all →</button>}
+            />
+            {loading ? (
+              <LoadingState text="Loading requests..." />
+            ) : bookings.length === 0 ? (
+              <EmptyState
+                icon="📅"
+                title="No service requests yet"
+                description="When customers request your services, they will appear here."
+                action={
+                  <button className="dash-btn dash-btn-primary" onClick={onConversations}>
+                    Message customers
                   </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </DashboardCard>
+                }
+              />
+            ) : (
+              bookings.slice(0, 5).map((booking) => {
+                const status = String(booking.status || 'Pending').toLowerCase()
+                const isPending = status === 'pending'
+                const isAccepted = status === 'accepted'
+                const isOnTheWay = status === 'provider_on_the_way'
+                const isInProgress = status === 'in_progress'
+                return (
+                  <BookingCard
+                    key={booking.id}
+                    booking={booking}
+                    onAccept={isPending ? () => updateBookingStatus(booking.id, 'Accepted') : null}
+                    onDecline={isPending ? () => {
+                      const reason = window.prompt('Please provide a reason for declining this booking:')
+                      if (reason === null) return
+                      updateBookingStatus(booking.id, 'Declined', reason.trim() || 'No reason provided')
+                    } : null}
+                    onProviderOnTheWay={isAccepted ? () => updateBookingStatus(booking.id, 'Provider on the way') : null}
+                    onMarkInProgress={isOnTheWay || isAccepted ? () => updateBookingStatus(booking.id, 'In progress') : null}
+                    onMarkCompleted={isInProgress || isOnTheWay || isAccepted ? () => updateBookingStatus(booking.id, 'Completed') : null}
+                    onAcceptTime={isAccepted && booking.preferred_time && !booking.time_accepted ? () => acceptScheduledTime(booking) : null}
+                    onProposeTime={isAccepted && booking.preferred_time && !booking.time_accepted ? (time) => proposeAlternativeTime({ ...booking, proposed_time: time }) : null}
+                    proposedTime={proposedTimes[booking.id]}
+                    onProposedTimeChange={(value) => setProposedTimes((current) => ({ ...current, [booking.id]: value }))}
+                  />
+                )
+              })
+            )}
 
-        <SectionHeader label="MESSAGES" title="Your conversations" />
-        <EmptyState
-          icon="💬"
-          title="Message customers"
-          description="Chat with customers who booked your services."
-          action={
-            <button className="dash-btn dash-btn-primary" onClick={onConversations}>
-              Open messages
-            </button>
-          }
-        />
-
-        <SectionHeader label="SUPPORT" title="Your reports" />
-        {loading ? (
-          <LoadingState text="Loading reports..." />
-        ) : supportReports.length === 0 ? (
-          <EmptyState icon="📋" title="No reports yet" description="Submit a support report below." />
-        ) : (
-          supportReports.map((report) => (
-            <ReportCard key={report.id} report={report} reporterName={user?.name} />
-          ))
-        )}
-
-        <SectionHeader label="AVAILABILITY" title="Your availability" />
-        <DashboardCard>
-          <div style={{ display: 'grid', gap: 8 }}>
-            {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((day, index) => {
-              const slot = availability.find((a) => a.day_of_week === index)
-              return (
-                <div key={day} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #e2e8e4' }}>
-                  <strong>{day}</strong>
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <span style={{ fontSize: 13, color: slot?.is_available ? 'var(--nf-green)' : 'var(--nf-text-muted)' }}>
-                      {slot?.is_available ? '🟢 Available' : '🔴 Unavailable'}
-                    </span>
-                    <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" onClick={() => toggleDayAvailability(index)}>
-                      {slot?.is_available ? 'Set unavailable' : 'Set available'}
+            <SectionHeader label="BUSINESS PROFILE" title="Your business" />
+            <DashboardCard>
+              {editingProvider ? (
+                <div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Business name</label>
+                    <input className="dash-form-input" value={editBusinessName} onChange={(e) => setEditBusinessName(e.target.value)} />
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Description</label>
+                    <input className="dash-form-input" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Category</label>
+                    <input className="dash-form-input" value={editCategory} onChange={(e) => setEditCategory(e.target.value)} />
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Location</label>
+                    <input className="dash-form-input" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} />
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Phone</label>
+                    <input className="dash-form-input" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+                  </div>
+                  <div className="dash-btn-group">
+                    <button className="dash-btn dash-btn-primary" onClick={saveProviderProfile} disabled={savingProvider}>
+                      {savingProvider ? 'Saving...' : 'Save'}
+                    </button>
+                    <button className="dash-btn dash-btn-outline" onClick={() => setEditingProvider(false)} disabled={savingProvider}>
+                      Cancel
                     </button>
                   </div>
                 </div>
-              )
-            })}
-          </div>
-          <button type="button" className="dash-btn dash-btn-primary dash-btn-full" onClick={saveAvailability} disabled={featureLoading} style={{ marginTop: 12 }}>
-            {featureLoading ? 'Saving...' : 'Save availability'}
-          </button>
-        </DashboardCard>
-
-        <SectionHeader label="SERVICE PACKAGES" title="Your packages" />
-        <DashboardCard>
-          {packages.length > 0 && (
-            <div style={{ display: 'grid', gap: 10, marginBottom: 12 }}>
-              {packages.map((pkg) => (
-                <div key={pkg.id} style={{ padding: 10, background: 'var(--nf-bg)', borderRadius: 8 }}>
-                  {editingPackageId === pkg.id ? (
-                    <div style={{ display: 'grid', gap: 8 }}>
-                      <input className="dash-form-input" placeholder="Package name" value={editPackageName} onChange={(e) => setEditPackageName(e.target.value)} />
-                      <input className="dash-form-input" placeholder="Description" value={editPackageDescription} onChange={(e) => setEditPackageDescription(e.target.value)} />
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <input className="dash-form-input" placeholder="Price (₦)" type="number" value={editPackagePrice} onChange={(e) => setEditPackagePrice(e.target.value)} />
-                        <input className="dash-form-input" placeholder="Duration" value={editPackageDuration} onChange={(e) => setEditPackageDuration(e.target.value)} />
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button type="button" className="dash-btn dash-btn-primary dash-btn-sm" onClick={() => updatePackage(pkg.id)} disabled={featureLoading}>Save</button>
-                        <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" onClick={cancelEditingPackage} disabled={featureLoading}>Cancel</button>
-                      </div>
+              ) : (
+                <div>
+                  <div className="dash-profile-header">
+                    <div className="dash-profile-avatar">
+                      {photoUrl ? <img src={photoUrl} alt="Business" /> : providerProfile?.business_name?.charAt(0) || 'P'}
                     </div>
-                  ) : (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <strong>{pkg.name}</strong>
-                        <p style={{ margin: 0, fontSize: 13 }}>{pkg.description}</p>
-                        <p style={{ margin: 0, fontWeight: 800, color: 'var(--nf-green)' }}>₦{Number(pkg.price).toLocaleString()}</p>
-                        {pkg.estimated_duration && <p style={{ margin: 0, fontSize: 12, color: 'var(--nf-text-muted)' }}>Duration: {pkg.estimated_duration}</p>}
-                      </div>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" onClick={() => startEditingPackage(pkg)}>Edit</button>
-                        <button type="button" className="dash-btn dash-btn-danger dash-btn-sm" onClick={() => deletePackage(pkg.id)}>Delete</button>
-                      </div>
+                    <div className="dash-profile-info">
+                      <h3>{providerProfile?.business_name || 'Business name'}</h3>
+                      {providerProfile?.description && <p>{providerProfile.description}</p>}
+                      {providerProfile?.category && <p>🛠️ {providerProfile.category}</p>}
+                      {providerProfile?.location && <p>📍 {providerProfile.location}</p>}
+                      {providerProfile?.phone && <p>📞 {providerProfile.phone}</p>}
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-          <div style={{ display: 'grid', gap: 8 }}>
-            <input className="dash-form-input" placeholder="Package name" value={newPackageName} onChange={(e) => setNewPackageName(e.target.value)} />
-            <input className="dash-form-input" placeholder="Description" value={newPackageDescription} onChange={(e) => setNewPackageDescription(e.target.value)} />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <input className="dash-form-input" placeholder="Price (₦)" type="number" value={newPackagePrice} onChange={(e) => setNewPackagePrice(e.target.value)} />
-              <input className="dash-form-input" placeholder="Duration" value={newPackageDuration} onChange={(e) => setNewPackageDuration(e.target.value)} />
-            </div>
-            <button type="button" className="dash-btn dash-btn-outline dash-btn-full" onClick={addPackage} disabled={featureLoading}>
-              {featureLoading ? 'Adding...' : 'Add package'}
-            </button>
-          </div>
-        </DashboardCard>
-
-        <SectionHeader label="QUOTES" title="Send a quote" />
-        <DashboardCard>
-          <div style={{ display: 'grid', gap: 8 }}>
-            <input className="dash-form-input" placeholder="Booking ID" type="number" value={newQuoteBookingId} onChange={(e) => setNewQuoteBookingId(e.target.value)} />
-            <input className="dash-form-input" placeholder="Amount (₦)" type="number" value={newQuoteAmount} onChange={(e) => setNewQuoteAmount(e.target.value)} />
-            <textarea className="dash-form-textarea" placeholder="Quote description" value={newQuoteDescription} onChange={(e) => setNewQuoteDescription(e.target.value)} />
-            <button type="button" className="dash-btn dash-btn-primary dash-btn-full" onClick={sendQuote} disabled={featureLoading}>
-              {featureLoading ? 'Sending...' : 'Send quote'}
-            </button>
-          </div>
-          {quotes.length > 0 && (
-            <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
-              {quotes.map((quote) => (
-                <div key={quote.id} style={{ padding: 10, background: 'var(--nf-bg)', borderRadius: 8 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong>₦{Number(quote.amount).toLocaleString()}</strong>
-                    <StatusBadge status={quote.status} />
                   </div>
-                  <p style={{ margin: '4px 0', fontSize: 13 }}>{quote.description}</p>
-                  {quote.status === 'pending' && (
-                    <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                      <button type="button" className="dash-btn dash-btn-primary dash-btn-sm" onClick={() => updateQuoteStatus(quote.id, 'accepted')}>Accept</button>
-                      <button type="button" className="dash-btn dash-btn-danger dash-btn-sm" onClick={() => updateQuoteStatus(quote.id, 'declined')}>Decline</button>
-                    </div>
-                  )}
+                  <button className="dash-btn dash-btn-outline dash-btn-full" onClick={startEditingProvider}>
+                    Edit profile
+                  </button>
                 </div>
-              ))}
-            </div>
-          )}
-        </DashboardCard>
+              )}
+              <label className="dash-btn dash-btn-outline dash-btn-full" style={{ marginTop: 10 }}>
+                {featureLoading ? 'Uploading...' : 'Upload business photo'}
+                <input type="file" accept="image/*" hidden disabled={featureLoading} onChange={(event) => uploadProviderPhoto(event.target.files?.[0])} />
+              </label>
+            </DashboardCard>
 
-        <SectionHeader label="REVIEWS" title="Customer reviews" />
-        <DashboardCard>
-          {providerReviews.length === 0 ? (
-            <EmptyState icon="⭐" title="No reviews yet" description="Reviews from customers will appear here." />
-          ) : (
-            <div>
-              {providerReviews.map((review) => (
-                <div key={review.id} style={{ borderBottom: '1px solid #e2e8e4', padding: '10px 0' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong>⭐ {review.rating}/5</strong>
-                    <small style={{ color: 'var(--nf-text-muted)' }}>{new Date(review.created_at).toLocaleDateString()}</small>
-                  </div>
-                  {review.comment && <p style={{ margin: '4px 0', fontSize: 14 }}>{review.comment}</p>}
-                  {review.provider_response ? (
-                    <div style={{ background: '#f0fdf4', padding: 8, borderRadius: 6, marginTop: 6 }}>
-                      <strong style={{ fontSize: 12 }}>Provider response</strong>
-                      <p style={{ margin: 0, fontSize: 13 }}>{review.provider_response}</p>
-                    </div>
-                  ) : (
-                    <ReviewResponse reviewId={review.id} onRespond={respondToReview} />
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </DashboardCard>
-
-        <SectionHeader label="SUPPORT" title="Help and support" />
-        <DashboardCard>
-          <ReportForm user={user} />
-        </DashboardCard>
+            <SectionHeader label="MESSAGES" title="Your conversations" />
+            <EmptyState
+              icon="💬"
+              title="Message customers"
+              description="Chat with customers who booked your services."
+              action={
+                <button className="dash-btn dash-btn-primary" onClick={onConversations}>
+                  Open messages
+                </button>
+              }
+            />
+          </>
+        )}
 
         {onLogout && (
           <DashboardCard>
@@ -4951,12 +4715,12 @@ function ProviderDashboard({
           { id: 'home', icon: '🏠', label: 'Home' },
           { id: 'bookings', icon: '📅', label: 'Requests' },
           { id: 'messages', icon: '💬', label: 'Messages' },
-          { id: 'notifications', icon: '🔔', label: 'Alerts' },
+          { id: 'notifications', icon: '🔔', label: 'Alerts', badge: unreadNotifications },
           { id: 'profile', icon: '👤', label: 'Profile' },
         ]}
         active="home"
         onChange={(id) => {
-          if (id === 'home') onHome()
+          if (id === 'home') window.scrollTo({ top: 0, behavior: 'smooth' })
           else if (id === 'bookings') onBookings()
           else if (id === 'messages') onConversations()
           else if (id === 'notifications') onNotifications()

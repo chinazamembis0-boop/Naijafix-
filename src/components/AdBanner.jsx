@@ -5,7 +5,7 @@ const demoAds = [
     id: 'ad-1',
     title: 'Trusted Services, Right at Your Door',
     description: 'Find reliable local professionals with NaijaFix.',
-    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&h=300&fit=crop',
+    image: '/images/ad-promo.jpg',
     label: 'Sponsored',
     ctaText: 'Explore Services',
   },
@@ -13,7 +13,7 @@ const demoAds = [
     id: 'ad-2',
     title: 'Get Your Home Looking New',
     description: 'Professional cleaning and renovation services nearby.',
-    image: 'https://images.unsplash.com/photo-1563453392212-326f5e854473?w=600&h=300&fit=crop',
+    image: '/images/ad-promo.jpg',
     label: 'NaijaFix Promotion',
     ctaText: 'Learn More',
   },
@@ -21,7 +21,7 @@ const demoAds = [
     id: 'ad-3',
     title: 'Emergency Repairs? We\'ve Got You',
     description: '24/7 available professionals for urgent fixes.',
-    image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=600&h=300&fit=crop',
+    image: '/images/ad-promo.jpg',
     label: 'Sponsored',
     ctaText: 'Find Help Now',
   },
@@ -67,8 +67,11 @@ export function AdBanner({ ad, onDismiss, onAction }) {
           />
         </div>
       ) : (
-        <div className="nf-ad-image-fallback">
-          <span className="nf-ad-fallback-icon">🏷️</span>
+        <div className="nf-ad-visual">
+          <div className="nf-ad-visual-inner">
+            <span className="nf-ad-visual-icon">🏠</span>
+            <span className="nf-ad-visual-text">NaijaFix</span>
+          </div>
         </div>
       )}
 

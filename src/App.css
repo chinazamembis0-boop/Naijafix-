@@ -370,6 +370,32 @@ footer .brand span {
   font-size: 36px;
 }
 
+.nf-ad-visual {
+  width: 100%;
+  height: 140px;
+  background: linear-gradient(135deg, #087f3d, #066630);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nf-ad-visual-inner {
+  text-align: center;
+  color: white;
+}
+
+.nf-ad-visual-icon {
+  font-size: 36px;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.nf-ad-visual-text {
+  font-family: Georgia, serif;
+  font-size: 18px;
+  font-weight: bold;
+}
+
 .nf-ad-content {
   padding: 14px 16px;
 }

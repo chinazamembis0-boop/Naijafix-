@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="300" viewBox="0 0 600 300">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#087f3d;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#066630;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="600" height="300" fill="url(#bg)"/>
+  <circle cx="480" cy="150" r="120" fill="white" opacity="0.1"/>
+  <circle cx="500" cy="150" r="80" fill="white" opacity="0.1"/>
+  <circle cx="100" cy="250" r="60" fill="white" opacity="0.05"/>
+  <text x="50" y="120" font-family="Georgia, serif" font-size="28" fill="white" font-weight="bold">Trusted Services</text>
+  <text x="50" y="155" font-family="Georgia, serif" font-size="18" fill="white" opacity="0.9">Right when you need them</text>
+  <rect x="50" y="180" width="180" height="40" rx="8" fill="white"/>
+  <text x="140" y="206" font-family="sans-serif" font-size="14" fill="#087f3d" font-weight="bold" text-anchor="middle">Explore Services</text>
+  <text x="50" y="250" font-family="sans-serif" font-size="12" fill="white" opacity="0.7">NaijaFix — Local people. Trusted services.</text>
+</svg>
