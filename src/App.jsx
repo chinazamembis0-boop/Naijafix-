@@ -27,6 +27,10 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { getServiceImage } from './components/ServiceImages.js'
 import { AdPlacement } from './components/AdBanner.jsx'
+import { allServices, serviceCategories } from './components/ServicesData.js'
+import FoodMarketplace from './components/FoodMarketplace.jsx'
+import FoodCart from './components/FoodCart.jsx'
+import ViewAllServices from './components/ViewAllServices.jsx'
 
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -35,80 +39,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 })
 
-const defaultServices = [
-  {
-    id: 'plumbing',
-    name: 'Plumbing',
-    description: 'Pipes, leaks, toilets and water systems',
-    category: 'Plumbing',
-  },
-  {
-    id: 'electrical',
-    name: 'Electrical',
-    description: 'Wiring, sockets, lighting and repairs',
-    category: 'Electrical',
-  },
-  {
-    id: 'cleaning',
-    name: 'Cleaning',
-    description: 'Home, office and deep cleaning',
-    category: 'Cleaning',
-  },
-  {
-    id: 'ac-repair',
-    name: 'AC Repair',
-    description: 'Air conditioner installation and repair',
-    category: 'AC Repair',
-  },
-  {
-    id: 'generator-repair',
-    name: 'Generator Repair',
-    description: 'Generator servicing and repairs',
-    category: 'Generator Repair',
-  },
-  {
-    id: 'phone-repair',
-    name: 'Phone Repair',
-    description: 'Screen, battery and software repairs',
-    category: 'Phone Repair',
-  },
-  {
-    id: 'computer-repair',
-    name: 'Computer Repair',
-    description: 'Laptop, desktop and software support',
-    category: 'Computer Repair',
-  },
-  {
-    id: 'carpentry',
-    name: 'Carpentry',
-    description: 'Furniture, doors and woodwork',
-    category: 'Carpentry',
-  },
-  {
-    id: 'painting',
-    name: 'Painting',
-    description: 'Interior and exterior painting',
-    category: 'Painting',
-  },
-  {
-    id: 'fashion-tailoring',
-    name: 'Fashion & Tailoring',
-    description: 'Tailoring, alterations and fashion',
-    category: 'Fashion and Tailoring',
-  },
-  {
-    id: 'barbering',
-    name: 'Barbering',
-    description: 'Professional haircut and grooming',
-    category: 'Barbering',
-  },
-  {
-    id: 'beauty',
-    name: 'Beauty',
-    description: 'Hair, makeup and beauty services',
-    category: 'Beauty',
-  },
-]
+const defaultServices = allServices
 
 const serviceIcons = {
   plumbing: '🔧',
@@ -123,6 +54,108 @@ const serviceIcons = {
   'fashion and tailoring': '👕',
   barbering: '💈',
   beauty: '💇',
+  'house building and construction': '🏗️',
+  roofing: '🏠',
+  'tiling and flooring': '🔲',
+  'pop and ceiling': '✨',
+  'plastering and screeding': '🧱',
+  'welding and fabrication': '⚒️',
+  'aluminium and glass': '🪟',
+  'furniture making': '🪑',
+  'furniture repair': '🔨',
+  'interior decoration': '🎨',
+  handyman: '🔧',
+  'gardening and landscaping': '🌿',
+  'fumigation and pest control': '🐛',
+  'solar installation': '☀️',
+  'solar repair': '🔆',
+  'inverter installation': '🔋',
+  'inverter repair': '⚡',
+  'cctv installation': '📹',
+  'security systems': '🔒',
+  'dstv / satellite installation': '📡',
+  'borehole services': '💧',
+  'water pump repair': '🔧',
+  'water tank services': '🚰',
+  'auto mechanic': '🚗',
+  'auto electrical': '⚡',
+  'car ac repair': '❄️',
+  'tyre services': '🛞',
+  vulcanizing: '🔧',
+  'car wash': '🚿',
+  'car detailing': '✨',
+  'car painting': '🎨',
+  'panel beating': '🔨',
+  'car battery services': '🔋',
+  towing: '🚛',
+  'driver / chauffeur': '🧑‍✈️',
+  'moving and relocation': '📦',
+  'dispatch riders': '🏍️',
+  'package delivery': '📦',
+  'food delivery': '🍱',
+  'grocery delivery': '🛒',
+  'document delivery': '📄',
+  'errand runner': '🏃',
+  'pickup and drop-off': '📍',
+  'laptop repair': '💻',
+  'printer repair': '🖨️',
+  'tv repair': '📺',
+  'electronics repair': '🔌',
+  'wi-fi and internet setup': '📶',
+  'network installation': '🌐',
+  'web development': '💻',
+  'mobile app development': '📱',
+  'graphic design': '🎨',
+  'video editing': '🎬',
+  photography: '📷',
+  videography: '🎥',
+  'social media management': '📱',
+  'digital marketing': '📈',
+  'virtual assistant': '🧑‍💻',
+  hairdressing: '💇',
+  'braiding / locs': '💇‍♀️',
+  'makeup artist': '💄',
+  'nail technician': '💅',
+  'manicure and pedicure': '💅',
+  massage: '💆',
+  'fitness trainer': '🏋️',
+  'home tuto': '📚',
+  'jamb / waec tutor': '📝',
+  'primary / secondary tutor': '📖',
+  'music teacher': '🎵',
+  'language tutor': '🗣️',
+  'driving instructor': '🚗',
+  'nanny / childcare': '👶',
+  'elderly care / caregiver': '🧓',
+  'home cook / personal chef': '👨‍🍳',
+  'clothing alteration': '✂️',
+  'shoe making': '👞',
+  'shoe repair': '👟',
+  'bag making': '👜',
+  laundry: '👕',
+  'dry cleaning': '🧥',
+  catering: '🍽️',
+  'small chops': '🥟',
+  'cake and baking': '🎂',
+  'event planning': '📋',
+  'event decoration': '🎊',
+  dj: '🎧',
+  'mc / compere': '🎤',
+  'sound and lighting': '🔊',
+  'event photography': '📸',
+  'event videography': '🎬',
+  'equipment rentals': '🎪',
+  'pet grooming': '🐕',
+  'pet sitting': '🐾',
+  'pet walking': '🐕‍🦺',
+  'legal services': '⚖️',
+  accounting: '📊',
+  'tax services': '💰',
+  'recruitment services': '🤝',
+  'travel / tour services': '✈️',
+  'printing services': '🖨️',
+  translation: '🌍',
+  'professional consulting': '💼',
 }
 
 function normalizeCategory(value) {
@@ -435,6 +468,8 @@ function Home({
   onSignup,
   onProviderSignup,
   onService,
+  onViewAllServices,
+  onFood,
 }) {
   const [search, setSearch] = useState('')
   const searchText = search.trim().toLowerCase()
@@ -506,11 +541,52 @@ function Home({
           </div>
         </section>
 
+        {onFood && (
+          <section className="section nf-home-food-section">
+            <button className="nf-home-food-banner" onClick={onFood}>
+              <div className="nf-home-food-banner-content">
+                <span className="nf-home-food-icon">🍽️</span>
+                <div>
+                  <h3>Food & Restaurants</h3>
+                  <p>Order from your favorite restaurants</p>
+                </div>
+                <span className="nf-home-food-arrow">→</span>
+              </div>
+            </button>
+          </section>
+        )}
+
         <section className="section">
+          <div className="section-heading">
+            <span className="section-label">CATEGORIES</span>
+
+            <h3>What do you need help with?</h3>
+          </div>
+
+          <div className="nf-category-grid">
+            {serviceCategories.slice(0, 8).map((category) => (
+              <button
+                className="nf-category-card"
+                key={category.id}
+                onClick={() => onViewAllServices?.(category.id)}
+              >
+                <span className="nf-category-card-icon">{category.icon}</span>
+                <strong>{category.name}</strong>
+                <span>{category.services.length} services</span>
+              </button>
+            ))}
+          </div>
+
+          <button className="nf-view-all-btn" onClick={() => onViewAllServices?.()}>
+            View All Services ({services.length} services)
+          </button>
+        </section>
+
+        <section className="section" style={{ paddingTop: 0 }}>
           <div className="section-heading">
             <span className="section-label">POPULAR</span>
 
-            <h3>What service do you need?</h3>
+            <h3>Popular services</h3>
           </div>
 
           <div className="service-grid">
@@ -1485,6 +1561,8 @@ function Dashboard({
           <StatCard icon="📋" value={supportReports.length} label="Reports" color="red" />
         </StatGrid>
 
+        <AdPlacement position="inline" onAction={() => onService?.(services?.[0])} />
+
         <SectionHeader label="SERVICES" title="Find a service" />
         <ServiceGrid
           services={filteredServices.slice(0, 8).map(s => ({ ...s, icon: getServiceIcon(s), image: getServiceImage(s) }))}
@@ -2230,6 +2308,8 @@ function ProviderDetails({
             </div>
           )}
         </section>
+
+        <AdPlacement position="inline" />
 
         <section className="details-card">
           <h3>Leave a review</h3>
@@ -3583,6 +3663,8 @@ function Profile({ user, onBack, onLogout }) {
             </button>
           </DashboardCard>
         )}
+
+        <AdPlacement position="inline" />
 
         <DashboardCard>
           <div className="dash-btn-group" style={{ flexDirection: 'column' }}>
@@ -6094,8 +6176,19 @@ function App() {
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [chatPartner, setChatPartner] = useState(null)
 
+  const [foodCart, setFoodCart] = useState([])
+  const [foodDeliveryFee, setFoodDeliveryFee] = useState(0)
+  const [selectedFoodCategory, setSelectedFoodCategory] = useState('')
+  const [foodOrderPlaced, setFoodOrderPlaced] = useState(false)
+  const [foodDeliveryAddress, setFoodDeliveryAddress] = useState('')
+
   const getOrCreateConversation = async (otherUserId, otherUserName, otherUserAvatar, bookingId) => {
     if (!user?.user_id) return null
+
+    if (!otherUserId) {
+      alert('Unable to start conversation: this provider profile is incomplete. Please contact NaijaFix support.')
+      return null
+    }
 
     const { data: existing } = await supabase
       .from('conversations')
@@ -6656,6 +6749,53 @@ function App() {
     )
   }
 
+  if (effectivePage === 'all-services') {
+    return (
+      <ViewAllServices
+        initialCategory={selectedFoodCategory}
+        onBack={() => setPage('home')}
+        onService={goToService}
+      />
+    )
+  }
+
+  if (effectivePage === 'food') {
+    return (
+      <FoodMarketplace
+        onBack={() => setPage('home')}
+        cartItemCount={foodCart.reduce((sum, item) => sum + item.quantity, 0)}
+        onViewCart={() => setPage('food-cart')}
+        cart={foodCart}
+        onUpdateCart={setFoodCart}
+        onDeliveryFeeChange={setFoodDeliveryFee}
+      />
+    )
+  }
+
+  if (effectivePage === 'food-cart') {
+    return (
+      <FoodCart
+        cart={foodCart}
+        deliveryFee={foodDeliveryFee}
+        onUpdateCart={(cart) => {
+          setFoodCart(cart)
+          if (cart.length === 0) {
+            setFoodDeliveryFee(0)
+          }
+        }}
+        onBack={() => setPage('food')}
+        onPlaceOrder={(order) => {
+          setFoodOrderPlaced(true)
+          setFoodDeliveryAddress(order.deliveryAddress)
+          setFoodCart([])
+          setFoodDeliveryFee(0)
+          alert(`Order placed successfully!\n\nTotal: ₦${Number(order.total).toLocaleString()}\nDelivery to: ${order.deliveryAddress}\n\nThis is a demo. Real ordering will be connected in the next phase.`)
+          setPage('food')
+        }}
+      />
+    )
+  }
+
   return (
     <Home
       services={dbServices}
@@ -6669,6 +6809,11 @@ function App() {
         setPage('provider-signup')
       }
       onService={goToService}
+      onViewAllServices={(categoryId) => {
+        setSelectedFoodCategory(categoryId || '')
+        setPage('all-services')
+      }}
+      onFood={() => setPage('food')}
       user={user}
     />
   )
