@@ -1,3 +1,5 @@
+import { supabase } from '../supabase.js'
+
 export const foodCategories = [
   { id: 'nigerian-food', name: 'Nigerian Food', icon: '🇳🇬' },
   { id: 'jollof-rice', name: 'Jollof Rice', icon: '🍚' },
@@ -448,24 +450,211 @@ export const mockRestaurants = [
   },
 ]
 
-export function getRestaurantById(id) {
-  return mockRestaurants.find((r) => r.id === id)
+export async function fetchRestaurants() {
+  try {
+    const { data, error } = await supabase
+      .from('restaurants')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Failed to fetch restaurants:', error)
+      return mockRestaurants
+    }
+
+    if (!data || data.length === 0) {
+      return mockRestaurants
+    }
+
+    return data.map((r) => ({
+      ...r,
+      image: r.cover_image_url || r.logo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop',
+      rating: Number(r.rating) || 0,
+      reviewCount: 0,
+      cuisine: r.cuisine || 'Nigerian Food',
+      categories: r.cuisine ? [r.cuisine.toLowerCase().replace(/\s+/g, '-')] : ['nigerian-food'],
+      deliveryTime: r.estimated_delivery_minutes ? `${r.estimated_delivery_minutes-10}-${r.estimated_delivery_minutes} min` : '30-45 min',
+      deliveryFee: Number(r.delivery_fee) || 0,
+      isOpen: r.is_open !== false,
+      address: r.address || r.city || 'Lagos',
+    }))
+  } catch (error) {
+    console.error('Error fetching restaurants:', error)
+    return mockRestaurants
+  }
 }
 
-export function getRestaurantsByCategory(categoryId) {
-  return mockRestaurants.filter((r) => r.categories.includes(categoryId) && r.isOpen)
+export async function fetchRestaurantMenu(restaurantId) {
+  try {
+    const { data: items, error } = await supabase
+      .from('restaurant_menu_items')
+      .select('*')
+      .eq('restaurant_id', restaurantId)
+      .eq('available', true)
+      .order('created_at', { ascending: true })
+
+    if (error) {
+      console.error('Failed to fetch menu items:', error)
+      return null
+    }
+
+    if (!items || items.length === 0) {
+      const mockRestaurant = mockRestaurants.find((r) => r.id === restaurantId)
+      return mockRestaurant ? mockRestaurant.menu : []
+    }
+
+    return items.map((item) => ({
+      id: item.id,
+      name: item.name,
+      description: item.description || '',
+      price: Number(item.price),
+      image: item.image_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&h=200&fit=crop',
+      category: 'main',
+      popular: false,
+      _supabaseId: item.id,
+    }))
+  } catch (error) {
+    console.error('Error fetching menu:', error)
+    return null
+  }
 }
 
-export function searchRestaurants(query) {
+export async function fetchRestaurantsByCategory(categoryId) {
+  const all = await fetchRestaurants()
+  if (!categoryId) return all.filter((r) => r.isOpen)
+  return all.filter((r) => r.isOpen && r.categories.includes(categoryId))
+}
+
+export function searchRestaurants(query, restaurants) {
   const q = String(query || '').toLowerCase().trim()
-  if (!q) return mockRestaurants.filter((r) => r.isOpen)
-  return mockRestaurants.filter(
+  if (!q) return restaurants.filter((r) => r.isOpen)
+  return restaurants.filter(
     (r) =>
       r.isOpen &&
       (String(r.name).toLowerCase().includes(q) ||
         String(r.cuisine).toLowerCase().includes(q) ||
         String(r.description).toLowerCase().includes(q))
   )
+}
+
+export async function createFoodOrder({ customerUserId, restaurantId, items, deliveryAddress, deliveryFee, notes }) {
+  try {
+    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
+    const total = subtotal + (deliveryFee || 0)
+
+    const { data: order, error: orderError } = await supabase
+      .from('food_orders')
+      .insert({
+        customer_user_id: customerUserId,
+        restaurant_id: restaurantId,
+        delivery_address: deliveryAddress,
+        subtotal,
+        delivery_fee: deliveryFee || 0,
+        total,
+        status: 'pending',
+        payment_status: 'pending',
+        notes: notes || null,
+      })
+      .select('*')
+      .single()
+
+    if (orderError) {
+      console.error('Failed to create order:', orderError)
+      return { success: false, error: orderError.message }
+    }
+
+    const orderItems = items.map((item) => ({
+      order_id: order.id,
+      menu_item_id: item._supabaseId || null,
+      item_name_snapshot: item.name,
+      unit_price: item.price,
+      quantity: item.quantity,
+      line_total: item.price * item.quantity,
+    }))
+
+    const { error: itemsError } = await supabase
+      .from('food_order_items')
+      .insert(orderItems)
+
+    if (itemsError) {
+      console.error('Failed to create order items:', itemsError)
+      return { success: false, error: itemsError.message }
+    }
+
+    return { success: true, order }
+  } catch (error) {
+    console.error('Error creating order:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function fetchCustomerFoodOrders(customerUserId) {
+  try {
+    const { data, error } = await supabase
+      .from('food_orders')
+      .select(`
+        *,
+        restaurant:restaurants(name, cover_image_url),
+        items:food_order_items(*)
+      `)
+      .eq('customer_user_id', customerUserId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Failed to fetch orders:', error)
+      return []
+    }
+
+    return data || []
+  } catch (error) {
+    console.error('Error fetching orders:', error)
+    return []
+  }
+}
+
+export async function fetchRestaurantOrders(restaurantId) {
+  try {
+    const { data, error } = await supabase
+      .from('food_orders')
+      .select(`
+        *,
+        items:food_order_items(*)
+      `)
+      .eq('restaurant_id', restaurantId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Failed to fetch restaurant orders:', error)
+      return []
+    }
+
+    return data || []
+  } catch (error) {
+    console.error('Error fetching restaurant orders:', error)
+    return []
+  }
+}
+
+export async function updateFoodOrderStatus(orderId, newStatus) {
+  try {
+    const { data, error } = await supabase
+      .from('food_orders')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', orderId)
+      .select('*')
+      .single()
+
+    if (error) {
+      console.error('Failed to update order status:', error)
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, order: data }
+  } catch (error) {
+    console.error('Error updating order:', error)
+    return { success: false, error: error.message }
+  }
 }
 
 export default mockRestaurants

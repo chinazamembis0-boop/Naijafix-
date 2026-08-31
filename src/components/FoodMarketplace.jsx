@@ -1,19 +1,35 @@
-import { useState } from 'react'
-import { mockRestaurants, foodCategories, searchRestaurants, getRestaurantsByCategory } from './FoodData.js'
+import { useState, useEffect } from 'react'
+import { fetchRestaurants, fetchRestaurantsByCategory, foodCategories, searchRestaurants } from './FoodData.js'
 import RestaurantCard from './RestaurantCard.jsx'
 import FoodMenu from './FoodMenu.jsx'
 
-function FoodMarketplace({ onBack, cartItemCount = 0, onViewCart, cart = [], onUpdateCart, onDeliveryFeeChange }) {
+function FoodMarketplace({ onBack, cartItemCount = 0, onViewCart, cart = [], onUpdateCart, onDeliveryFeeChange, onRestaurantSelect, onRestaurantDashboard, onRiderDashboard }) {
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
   const [selectedRestaurant, setSelectedRestaurant] = useState(null)
+  const [restaurants, setRestaurants] = useState([])
+  const [loading, setLoading] = useState(true)
   const searchText = search.trim().toLowerCase()
 
+  useEffect(() => {
+    const loadRestaurants = async () => {
+      setLoading(true)
+      try {
+        const data = await fetchRestaurants()
+        setRestaurants(data)
+      } catch (error) {
+        console.error('Failed to load restaurants:', error)
+      }
+      setLoading(false)
+    }
+    loadRestaurants()
+  }, [])
+
   const displayedRestaurants = selectedCategory
-    ? getRestaurantsByCategory(selectedCategory)
+    ? restaurants.filter((r) => r.isOpen && r.categories && r.categories.includes(selectedCategory))
     : searchText
-    ? searchRestaurants(searchText)
-    : mockRestaurants.filter((r) => r.isOpen)
+    ? searchRestaurants(searchText, restaurants)
+    : restaurants.filter((r) => r.isOpen)
 
   if (selectedRestaurant) {
     return (
@@ -41,12 +57,24 @@ function FoodMarketplace({ onBack, cartItemCount = 0, onViewCart, cart = [], onU
             <span>Food & Restaurants</span>
           </div>
         </div>
-        {onViewCart && cartItemCount > 0 && (
-          <button className="nf-cart-icon-btn" onClick={onViewCart} aria-label="View cart">
-            🛒
-            <span className="nf-cart-badge">{cartItemCount}</span>
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {onRestaurantDashboard && (
+            <button className="dash-btn dash-btn-outline dash-btn-sm" onClick={onRestaurantDashboard}>
+              🏪 Restaurant
+            </button>
+          )}
+          {onRiderDashboard && (
+            <button className="dash-btn dash-btn-outline dash-btn-sm" onClick={onRiderDashboard}>
+              🏍️ Rider
+            </button>
+          )}
+          {onViewCart && cartItemCount > 0 && (
+            <button className="nf-cart-icon-btn" onClick={onViewCart} aria-label="View cart">
+              🛒
+              <span className="nf-cart-badge">{cartItemCount}</span>
+            </button>
+          )}
+        </div>
       </header>
 
       <main className="inner-content">
@@ -82,7 +110,13 @@ function FoodMarketplace({ onBack, cartItemCount = 0, onViewCart, cart = [], onU
           ))}
         </div>
 
-        {displayedRestaurants.length === 0 ? (
+        {loading ? (
+          <div className="empty-box">
+            <span>⏳</span>
+            <h4>Loading restaurants...</h4>
+            <p>Please wait.</p>
+          </div>
+        ) : displayedRestaurants.length === 0 ? (
           <div className="empty-box">
             <span>🍽️</span>
             <h4>No restaurants found</h4>
@@ -94,7 +128,10 @@ function FoodMarketplace({ onBack, cartItemCount = 0, onViewCart, cart = [], onU
               <RestaurantCard
                 key={restaurant.id}
                 restaurant={restaurant}
-                onClick={() => setSelectedRestaurant(restaurant)}
+                onClick={() => {
+                  onRestaurantSelect?.(restaurant.id)
+                  setSelectedRestaurant(restaurant)
+                }}
               />
             ))}
           </div>

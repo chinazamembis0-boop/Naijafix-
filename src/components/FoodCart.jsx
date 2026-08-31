@@ -1,10 +1,11 @@
 import { useState } from 'react'
+import { createFoodOrder } from './FoodData.js'
 
 function formatNaira(amount) {
   return `₦${Number(amount).toLocaleString()}`
 }
 
-function FoodCart({ cart = [], deliveryFee = 0, onUpdateCart, onBack, onPlaceOrder }) {
+function FoodCart({ cart = [], deliveryFee = 0, onUpdateCart, onBack, onPlaceOrder, user, restaurantId }) {
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [placing, setPlacing] = useState(false)
 
@@ -23,16 +24,39 @@ function FoodCart({ cart = [], deliveryFee = 0, onUpdateCart, onBack, onPlaceOrd
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
   const total = subtotal + deliveryFee
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (!deliveryAddress.trim()) {
       alert('Please enter your delivery address.')
       return
     }
+    if (!user?.user_id) {
+      alert('Please log in to place an order.')
+      return
+    }
+    if (!restaurantId) {
+      alert('Restaurant information is missing.')
+      return
+    }
+
     setPlacing(true)
-    setTimeout(() => {
-      setPlacing(false)
-      onPlaceOrder?.({ items: cart, deliveryAddress, subtotal, deliveryFee, total })
-    }, 500)
+    try {
+      const result = await createFoodOrder({
+        customerUserId: user.user_id,
+        restaurantId,
+        items: cart,
+        deliveryAddress: deliveryAddress.trim(),
+        deliveryFee,
+      })
+
+      if (result.success) {
+        onPlaceOrder?.({ items: cart, deliveryAddress, subtotal, deliveryFee, total, order: result.order })
+      } else {
+        alert('Could not place order: ' + (result.error || 'Unknown error'))
+      }
+    } catch (error) {
+      alert('Something went wrong: ' + (error?.message || 'Unknown error'))
+    }
+    setPlacing(false)
   }
 
   if (cart.length === 0) {
@@ -133,7 +157,7 @@ function FoodCart({ cart = [], deliveryFee = 0, onUpdateCart, onBack, onPlaceOrd
         </button>
 
         <p className="nf-cart-note">
-          This is a demo. Payment integration will be added in the next phase.
+          Payment integration coming soon. Order will be saved to your account.
         </p>
       </main>
     </div>

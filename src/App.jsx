@@ -31,6 +31,8 @@ import { allServices, serviceCategories } from './components/ServicesData.js'
 import FoodMarketplace from './components/FoodMarketplace.jsx'
 import FoodCart from './components/FoodCart.jsx'
 import ViewAllServices from './components/ViewAllServices.jsx'
+import RestaurantDashboard from './components/RestaurantDashboard.jsx'
+import RiderDashboard from './components/RiderDashboard.jsx'
 
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -3887,6 +3889,8 @@ function ProviderDashboard({
   const [editLocation, setEditLocation] = useState('')
   const [editPhone, setEditPhone] = useState('')
   const [savingProvider, setSavingProvider] = useState(false)
+  const [providerServices, setProviderServices] = useState([])
+  const [allAvailableServices, setAllAvailableServices] = useState([])
   const [verificationDocPreview, setVerificationDocPreview] = useState('')
   const [verificationDocName, setVerificationDocName] = useState('')
   const [verificationDocFile, setVerificationDocFile] = useState(null)
@@ -4190,17 +4194,21 @@ function ProviderDashboard({
         setUnreadNotifications(unreadCount || 0)
       }
 
-      const [availabilityResult, packagesResult, quotesResult, reviewsResult] = await Promise.all([
+      const [availabilityResult, packagesResult, quotesResult, reviewsResult, providerServicesResult, allServicesResult] = await Promise.all([
         supabase.from('provider_availability').select('*').eq('provider_user_id', user.user_id),
         supabase.from('service_packages').select('*').eq('provider_user_id', user.user_id).order('price', { ascending: true }),
         supabase.from('quotes').select('*').eq('provider_user_id', user.user_id).order('created_at', { ascending: false }),
         supabase.from('reviews').select('*').eq('provider_user_id', user.user_id).order('created_at', { ascending: false }).limit(20),
+        supabase.from('provider_services').select('*').eq('provider_user_id', user.user_id),
+        supabase.from('services').select('*').eq('active', true).order('sort_order', { ascending: true }),
       ])
 
       if (!availabilityResult.error) setAvailability(availabilityResult.data || [])
       if (!packagesResult.error) setPackages(packagesResult.data || [])
       if (!quotesResult.error) setQuotes(quotesResult.data || [])
       if (!reviewsResult.error) setProviderReviews(reviewsResult.data || [])
+      if (!providerServicesResult.error) setProviderServices(providerServicesResult.data || [])
+      if (!allServicesResult.error) setAllAvailableServices(allServicesResult.data || [])
 
       setLoading(false)
     }
@@ -4767,6 +4775,58 @@ function ProviderDashboard({
                 {featureLoading ? 'Uploading...' : 'Upload business photo'}
                 <input type="file" accept="image/*" hidden disabled={featureLoading} onChange={(event) => uploadProviderPhoto(event.target.files?.[0])} />
               </label>
+            </DashboardCard>
+
+            <SectionHeader label="SERVICES" title="Services you offer" />
+            <DashboardCard>
+              <p style={{ fontSize: 13, color: 'var(--nf-text-muted)', marginBottom: 12 }}>
+                Select the services you offer so customers can find you.
+              </p>
+              <div className="nf-provider-services">
+                {allAvailableServices.length === 0 ? (
+                  <p style={{ fontSize: 13, color: 'var(--nf-text-muted)' }}>No services available.</p>
+                ) : (
+                  allAvailableServices.map((service) => {
+                    const isSelected = providerServices.some((ps) => ps.service_id === service.id)
+                    return (
+                      <button
+                        key={service.id}
+                        className={`nf-service-toggle ${isSelected ? 'nf-service-toggle--active' : ''}`}
+                        onClick={async () => {
+                          if (featureLoading) return
+                          setFeatureLoading(true)
+                          try {
+                            if (isSelected) {
+                              const { error } = await supabase
+                                .from('provider_services')
+                                .delete()
+                                .eq('provider_user_id', user.user_id)
+                                .eq('service_id', service.id)
+                              if (!error) {
+                                setProviderServices((current) => current.filter((ps) => ps.service_id !== service.id))
+                              }
+                            } else {
+                              const { data, error } = await supabase
+                                .from('provider_services')
+                                .insert({ provider_user_id: user.user_id, service_id: service.id })
+                                .select('*')
+                                .single()
+                              if (!error && data) {
+                                setProviderServices((current) => [...current, data])
+                              }
+                            }
+                          } catch (err) {
+                            console.error('Failed to update service:', err)
+                          }
+                          setFeatureLoading(false)
+                        }}
+                      >
+                        {service.name}
+                      </button>
+                    )
+                  })
+                )}
+              </div>
             </DashboardCard>
 
             <SectionHeader label="MESSAGES" title="Your conversations" />
@@ -6178,6 +6238,7 @@ function App() {
 
   const [foodCart, setFoodCart] = useState([])
   const [foodDeliveryFee, setFoodDeliveryFee] = useState(0)
+  const [foodRestaurantId, setFoodRestaurantId] = useState(null)
   const [selectedFoodCategory, setSelectedFoodCategory] = useState('')
   const [foodOrderPlaced, setFoodOrderPlaced] = useState(false)
   const [foodDeliveryAddress, setFoodDeliveryAddress] = useState('')
@@ -6767,7 +6828,12 @@ function App() {
         onViewCart={() => setPage('food-cart')}
         cart={foodCart}
         onUpdateCart={setFoodCart}
-        onDeliveryFeeChange={setFoodDeliveryFee}
+        onDeliveryFeeChange={(fee) => {
+          setFoodDeliveryFee(fee)
+        }}
+        onRestaurantSelect={(id) => setFoodRestaurantId(id)}
+        onRestaurantDashboard={() => setPage('restaurant-dashboard')}
+        onRiderDashboard={() => setPage('rider-dashboard')}
       />
     )
   }
@@ -6777,6 +6843,8 @@ function App() {
       <FoodCart
         cart={foodCart}
         deliveryFee={foodDeliveryFee}
+        restaurantId={foodRestaurantId}
+        user={user}
         onUpdateCart={(cart) => {
           setFoodCart(cart)
           if (cart.length === 0) {
@@ -6789,9 +6857,28 @@ function App() {
           setFoodDeliveryAddress(order.deliveryAddress)
           setFoodCart([])
           setFoodDeliveryFee(0)
-          alert(`Order placed successfully!\n\nTotal: ₦${Number(order.total).toLocaleString()}\nDelivery to: ${order.deliveryAddress}\n\nThis is a demo. Real ordering will be connected in the next phase.`)
+          setFoodRestaurantId(null)
+          alert(`Order #${order.order?.id || ''} placed successfully!\n\nTotal: ₦${Number(order.total).toLocaleString()}\nDelivery to: ${order.deliveryAddress}\n\nThank you for ordering with NaijaFix!`)
           setPage('food')
         }}
+      />
+    )
+  }
+
+  if (effectivePage === 'restaurant-dashboard') {
+    return (
+      <RestaurantDashboard
+        user={user}
+        onBack={() => setPage('home')}
+      />
+    )
+  }
+
+  if (effectivePage === 'rider-dashboard') {
+    return (
+      <RiderDashboard
+        user={user}
+        onBack={() => setPage('home')}
       />
     )
   }
