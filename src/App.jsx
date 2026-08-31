@@ -179,7 +179,9 @@ function getServiceIcon(service) {
 function Logo() {
   return (
     <div className="brand">
-      <div className="brand-icon">N</div>
+      <div className="brand-icon">
+        <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
+      </div>
 
       <div>
         <h1>NaijaFix</h1>
@@ -1959,12 +1961,19 @@ function ProviderDetails({
 }) {
   const [samples, setSamples] = useState([])
   const [loadingSamples, setLoadingSamples] = useState(true)
+  const [portfolio, setPortfolio] = useState([])
+  const [loadingPortfolio, setLoadingPortfolio] = useState(true)
+  const [lightboxUrl, setLightboxUrl] = useState('')
+  const [lightboxAlt, setLightboxAlt] = useState('')
   const [reviews, setReviews] = useState([])
   const [loadingReviews, setLoadingReviews] = useState(true)
   const [isFavorite, setIsFavorite] = useState(false)
   const [favoriteLoading, setFavoriteLoading] = useState(false)
   const [packages, setPackages] = useState([])
   const [availability, setAvailability] = useState([])
+  const [detailServices, setDetailServices] = useState([])
+  const [coverImageUrl, setCoverImageUrl] = useState('')
+  const [logoImageUrl, setLogoImageUrl] = useState('')
 
   useEffect(() => {
     const loadSamples = async () => {
@@ -1997,6 +2006,40 @@ function ProviderDetails({
       }
 
       setLoadingSamples(false)
+    }
+
+    const loadPortfolio = async () => {
+      if (!provider?.user_id) {
+        setLoadingPortfolio(false)
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('provider_portfolio_items')
+        .select('*')
+        .eq('provider_user_id', provider.user_id)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Failed to load portfolio:', error)
+        setPortfolio([])
+      } else {
+        const signed = []
+        for (const item of (data || [])) {
+          try {
+            const mainSigned = item.image_url ? await getSignedStorageUrl('provider-portfolio', item.image_url) : ''
+            const beforeSigned = item.before_image_url ? await getSignedStorageUrl('provider-portfolio', item.before_image_url) : ''
+            const afterSigned = item.after_image_url ? await getSignedStorageUrl('provider-portfolio', item.after_image_url) : ''
+            signed.push({ ...item, signedUrl: mainSigned, beforeSignedUrl: beforeSigned, afterSignedUrl: afterSigned })
+          } catch (error) {
+            console.error('Failed to load portfolio item:', error)
+            signed.push({ ...item, signedUrl: '', beforeSignedUrl: '', afterSignedUrl: '' })
+          }
+        }
+        setPortfolio(signed)
+      }
+
+      setLoadingPortfolio(false)
     }
 
     const loadReviews = async () => {
@@ -2071,11 +2114,41 @@ function ProviderDetails({
       }
     }
 
+    const loadDetailServices = async () => {
+      const { data, error } = await supabase
+        .from('services')
+        .select('id, name')
+        .eq('active', true)
+        .not('slug', 'is', null)
+        .order('sort_order', { ascending: true })
+
+      if (!error) {
+        setDetailServices(data || [])
+      }
+    }
+
+    const loadProviderImages = async () => {
+      if (!provider?.cover_image_url && !provider?.logo_url) return
+      try {
+        if (provider.cover_image_url) {
+          setCoverImageUrl(await getSignedStorageUrl('provider-media', provider.cover_image_url))
+        }
+        if (provider.logo_url) {
+          setLogoImageUrl(await getSignedStorageUrl('provider-media', provider.logo_url))
+        }
+      } catch (error) {
+        console.error('Failed to load provider images:', error)
+      }
+    }
+
+    loadProviderImages()
     loadSamples()
+    loadPortfolio()
     loadReviews()
     loadFavorite()
     loadPackages()
     loadAvailability()
+    loadDetailServices()
   }, [provider, user])
 
   const toggleFavorite = async () => {
@@ -2131,10 +2204,18 @@ function ProviderDetails({
       </header>
 
       <main className="provider-details">
+        {coverImageUrl && (
+          <div className="provider-cover-image">
+            <img src={coverImageUrl} alt="" />
+          </div>
+        )}
+
         <div className="large-avatar">
-          {provider.business_name
-            ?.charAt(0)
-            ?.toUpperCase() || 'P'}
+          {logoImageUrl ? (
+            <img src={logoImageUrl} alt={provider.business_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} onError={(e) => { e.currentTarget.style.display = 'none' }} />
+          ) : (
+            provider.business_name?.charAt(0)?.toUpperCase() || 'P'
+          )}
         </div>
 
         <h2>{provider.business_name}</h2>
@@ -2275,6 +2356,61 @@ function ProviderDetails({
             </div>
           )}
         </section>
+
+        <section className="details-card">
+          <h3>Portfolio</h3>
+
+          {loadingPortfolio ? (
+            <div className="empty-box">
+              <span>⏳</span>
+              <h4>Loading portfolio...</h4>
+            </div>
+          ) : portfolio.length === 0 ? (
+            <div className="empty-box">
+              <span>🛠️</span>
+              <h4>No work samples uploaded yet.</h4>
+            </div>
+          ) : (
+            <div className="sample-grid">
+              {portfolio.map((item) => (
+                <div key={item.id}>
+                  {item.signedUrl ? (
+                    <img src={item.signedUrl} alt={item.title} loading="lazy" />
+                  ) : (
+                    <div style={{ height: 120, background: '#e8eeea', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nf-text-muted)', fontSize: 12 }}>No image</div>
+                  )}
+                  <p style={{ fontWeight: 700, fontSize: 13, margin: '6px 0 2px' }}>{item.title}</p>
+                  {item.service_id && (
+                    <p style={{ fontSize: 11, color: 'var(--nf-text-muted)', margin: 0 }}>
+                      {(detailServices || []).find((s) => s.id === item.service_id)?.name || 'Service'}
+                    </p>
+                  )}
+                  {item.description && <p style={{ fontSize: 12, color: '#68746d', margin: '4px 0 0' }}>{item.description}</p>}
+                  {(item.beforeSignedUrl || item.afterSignedUrl) && (
+                    <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                      {item.beforeSignedUrl && (
+                        <img src={item.beforeSignedUrl} alt="Before" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, border: '1px solid #e0e7e2', cursor: 'pointer' }} onClick={() => { setLightboxUrl(item.beforeSignedUrl); setLightboxAlt('Before') }} />
+                      )}
+                      {item.afterSignedUrl && (
+                        <img src={item.afterSignedUrl} alt="After" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, border: '1px solid #e0e7e2', cursor: 'pointer' }} onClick={() => { setLightboxUrl(item.afterSignedUrl); setLightboxAlt('After') }} />
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {lightboxUrl && (
+          <div onClick={() => { setLightboxUrl(''); setLightboxAlt('') }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 20 }}>
+            <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '85vh' }} onClick={(e) => e.stopPropagation()}>
+              <img src={lightboxUrl} alt={lightboxAlt} style={{ maxWidth: '90vw', maxHeight: '85vh', objectFit: 'contain', borderRadius: 10 }} />
+              <p style={{ color: '#fff', textAlign: 'center', marginTop: 10 }}>{lightboxAlt}</p>
+              <button onClick={() => { setLightboxUrl(''); setLightboxAlt('') }} style={{ position: 'absolute', top: -12, right: -12, background: '#fff', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>✕</button>
+            </div>
+          </div>
+        )}
 
         <section className="details-card">
           <h3>Reviews</h3>
@@ -3879,6 +4015,8 @@ function ProviderDashboard({
   const [samples, setSamples] = useState([])
   const [verification, setVerification] = useState(null)
   const [photoUrl, setPhotoUrl] = useState('')
+  const [coverImageUrl, setCoverImageUrl] = useState('')
+  const [logoUrl, setLogoUrl] = useState('')
   const [unreadNotifications, setUnreadNotifications] = useState(0)
   const [featureLoading, setFeatureLoading] = useState(false)
   const [sampleCaption, setSampleCaption] = useState('')
@@ -3915,6 +4053,21 @@ function ProviderDashboard({
   const [newQuoteDescription, setNewQuoteDescription] = useState('')
   const [newQuoteBookingId, setNewQuoteBookingId] = useState('')
   const [proposedTimes, setProposedTimes] = useState({})
+  const [portfolio, setPortfolio] = useState([])
+  const [portfolioForm, setPortfolioForm] = useState({
+    serviceId: '',
+    title: '',
+    description: '',
+    imageFile: null,
+    beforeFile: null,
+    afterFile: null,
+  })
+  const [portfolioPreview, setPortfolioPreview] = useState({
+    image: '',
+    before: '',
+    after: '',
+  })
+  const [editingPortfolioId, setEditingPortfolioId] = useState(null)
 
   useEffect(() => {
     return () => {
@@ -4135,9 +4288,21 @@ function ProviderDashboard({
         } else {
           setPhotoUrl('')
         }
+        if (provider.cover_image_url) {
+          setCoverImageUrl(await getSignedStorageUrl('provider-media', provider.cover_image_url))
+        } else {
+          setCoverImageUrl('')
+        }
+        if (provider.logo_url) {
+          setLogoUrl(await getSignedStorageUrl('provider-media', provider.logo_url))
+        } else {
+          setLogoUrl('')
+        }
       } catch (error) {
-        console.error('Failed to load provider photo:', error)
+        console.error('Failed to load provider images:', error)
         setPhotoUrl('')
+        setCoverImageUrl('')
+        setLogoUrl('')
       }
 
       const [samplesResult, verificationResult] = await Promise.all([
@@ -4200,7 +4365,7 @@ function ProviderDashboard({
         supabase.from('quotes').select('*').eq('provider_user_id', user.user_id).order('created_at', { ascending: false }),
         supabase.from('reviews').select('*').eq('provider_user_id', user.user_id).order('created_at', { ascending: false }).limit(20),
         supabase.from('provider_services').select('*').eq('provider_user_id', user.user_id),
-        supabase.from('services').select('*').eq('active', true).order('sort_order', { ascending: true }),
+        supabase.from('services').select('*').eq('active', true).not('slug', 'is', null).order('sort_order', { ascending: true }),
       ])
 
       if (!availabilityResult.error) setAvailability(availabilityResult.data || [])
@@ -4209,6 +4374,31 @@ function ProviderDashboard({
       if (!reviewsResult.error) setProviderReviews(reviewsResult.data || [])
       if (!providerServicesResult.error) setProviderServices(providerServicesResult.data || [])
       if (!allServicesResult.error) setAllAvailableServices(allServicesResult.data || [])
+
+      const { data: portfolioData, error: portfolioError } = await supabase
+        .from('provider_portfolio_items')
+        .select('*')
+        .eq('provider_user_id', user.user_id)
+        .order('created_at', { ascending: false })
+
+      if (portfolioError) {
+        console.error('Failed to load portfolio:', portfolioError)
+        setPortfolio([])
+      } else {
+        const signedPortfolio = []
+        for (const item of (portfolioData || [])) {
+          try {
+            const mainSigned = item.image_url ? await getSignedStorageUrl('provider-portfolio', item.image_url) : ''
+            const beforeSigned = item.before_image_url ? await getSignedStorageUrl('provider-portfolio', item.before_image_url) : ''
+            const afterSigned = item.after_image_url ? await getSignedStorageUrl('provider-portfolio', item.after_image_url) : ''
+            signedPortfolio.push({ ...item, signedUrl: mainSigned, beforeSignedUrl: beforeSigned, afterSignedUrl: afterSigned })
+          } catch (error) {
+            console.error('Failed to load portfolio item:', error)
+            signedPortfolio.push({ ...item, signedUrl: '', beforeSignedUrl: '', afterSignedUrl: '' })
+          }
+        }
+        setPortfolio(signedPortfolio)
+      }
 
       setLoading(false)
     }
@@ -4244,6 +4434,32 @@ function ProviderDashboard({
     setFeatureLoading(false)
   }
 
+  const uploadProviderCover = async (file) => {
+    if (!file || !user?.user_id || !providerProfile) return
+    setFeatureLoading(true)
+    try {
+      const path = await uploadPrivateFile('provider-media', user.user_id, file)
+      const { error } = await supabase.from('providers').update({ cover_image_url: path }).eq('user_id', user.user_id)
+      if (error) throw error
+      setCoverImageUrl(await getSignedStorageUrl('provider-media', path))
+      setProviderProfile((current) => ({ ...current, cover_image_url: path }))
+    } catch (error) { alert('Could not update cover image: ' + error.message) }
+    setFeatureLoading(false)
+  }
+
+  const uploadProviderLogo = async (file) => {
+    if (!file || !user?.user_id || !providerProfile) return
+    setFeatureLoading(true)
+    try {
+      const path = await uploadPrivateFile('provider-media', user.user_id, file)
+      const { error } = await supabase.from('providers').update({ logo_url: path }).eq('user_id', user.user_id)
+      if (error) throw error
+      setLogoUrl(await getSignedStorageUrl('provider-media', path))
+      setProviderProfile((current) => ({ ...current, logo_url: path }))
+    } catch (error) { alert('Could not update logo: ' + error.message) }
+    setFeatureLoading(false)
+  }
+
   const uploadSample = async (file, caption) => {
     if (!file || !user?.user_id) return
     setFeatureLoading(true)
@@ -4257,6 +4473,216 @@ function ProviderDashboard({
     } catch (error) { alert('Could not upload work sample: ' + error.message) }
     setFeatureLoading(false)
   }
+
+  const uploadPortfolioItem = async () => {
+    if (!user?.user_id || featureLoading) return
+    const { serviceId, title, description, imageFile } = portfolioForm
+    if (!title.trim() || !imageFile) {
+      alert('Please provide a title and main image.')
+      return
+    }
+
+    setFeatureLoading(true)
+    try {
+      const imagePath = await uploadPrivateFile('provider-portfolio', user.user_id, imageFile)
+      let beforePath = null
+      let afterPath = null
+      if (portfolioForm.beforeFile) {
+        beforePath = await uploadPrivateFile('provider-portfolio', user.user_id, portfolioForm.beforeFile)
+      }
+      if (portfolioForm.afterFile) {
+        afterPath = await uploadPrivateFile('provider-portfolio', user.user_id, portfolioForm.afterFile)
+      }
+
+      const payload = {
+        provider_user_id: user.user_id,
+        service_id: serviceId ? Number(serviceId) : null,
+        title: title.trim(),
+        description: description.trim() || null,
+        image_url: imagePath,
+        before_image_url: beforePath,
+        after_image_url: afterPath,
+      }
+
+      const { data, error } = await supabase
+        .from('provider_portfolio_items')
+        .insert(payload)
+        .select('*')
+        .single()
+
+      if (error) throw error
+
+      const mainSigned = await getSignedStorageUrl('provider-portfolio', imagePath)
+      const beforeSigned = beforePath ? await getSignedStorageUrl('provider-portfolio', beforePath) : ''
+      const afterSigned = afterPath ? await getSignedStorageUrl('provider-portfolio', afterPath) : ''
+      setPortfolio((current) => [{ ...data, signedUrl: mainSigned, beforeSignedUrl: beforeSigned, afterSignedUrl: afterSigned }, ...current])
+      setPortfolioForm({ serviceId: '', title: '', description: '', imageFile: null, beforeFile: null, afterFile: null })
+      setPortfolioPreview({ image: '', before: '', after: '' })
+      setEditingPortfolioId(null)
+      alert('Portfolio item added successfully.')
+    } catch (error) {
+      alert('Could not add portfolio item: ' + error.message)
+    }
+    setFeatureLoading(false)
+  }
+
+  const startEditingPortfolio = (item) => {
+    setEditingPortfolioId(item.id)
+    setPortfolioForm({
+      serviceId: item.service_id || '',
+      title: item.title || '',
+      description: item.description || '',
+      imageFile: null,
+      beforeFile: null,
+      afterFile: null,
+    })
+    setPortfolioPreview({
+      image: item.signedUrl || '',
+      before: item.beforeSignedUrl || '',
+      after: item.afterSignedUrl || '',
+    })
+  }
+
+  const cancelEditingPortfolio = () => {
+    setEditingPortfolioId(null)
+    setPortfolioForm({ serviceId: '', title: '', description: '', imageFile: null, beforeFile: null, afterFile: null })
+    setPortfolioPreview({ image: '', before: '', after: '' })
+  }
+
+  const updatePortfolioItem = async () => {
+    if (!user?.user_id || !editingPortfolioId || featureLoading) return
+    const { serviceId, title, description, imageFile, beforeFile, afterFile } = portfolioForm
+    if (!title.trim()) {
+      alert('Please provide a title.')
+      return
+    }
+
+    setFeatureLoading(true)
+    try {
+      let imagePath = null
+      let beforePath = null
+      let afterPath = null
+
+      const existing = portfolio.find((p) => p.id === editingPortfolioId)
+      if (existing) {
+        imagePath = existing.image_url
+        beforePath = existing.before_image_url
+        afterPath = existing.after_image_url
+      }
+
+      if (imageFile) {
+        imagePath = await uploadPrivateFile('provider-portfolio', user.user_id, imageFile)
+      }
+      if (beforeFile) {
+        beforePath = await uploadPrivateFile('provider-portfolio', user.user_id, beforeFile)
+      }
+      if (afterFile) {
+        afterPath = await uploadPrivateFile('provider-portfolio', user.user_id, afterFile)
+      }
+
+      const payload = {
+        service_id: serviceId ? Number(serviceId) : null,
+        title: title.trim(),
+        description: description.trim() || null,
+        image_url: imagePath,
+        before_image_url: beforePath,
+        after_image_url: afterPath,
+        updated_at: new Date().toISOString(),
+      }
+
+      const { data, error } = await supabase
+        .from('provider_portfolio_items')
+        .update(payload)
+        .eq('id', editingPortfolioId)
+        .eq('provider_user_id', user.user_id)
+        .select('*')
+        .single()
+
+      if (error) throw error
+
+      const mainSigned = await getSignedStorageUrl('provider-portfolio', imagePath)
+      const beforeSigned = beforePath ? await getSignedStorageUrl('provider-portfolio', beforePath) : ''
+      const afterSigned = afterPath ? await getSignedStorageUrl('provider-portfolio', afterPath) : ''
+      setPortfolio((current) => current.map((p) => p.id === editingPortfolioId ? { ...data, signedUrl: mainSigned, beforeSignedUrl: beforeSigned, afterSignedUrl: afterSigned } : p))
+      cancelEditingPortfolio()
+      alert('Portfolio item updated successfully.')
+    } catch (error) {
+      alert('Could not update portfolio item: ' + error.message)
+    }
+    setFeatureLoading(false)
+  }
+
+  const deletePortfolioItem = async (id) => {
+    if (!user?.user_id) return
+    setFeatureLoading(true)
+    try {
+      const { data: item, error: fetchError } = await supabase
+        .from('provider_portfolio_items')
+        .select('image_url, before_image_url, after_image_url')
+        .eq('id', id)
+        .eq('provider_user_id', user.user_id)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      const pathsToRemove = [item.image_url, item.before_image_url, item.after_image_url].filter(Boolean)
+      if (pathsToRemove.length > 0) {
+        const { error: storageError } = await supabase.storage
+          .from('provider-portfolio')
+          .remove(pathsToRemove)
+        if (storageError) {
+          console.error('Failed to remove portfolio storage files:', storageError)
+        }
+      }
+
+      const { error } = await supabase
+        .from('provider_portfolio_items')
+        .delete()
+        .eq('id', id)
+        .eq('provider_user_id', user.user_id)
+
+      if (error) throw error
+      setPortfolio((current) => current.filter((p) => p.id !== id))
+      if (editingPortfolioId === id) {
+        cancelEditingPortfolio()
+      }
+    } catch (error) {
+      alert('Could not delete portfolio item: ' + error.message)
+    }
+    setFeatureLoading(false)
+  }
+
+  const handlePortfolioFileSelect = (field, event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be under 5MB.')
+      event.target.value = ''
+      return
+    }
+    const allowed = ['image/jpeg', 'image/png', 'image/webp']
+    if (!allowed.includes(file.type)) {
+      alert('Only JPEG, PNG, and WebP images are allowed.')
+      event.target.value = ''
+      return
+    }
+    setPortfolioForm((current) => ({ ...current, [field]: file }))
+    setPortfolioPreview((current) => ({ ...current, [field]: URL.createObjectURL(file) }))
+  }
+
+  const clearPortfolioFile = (field) => {
+    setPortfolioForm((current) => ({ ...current, [field]: null }))
+    setPortfolioPreview((current) => {
+      const next = { ...current }
+      if (field === 'image') next.image = ''
+      if (field === 'before') next.before = ''
+      if (field === 'after') next.after = ''
+      return next
+    })
+  }
+
+  const providerServiceIds = new Set((providerServices || []).map((ps) => ps.service_id))
+  const providerServiceOptions = (allAvailableServices || []).filter((s) => providerServiceIds.has(s.id))
 
   const submitVerification = async (file) => {
     if (!file || !user?.user_id) return
@@ -4721,6 +5147,11 @@ function ProviderDashboard({
 
             <SectionHeader label="BUSINESS PROFILE" title="Your business" />
             <DashboardCard>
+              {coverImageUrl && (
+                <div style={{ width: '100%', height: 160, borderRadius: 12, overflow: 'hidden', marginBottom: 12, background: '#e8f0ee' }}>
+                  <img src={coverImageUrl} alt="Business cover" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              )}
               {editingProvider ? (
                 <div>
                   <div className="dash-form-group">
@@ -4756,7 +5187,7 @@ function ProviderDashboard({
                 <div>
                   <div className="dash-profile-header">
                     <div className="dash-profile-avatar">
-                      {photoUrl ? <img src={photoUrl} alt="Business" /> : providerProfile?.business_name?.charAt(0) || 'P'}
+                      {logoUrl ? <img src={logoUrl} alt="Logo" /> : photoUrl ? <img src={photoUrl} alt="Business" /> : providerProfile?.business_name?.charAt(0) || 'P'}
                     </div>
                     <div className="dash-profile-info">
                       <h3>{providerProfile?.business_name || 'Business name'}</h3>
@@ -4774,6 +5205,14 @@ function ProviderDashboard({
               <label className="dash-btn dash-btn-outline dash-btn-full" style={{ marginTop: 10 }}>
                 {featureLoading ? 'Uploading...' : 'Upload business photo'}
                 <input type="file" accept="image/*" hidden disabled={featureLoading} onChange={(event) => uploadProviderPhoto(event.target.files?.[0])} />
+              </label>
+              <label className="dash-btn dash-btn-outline dash-btn-full" style={{ marginTop: 8 }}>
+                {featureLoading ? 'Uploading...' : 'Upload cover image'}
+                <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={featureLoading} onChange={(event) => uploadProviderCover(event.target.files?.[0])} />
+              </label>
+              <label className="dash-btn dash-btn-outline dash-btn-full" style={{ marginTop: 8 }}>
+                {featureLoading ? 'Uploading...' : 'Upload logo'}
+                <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={featureLoading} onChange={(event) => uploadProviderLogo(event.target.files?.[0])} />
               </label>
             </DashboardCard>
 
@@ -4828,6 +5267,189 @@ function ProviderDashboard({
                 )}
               </div>
             </DashboardCard>
+
+            <SectionHeader label="PORTFOLIO" title="My Work Samples" />
+
+            <DashboardCard>
+              {editingPortfolioId ? (
+                <div>
+                  <h4 style={{ marginBottom: 12 }}>Edit Work Sample</h4>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Service</label>
+                    <select
+                      className="dash-form-input"
+                      value={portfolioForm.serviceId}
+                      onChange={(e) => setPortfolioForm((current) => ({ ...current, serviceId: e.target.value }))}
+                    >
+                      <option value="">Select a service</option>
+                      {providerServiceOptions.map((service) => (
+                        <option key={service.id} value={service.id}>{service.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Title</label>
+                    <input className="dash-form-input" value={portfolioForm.title} onChange={(e) => setPortfolioForm((current) => ({ ...current, title: e.target.value }))} />
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Description</label>
+                    <textarea className="dash-form-input" rows={3} value={portfolioForm.description} onChange={(e) => setPortfolioForm((current) => ({ ...current, description: e.target.value }))} />
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Main Image</label>
+                    {portfolioPreview.image ? (
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <img src={portfolioPreview.image} alt="Preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid #e0e7e2' }} />
+                        <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" style={{ marginLeft: 8, position: 'absolute', top: -8, right: -8 }} onClick={() => clearPortfolioFile('image')}>✕</button>
+                      </div>
+                    ) : (
+                      <label className="dash-btn dash-btn-outline dash-btn-full">
+                        {featureLoading ? 'Busy...' : 'Choose Main Image'}
+                        <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={featureLoading} onChange={(e) => handlePortfolioFileSelect('image', e)} />
+                      </label>
+                    )}
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Before Image (optional)</label>
+                    {portfolioPreview.before ? (
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <img src={portfolioPreview.before} alt="Before preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid #e0e7e2' }} />
+                        <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" style={{ marginLeft: 8, position: 'absolute', top: -8, right: -8 }} onClick={() => clearPortfolioFile('before')}>✕</button>
+                      </div>
+                    ) : (
+                      <label className="dash-btn dash-btn-outline dash-btn-full">
+                        {featureLoading ? 'Busy...' : 'Choose Before Image'}
+                        <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={featureLoading} onChange={(e) => handlePortfolioFileSelect('before', e)} />
+                      </label>
+                    )}
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">After Image (optional)</label>
+                    {portfolioPreview.after ? (
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <img src={portfolioPreview.after} alt="After preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid #e0e7e2' }} />
+                        <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" style={{ marginLeft: 8, position: 'absolute', top: -8, right: -8 }} onClick={() => clearPortfolioFile('after')}>✕</button>
+                      </div>
+                    ) : (
+                      <label className="dash-btn dash-btn-outline dash-btn-full">
+                        {featureLoading ? 'Busy...' : 'Choose After Image'}
+                        <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={featureLoading} onChange={(e) => handlePortfolioFileSelect('after', e)} />
+                      </label>
+                    )}
+                  </div>
+                  <div className="dash-btn-group">
+                    <button className="dash-btn dash-btn-primary" onClick={updatePortfolioItem} disabled={featureLoading}>
+                      {featureLoading ? 'Saving...' : 'Save Changes'}
+                    </button>
+                    <button className="dash-btn dash-btn-outline" onClick={cancelEditingPortfolio} disabled={featureLoading}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  {providerServiceOptions.length === 0 && (
+                    <p style={{ fontSize: 13, color: 'var(--nf-text-muted)', marginBottom: 12 }}>
+                      Select the services you offer above before adding work samples.
+                    </p>
+                  )}
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Service</label>
+                    <select
+                      className="dash-form-input"
+                      value={portfolioForm.serviceId}
+                      onChange={(e) => setPortfolioForm((current) => ({ ...current, serviceId: e.target.value }))}
+                    >
+                      <option value="">Select a service</option>
+                      {providerServiceOptions.map((service) => (
+                        <option key={service.id} value={service.id}>{service.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Title</label>
+                    <input className="dash-form-input" value={portfolioForm.title} onChange={(e) => setPortfolioForm((current) => ({ ...current, title: e.target.value }))} placeholder="e.g. Kitchen renovation" />
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Description</label>
+                    <textarea className="dash-form-input" rows={3} value={portfolioForm.description} onChange={(e) => setPortfolioForm((current) => ({ ...current, description: e.target.value }))} placeholder="Describe the work done..." />
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Main Image</label>
+                    {portfolioPreview.image ? (
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <img src={portfolioPreview.image} alt="Preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid #e0e7e2' }} />
+                        <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" style={{ marginLeft: 8, position: 'absolute', top: -8, right: -8 }} onClick={() => clearPortfolioFile('image')}>✕</button>
+                      </div>
+                    ) : (
+                      <label className="dash-btn dash-btn-outline dash-btn-full">
+                        {featureLoading ? 'Busy...' : 'Choose Main Image'}
+                        <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={featureLoading} onChange={(e) => handlePortfolioFileSelect('image', e)} />
+                      </label>
+                    )}
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Before Image (optional)</label>
+                    {portfolioPreview.before ? (
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <img src={portfolioPreview.before} alt="Before preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid #e0e7e2' }} />
+                        <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" style={{ marginLeft: 8, position: 'absolute', top: -8, right: -8 }} onClick={() => clearPortfolioFile('before')}>✕</button>
+                      </div>
+                    ) : (
+                      <label className="dash-btn dash-btn-outline dash-btn-full">
+                        {featureLoading ? 'Busy...' : 'Choose Before Image'}
+                        <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={featureLoading} onChange={(e) => handlePortfolioFileSelect('before', e)} />
+                      </label>
+                    )}
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">After Image (optional)</label>
+                    {portfolioPreview.after ? (
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <img src={portfolioPreview.after} alt="After preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid #e0e7e2' }} />
+                        <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" style={{ marginLeft: 8, position: 'absolute', top: -8, right: -8 }} onClick={() => clearPortfolioFile('after')}>✕</button>
+                      </div>
+                    ) : (
+                      <label className="dash-btn dash-btn-outline dash-btn-full">
+                        {featureLoading ? 'Busy...' : 'Choose After Image'}
+                        <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={featureLoading} onChange={(e) => handlePortfolioFileSelect('after', e)} />
+                      </label>
+                    )}
+                  </div>
+                  <button className="dash-btn dash-btn-primary dash-btn-full" onClick={uploadPortfolioItem} disabled={featureLoading}>
+                    {featureLoading ? 'Uploading...' : 'Add Work Sample'}
+                  </button>
+                </div>
+              )}
+            </DashboardCard>
+
+            {portfolio.length > 0 && (
+              <DashboardCard>
+                <h4 style={{ marginBottom: 12 }}>Your Work Samples</h4>
+                <div className="sample-grid">
+                  {portfolio.map((item) => (
+                    <div key={item.id} style={{ background: 'var(--nf-bg)', padding: 10, borderRadius: 10 }}>
+                      {item.signedUrl ? (
+                        <img src={item.signedUrl} alt={item.title} loading="lazy" />
+                      ) : (
+                        <div style={{ height: 120, background: '#e8eeea', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nf-text-muted)', fontSize: 12 }}>No image</div>
+                      )}
+                      <p style={{ fontWeight: 700, fontSize: 13, margin: '6px 0 2px' }}>{item.title}</p>
+                      {item.service_id && (
+                        <p style={{ fontSize: 11, color: 'var(--nf-text-muted)', margin: 0 }}>
+                          {(allAvailableServices || []).find((s) => s.id === item.service_id)?.name || 'Service'}
+                        </p>
+                      )}
+                      {item.description && <p style={{ fontSize: 12, color: '#68746d', margin: '4px 0 0' }}>{item.description}</p>}
+                      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                        <button className="dash-btn dash-btn-outline dash-btn-sm" onClick={() => startEditingPortfolio(item)} disabled={featureLoading}>Edit</button>
+                        <button className="dash-btn dash-btn-outline dash-btn-sm" style={{ color: '#dc2626', borderColor: '#dc2626' }} onClick={() => deletePortfolioItem(item.id)} disabled={featureLoading}>Delete</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </DashboardCard>
+            )}
 
             <SectionHeader label="MESSAGES" title="Your conversations" />
             <EmptyState
@@ -4896,6 +5518,10 @@ function AdminDashboard({ user, onLogout, onHome }) {
   const [reportResponse, setReportResponse] = useState({})
   const [viewingDocUrl, setViewingDocUrl] = useState('')
   const [loadingDoc, setLoadingDoc] = useState(false)
+  const [serviceImageUploading, setServiceImageUploading] = useState({})
+  const [adImageUploading, setAdImageUploading] = useState(false)
+  const [ads, setAds] = useState([])
+  const [adsLoading, setAdsLoading] = useState(true)
 
   const loadAdminDataRef = useRef(null)
 
@@ -4944,6 +5570,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
         supabase
           .from('services')
           .select('*')
+          .eq('active', true)
           .order('name', { ascending: true }),
       ])
 
@@ -5054,7 +5681,110 @@ function AdminDashboard({ user, onLogout, onHome }) {
     }
 
     loadAdminDataRef.current()
+
+    const loadAds = async () => {
+      setAdsLoading(true)
+      try {
+        const { data, error } = await supabase
+          .from('advertisements')
+          .select('*')
+          .order('sort_order', { ascending: true })
+
+        if (error) throw error
+        setAds(data || [])
+      } catch (err) {
+        console.error('Failed to load ads:', err)
+      } finally {
+        setAdsLoading(false)
+      }
+    }
+
+    loadAds()
   }, [user])
+
+  const uploadServiceImage = async (serviceId, file) => {
+    if (!file || !user?.user_id) return
+    setServiceImageUploading((current) => ({ ...current, [serviceId]: true }))
+    try {
+      const path = await uploadPrivateFile('service-images', 'admin', file)
+      const { error } = await supabase.from('services').update({ image_url: path }).eq('id', serviceId)
+      if (error) throw error
+      setServices((current) => current.map((s) => s.id === serviceId ? { ...s, image_url: path } : s))
+    } catch (err) {
+      alert('Could not upload service image: ' + err.message)
+    }
+    setServiceImageUploading((current) => ({ ...current, [serviceId]: false }))
+  }
+
+  const removeServiceImage = async (serviceId) => {
+    if (!user?.user_id) return
+    try {
+      const { error } = await supabase.from('services').update({ image_url: null }).eq('id', serviceId)
+      if (error) throw error
+      setServices((current) => current.map((s) => s.id === serviceId ? { ...s, image_url: null } : s))
+    } catch (err) {
+      alert('Could not remove service image: ' + err.message)
+    }
+  }
+
+  const createAd = async () => {
+    if (!user?.user_id) return
+    setAdImageUploading(true)
+    try {
+      const title = window.prompt('Ad title:')
+      if (!title) { setAdImageUploading(false); return }
+      const description = window.prompt('Ad description:') || ''
+      const ctaText = window.prompt('Call-to-action text:') || ''
+      const { data, error } = await supabase.from('advertisements').insert({
+        title,
+        description,
+        cta_text: ctaText,
+        label: 'Sponsored',
+        position: 'inline',
+        sort_order: ads.length,
+        active: true,
+      }).select('*').single()
+      if (error) throw error
+      setAds((current) => [...current, data])
+    } catch (err) {
+      alert('Could not create ad: ' + err.message)
+    }
+    setAdImageUploading(false)
+  }
+
+  const toggleAdStatus = async (adId, currentStatus) => {
+    try {
+      const { error } = await supabase.from('advertisements').update({ active: !currentStatus }).eq('id', adId)
+      if (error) throw error
+      setAds((current) => current.map((a) => a.id === adId ? { ...a, active: !currentStatus } : a))
+    } catch (err) {
+      alert('Could not update ad: ' + err.message)
+    }
+  }
+
+  const deleteAd = async (adId) => {
+    try {
+      const { error } = await supabase.from('advertisements').delete().eq('id', adId)
+      if (error) throw error
+      setAds((current) => current.filter((a) => a.id !== adId))
+    } catch (err) {
+      alert('Could not delete ad: ' + err.message)
+    }
+  }
+
+  const uploadAdImage = async (adId, file) => {
+    if (!file || !user?.user_id) return
+    setAdImageUploading(true)
+    try {
+      const path = await uploadPrivateFile('ad-images', 'admin', file)
+      const { error } = await supabase.from('advertisements').update({ image_url: path }).eq('id', adId)
+      if (error) throw error
+      setAds((current) => current.map((a) => a.id === adId ? { ...a, image_url: path } : a))
+    } catch (err) {
+      alert('Could not upload ad image: ' + err.message)
+    }
+    setAdImageUploading(false)
+  }
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -5354,6 +6084,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
     { id: 'providers', icon: '🛠️', label: 'Providers' },
     { id: 'bookings', icon: '📅', label: 'Bookings' },
     { id: 'services', icon: '🏷️', label: 'Services' },
+    { id: 'ads', icon: '📢', label: 'Ads' },
     { id: 'provider-verifications', icon: '🪪', label: 'Providers', badge: pendingProvider },
     { id: 'customer-verifications', icon: '🆔', label: 'Customers', badge: pendingCustomer },
     { id: 'support-reports', icon: '📋', label: 'Reports', badge: openReports },
@@ -5532,13 +6263,35 @@ function AdminDashboard({ user, onLogout, onHome }) {
             ) : services.length === 0 ? (
               <EmptyState icon="🏷️" title="No services yet" />
             ) : (
-              services.map((s) => (
-                <div key={s.id} className="dash-card" style={{ padding: 12, marginBottom: 8 }}>
-                  <strong>{s.name}</strong>
-                  <p style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>{s.category}</p>
-                  {s.description && <p>{s.description}</p>}
-                </div>
-              ))
+              <div className="admin-services-grid">
+                {services.map((s) => (
+                  <div key={s.id} className="dash-card" style={{ padding: 12, marginBottom: 8 }}>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <div style={{ width: 64, height: 64, borderRadius: 8, overflow: 'hidden', background: '#e8f0ee', flexShrink: 0 }}>
+                        {s.image_url ? (
+                          <img src={s.image_url} alt={s.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🛠️</div>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <strong>{s.name}</strong>
+                        <p style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>{s.category}</p>
+                        {s.description && <p style={{ fontSize: 13 }}>{s.description}</p>}
+                        <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                          <label className="dash-btn dash-btn-outline dash-btn-sm" style={{ cursor: 'pointer' }}>
+                            {serviceImageUploading[s.id] ? 'Uploading...' : 'Upload Image'}
+                            <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={serviceImageUploading[s.id]} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadServiceImage(s.id, f); e.target.value = '' }} />
+                          </label>
+                          {s.image_url && (
+                            <button className="dash-btn dash-btn-outline dash-btn-sm" style={{ color: '#dc2626', borderColor: '#dc2626' }} onClick={() => removeServiceImage(s.id)}>Remove</button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </>
         )}
@@ -5626,6 +6379,52 @@ function AdminDashboard({ user, onLogout, onHome }) {
                   </div>
                 </div>
               ))
+            )}
+          </>
+        )}
+
+        {activeTab === 'ads' && (
+          <>
+            <SectionHeader label="ADVERTISEMENTS" title="All ads" action={
+              <button className="dash-btn dash-btn-primary dash-btn-sm" onClick={createAd} disabled={adImageUploading}>
+                {adImageUploading ? 'Creating...' : '+ New Ad'}
+              </button>
+            } />
+            {adsLoading ? (
+              <LoadingState text="Loading ads..." />
+            ) : ads.length === 0 ? (
+              <EmptyState icon="📢" title="No ads yet" />
+            ) : (
+              <div className="admin-services-grid">
+                {ads.map((ad) => (
+                  <div key={ad.id} className="dash-card" style={{ padding: 12, marginBottom: 8 }}>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <div style={{ width: 80, height: 60, borderRadius: 8, overflow: 'hidden', background: '#e8f0ee', flexShrink: 0 }}>
+                        {ad.image_url ? (
+                          <img src={ad.image_url.startsWith('http') ? ad.image_url : ''} alt={ad.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📢</div>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <strong>{ad.title}</strong>
+                        <p style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>{ad.description}</p>
+                        <p style={{ fontSize: 11, color: 'var(--nf-text-muted)' }}>{ad.label} • {ad.active ? 'Active' : 'Inactive'}</p>
+                        <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                          <label className="dash-btn dash-btn-outline dash-btn-sm" style={{ cursor: 'pointer' }}>
+                            {adImageUploading ? 'Uploading...' : 'Upload Image'}
+                            <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={adImageUploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadAdImage(ad.id, f); e.target.value = '' }} />
+                          </label>
+                          <button className="dash-btn dash-btn-outline dash-btn-sm" onClick={() => toggleAdStatus(ad.id, ad.active)}>
+                            {ad.active ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button className="dash-btn dash-btn-outline dash-btn-sm" style={{ color: '#dc2626', borderColor: '#dc2626' }} onClick={() => deleteAd(ad.id)}>Delete</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </>
         )}
@@ -6291,12 +7090,13 @@ function App() {
         servicesResult,
         providersResult,
       ] = await Promise.all([
-        supabase
-          .from('services')
-          .select('*')
-          .order('name', {
-            ascending: true,
-          }),
+         supabase
+           .from('services')
+           .select('*')
+           .eq('active', true)
+           .order('name', {
+             ascending: true,
+           }),
 
         supabase
           .from('providers')
