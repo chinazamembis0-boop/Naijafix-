@@ -51,7 +51,9 @@ function FoodMarketplace({ onBack, cartItemCount = 0, onViewCart, cart = [], onU
           ← Back
         </button>
         <div className="brand">
-          <div className="brand-icon">N</div>
+          <div className="brand-icon">
+            <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
+          </div>
           <div>
             <h1>NaijaFix</h1>
             <span>Food & Restaurants</span>

@@ -1,37 +1,6 @@
 import { useState } from 'react'
 import { serviceCategories, allServices } from './ServicesData.js'
-import { getServiceImage } from './ServiceImages.js'
-
-function normalizeCategory(value) {
-  return String(value || '')
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, 'and')
-    .replace(/[-_]/g, ' ')
-    .replace(/\s+/g, ' ')
-}
-
-function getServiceIcon(service) {
-  const category = normalizeCategory(service?.category)
-  const name = normalizeCategory(service?.name)
-
-  const icons = {
-    plumbing: '🔧',
-    electrical: '⚡',
-    cleaning: '🧹',
-    'ac repair': '❄️',
-    'generator repair': '🔌',
-    'phone repair': '📱',
-    'computer repair': '💻',
-    carpentry: '🪚',
-    painting: '🎨',
-    'fashion and tailoring': '👕',
-    barbering: '💈',
-    beauty: '💇',
-  }
-
-  return icons[category] || icons[name] || '🛠️'
-}
+import { getServiceImage, getServiceIcon } from './ServiceImages.js'
 
 function ViewAllServices({ initialCategory, onBack, onService }) {
   const [search, setSearch] = useState('')
@@ -59,7 +28,9 @@ function ViewAllServices({ initialCategory, onBack, onService }) {
           ← Back
         </button>
         <div className="brand">
-          <div className="brand-icon">N</div>
+          <div className="brand-icon">
+            <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
+          </div>
           <div>
             <h1>NaijaFix</h1>
             <span>All Services</span>
@@ -108,7 +79,21 @@ function ViewAllServices({ initialCategory, onBack, onService }) {
                 key={service.id}
                 onClick={() => onService(service)}
               >
-                <div className="nf-service-list-icon">{getServiceIcon(service)}</div>
+                <div className="nf-service-list-icon">
+                  <img
+                    src={getServiceImage(service)}
+                    alt={service.name}
+                    className="nf-service-list-icon-img"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                      e.currentTarget.nextSibling.style.display = 'flex'
+                    }}
+                  />
+                  <div className="nf-service-list-icon-fallback" style={{ display: 'none' }}>
+                    {getServiceIcon(service)}
+                  </div>
+                </div>
                 <div className="nf-service-list-info">
                   <h4>{service.name}</h4>
                   <p>{service.description}</p>

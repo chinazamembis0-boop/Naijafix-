@@ -67,7 +67,9 @@ function FoodCart({ cart = [], deliveryFee = 0, onUpdateCart, onBack, onPlaceOrd
             ← Back
           </button>
           <div className="brand">
-            <div className="brand-icon">N</div>
+            <div className="brand-icon">
+              <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
+            </div>
             <div>
               <h1>NaijaFix</h1>
               <span>Your Cart</span>
@@ -92,7 +94,9 @@ function FoodCart({ cart = [], deliveryFee = 0, onUpdateCart, onBack, onPlaceOrd
           ← Back
         </button>
         <div className="brand">
-          <div className="brand-icon">N</div>
+          <div className="brand-icon">
+            <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
+          </div>
           <div>
             <h1>NaijaFix</h1>
             <span>Your Cart</span>

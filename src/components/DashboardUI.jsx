@@ -225,7 +225,9 @@ export function AdminSidebar({ active, onChange, stats }) {
     <aside className="dash-admin-sidebar">
       <div className="dash-admin-sidebar-header">
         <div className="dash-brand">
-          <div className="dash-brand-icon">N</div>
+          <div className="dash-brand-icon">
+            <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
+          </div>
           <div>
             <h1>NaijaFix</h1>
             <span>Admin Panel</span>

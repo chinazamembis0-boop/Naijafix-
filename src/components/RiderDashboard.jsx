@@ -114,7 +114,9 @@ function RiderDashboard({ user, onBack }) {
         <header className="inner-header">
           <button className="back-link" onClick={onBack}>← Back</button>
           <div className="brand">
-            <div className="brand-icon">N</div>
+            <div className="brand-icon">
+              <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
+            </div>
             <div><h1>NaijaFix</h1><span>Rider Dashboard</span></div>
           </div>
         </header>
@@ -131,7 +133,9 @@ function RiderDashboard({ user, onBack }) {
         <header className="inner-header">
           <button className="back-link" onClick={onBack}>← Back</button>
           <div className="brand">
-            <div className="brand-icon">N</div>
+            <div className="brand-icon">
+              <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
+            </div>
             <div><h1>NaijaFix</h1><span>Rider Dashboard</span></div>
           </div>
         </header>
@@ -155,7 +159,9 @@ function RiderDashboard({ user, onBack }) {
       <header className="inner-header">
         <button className="back-link" onClick={onBack}>← Back</button>
         <div className="brand">
-          <div className="brand-icon">N</div>
+          <div className="brand-icon">
+            <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
+          </div>
           <div><h1>NaijaFix</h1><span>Rider Dashboard</span></div>
         </div>
       </header>
