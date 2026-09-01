@@ -1,16 +1,45 @@
-# React + Vite
+# NaijaFix
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+NaijaFix is a Nigerian local-services marketplace built with React, Vite, and Supabase. It connects customers with trusted local service providers and includes food ordering, delivery, and provider verification.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Frontend:** React 19 + Vite
+- **Backend:** Supabase (PostgreSQL, Auth, Storage, RLS)
+- **Maps:** Leaflet + React-Leaflet
+- **Analytics:** Vercel Web Analytics
+- **Deployment:** Vercel
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. Clone the repository
+2. Copy `.env.example` to `.env` and fill in your Supabase credentials:
+   ```
+   VITE_SUPABASE_URL=https://your-project.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-anon-key
+   ```
+3. Install dependencies:
+   ```
+   npm install
+   ```
+4. Start the development server:
+   ```
+   npm run dev
+   ```
 
-## Expanding the ESLint configuration
+## Production Build
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```
+npm run build
+```
+
+## Supabase Migrations
+
+SQL migration files are located in the `supabase/` directory. Apply them in order using the Supabase SQL Editor.
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_SUPABASE_URL` | Your Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Your Supabase anonymous/public key |

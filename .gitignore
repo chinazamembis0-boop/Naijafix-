@@ -12,10 +12,13 @@ dist
 dist-ssr
 *.local
 
-# Environment variables
+# Environment variables - ignore all .env files except .env.example
 .env
-.env.local
-.env.production
+.env.*
+!.env.example
+
+# Local tooling
+.kilo/
 
 # Editor directories and files
 .vscode/*

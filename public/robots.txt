@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://naijafix.vercel.app/sitemap.xml
