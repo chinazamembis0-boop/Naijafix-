@@ -7042,6 +7042,8 @@ function App() {
   const [foodOrderPlaced, setFoodOrderPlaced] = useState(false)
   const [foodDeliveryAddress, setFoodDeliveryAddress] = useState('')
 
+  const isInitialLoad = useRef(true)
+
   const getOrCreateConversation = async (otherUserId, otherUserName, otherUserAvatar, bookingId) => {
     if (!user?.user_id) return null
 
@@ -7142,6 +7144,9 @@ function App() {
 
   useEffect(() => {
     const loadCurrentUser = async () => {
+      const shouldSetInitialPage = isInitialLoad.current
+      isInitialLoad.current = false
+
       const {
         data: { user },
       } = await supabase.auth.getUser()
@@ -7207,6 +7212,16 @@ function App() {
         'naijafixUser',
         JSON.stringify(appUser)
       )
+
+      if (shouldSetInitialPage) {
+        setPage(
+          appUser.role === 'admin'
+            ? 'admin-dashboard'
+            : appUser.role === 'provider'
+            ? 'provider-dashboard'
+            : 'dashboard'
+        )
+      }
     }
 
     loadCurrentUser()
@@ -7243,10 +7258,20 @@ function App() {
     setPage('home')
   }
 
-  const effectivePage =
-    page === 'admin-dashboard' && user?.role !== 'admin'
-      ? 'home'
-      : page
+  const dashboardPageByRole =
+    user?.role === 'admin'
+      ? 'admin-dashboard'
+      : user?.role === 'provider'
+      ? 'provider-dashboard'
+      : 'dashboard'
+
+  const effectivePage = !user
+    ? page
+    : page === 'admin-dashboard' && user?.role !== 'admin'
+    ? 'home'
+    : page === 'dashboard' || page === 'provider-dashboard'
+    ? dashboardPageByRole
+    : page
 
   if (effectivePage === 'login') {
     return (
