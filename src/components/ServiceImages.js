@@ -267,7 +267,7 @@ const serviceImages = {
   },
 }
 
-const defaultServiceImage = 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600&h=400&fit=crop'
+const defaultServiceImage = 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=600&h=400&fit=crop'
 
 const flatServiceImages = {}
 for (const group of Object.values(serviceImages)) {
@@ -301,14 +301,20 @@ export function getServiceImage(service) {
   const categoryGroup = serviceImages[category] || serviceImages[name]
   if (categoryGroup) {
     const key = Object.keys(categoryGroup).find(
-      (k) => category.includes(k) || name.includes(k) || k.includes(category) || k.includes(name)
+      (k) => {
+        const nk = normalizeCategory(k)
+        return category.includes(nk) || name.includes(nk) || nk.includes(category) || nk.includes(name)
+      }
     )
     if (key) return categoryGroup[key]
   }
 
   for (const group of Object.values(serviceImages)) {
     const key = Object.keys(group).find(
-      (k) => category.includes(k) || name.includes(k) || k.includes(category) || k.includes(name)
+      (k) => {
+        const nk = normalizeCategory(k)
+        return category.includes(nk) || name.includes(nk) || nk.includes(category) || nk.includes(name)
+      }
     )
     if (key) return group[key]
   }
@@ -322,7 +328,10 @@ export function getServiceImageByKey(key) {
     return flatServiceImages[normalized]
   }
   for (const group of Object.values(serviceImages)) {
-    const match = Object.keys(group).find((k) => normalized.includes(k) || k.includes(normalized))
+    const match = Object.keys(group).find((k) => {
+      const nk = normalizeCategory(k)
+      return normalized.includes(nk) || nk.includes(normalized)
+    })
     if (match) return group[match]
   }
   return defaultServiceImage

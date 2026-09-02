@@ -176,6 +176,16 @@ function getServiceIcon(service) {
   return serviceIcons[category] || serviceIcons[name] || '🛠️'
 }
 
+function dedupeServices(services) {
+  const seen = new Set()
+  return (services || []).filter((s) => {
+    const key = normalizeCategory(s.slug || s.name)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 function Logo() {
   return (
     <div className="brand">
@@ -5671,11 +5681,11 @@ function AdminDashboard({ user, onLogout, onHome }) {
         setBookings(bookingsResult.data || [])
       }
 
-      if (servicesResult.error) {
-        console.error('Failed to load services:', servicesResult.error)
-      } else {
-        setServices(servicesResult.data || [])
-      }
+       if (servicesResult.error) {
+         console.error('Failed to load services:', servicesResult.error)
+       } else {
+         setServices(dedupeServices(servicesResult.data || []))
+       }
 
       setLoading(false)
     }
@@ -7108,15 +7118,15 @@ function App() {
           }),
       ])
 
-      if (
-        !servicesResult.error &&
-        servicesResult.data &&
-        servicesResult.data.length > 0
-      ) {
-        setDbServices(
-          servicesResult.data
-        )
-      }
+       if (
+         !servicesResult.error &&
+         servicesResult.data &&
+         servicesResult.data.length > 0
+       ) {
+         setDbServices(
+           dedupeServices(servicesResult.data)
+         )
+       }
 
       if (servicesResult.error) {
         console.error(
