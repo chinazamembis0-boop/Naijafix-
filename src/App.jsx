@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { supabase } from './supabase.js'
+import { supabase, getSignedStorageUrl, uploadPrivateFile } from './supabase.js'
 import './App.css'
 import './components/DashboardUI.css'
 import {
@@ -328,87 +328,6 @@ function MapView({ providers, onProviderSelect }) {
       )}
     </div>
   )
-}
-
-function extractStorageObjectPath(url, bucket) {
-  if (!url) return ''
-
-  let path = String(url).trim()
-
-  if (path.startsWith('http')) {
-    try {
-      const urlObj = new URL(path)
-      const pathname = urlObj.pathname
-
-      const signMatch = pathname.match(/\/storage\/v1\/object\/(?:sign|public)\/([^/]+\/.+)$/)
-      if (signMatch) {
-        return signMatch[1]
-      }
-
-      const objectMatch = pathname.match(/\/storage\/v1\/object\/([^/]+\/.+)$/)
-      if (objectMatch) {
-        return objectMatch[1]
-      }
-
-      const bucketIndex = pathname.indexOf(`/${bucket}/`)
-      if (bucketIndex !== -1) {
-        return pathname.slice(bucketIndex + 1)
-      }
-    } catch {
-      // not a valid URL, fall through to raw path handling
-    }
-  }
-
-  if (path.startsWith('/')) {
-    path = path.slice(1)
-  }
-
-  return path
-}
-
-async function getSignedStorageUrl(bucket, path) {
-  if (!bucket || !path) {
-    throw new Error('Missing bucket or path for signed URL')
-  }
-
-  const normalizedPath = extractStorageObjectPath(path, bucket)
-
-  if (!normalizedPath) {
-    throw new Error('Empty object path after normalizing: ' + String(path))
-  }
-
-  console.log('Creating signed URL:', { bucket, path: normalizedPath })
-
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .createSignedUrl(normalizedPath, 3600)
-
-  if (error) {
-    console.error('Failed to create signed URL:', { bucket, path: normalizedPath, error })
-    throw error
-  }
-
-  if (!data?.signedUrl) {
-    const missingError = new Error('Supabase returned no signed URL')
-    console.error('Failed to create signed URL:', { bucket, path: normalizedPath, error: missingError })
-    throw missingError
-  }
-
-  return data.signedUrl
-}
-
-async function uploadPrivateFile(bucket, userId, file) {
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-')
-  const path = `${userId}/${Date.now()}-${safeName}`
-  const { error } = await supabase.storage
-    .from(bucket)
-    .upload(path, file, { upsert: false })
-
-  if (error) {
-    throw error
-  }
-
-  return path
 }
 
 function ReportForm({ user, onComplete }) {
@@ -1328,6 +1247,8 @@ function Dashboard({
   const [supportReports, setSupportReports] = useState([])
   const [customerVerification, setCustomerVerification] = useState(null)
   const [dashboardAvatarUrl, setDashboardAvatarUrl] = useState('')
+  const [recentReviews, setRecentReviews] = useState([])
+  const [favoriteProviders, setFavoriteProviders] = useState([])
 
   useEffect(() => {
     let cancelled = false
@@ -1452,6 +1373,32 @@ function Dashboard({
         console.error('Failed to load customer verification:', cvError)
       } else {
         setCustomerVerification(cvData || null)
+      }
+
+      const [reviewsResult, favoritesResult] = await Promise.all([
+        supabase
+          .from('reviews')
+          .select('*')
+          .eq('customer_user_id', user.user_id)
+          .order('created_at', { ascending: false })
+          .limit(5),
+        supabase
+          .from('favorites')
+          .select('provider_user_id')
+          .eq('customer_user_id', user.user_id),
+      ])
+
+      if (!reviewsResult.error) {
+        setRecentReviews(reviewsResult.data || [])
+      }
+
+      if (!favoritesResult.error && favoritesResult.data?.length > 0) {
+        const providerIds = favoritesResult.data.map((f) => f.provider_user_id)
+        const { data: providersData } = await supabase
+          .from('providers')
+          .select('user_id, business_name, category, rating, verified')
+          .in('user_id', providerIds)
+        setFavoriteProviders(providersData || [])
       }
 
       setActivityLoading(false)
@@ -1614,6 +1561,31 @@ function Dashboard({
           </>
         )}
 
+        {favoriteProviders.length > 0 && (
+          <>
+            <SectionHeader label="SAVED" title="Saved providers" />
+            <div className="provider-list">
+              {favoriteProviders.slice(0, 4).map((provider) => (
+                <button
+                  className="provider-card"
+                  key={provider.user_id}
+                  onClick={() => onProvider?.(provider)}
+                >
+                  <div className="provider-avatar">
+                    {provider.business_name?.charAt(0)?.toUpperCase() || 'P'}
+                  </div>
+                  <div className="provider-info">
+                    <h4>{provider.business_name}</h4>
+                    {provider.verified && <span className="verified">✓ Verified provider</span>}
+                    <p>⭐ {provider.rating ?? 'New'} rating</p>
+                  </div>
+                  <span className="arrow">→</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
         <SectionHeader
           label="YOUR ACTIVITY"
           title="My bookings"
@@ -1651,6 +1623,27 @@ function Dashboard({
               </button>
             }
           />
+        )}
+
+        <SectionHeader label="REVIEWS" title="My reviews" />
+        {activityLoading ? (
+          <LoadingState text="Loading reviews..." />
+        ) : recentReviews.length === 0 ? (
+          <EmptyState icon="⭐" title="No reviews yet" description="Reviews you leave for providers will appear here." />
+        ) : (
+          <div>
+            {recentReviews.map((review) => (
+              <div key={review.id} style={{ borderBottom: '1px solid #e2e8e4', padding: '10px 0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <strong>⭐ {review.rating}/5</strong>
+                  <small style={{ color: 'var(--nf-text-muted)' }}>
+                    {new Date(review.created_at).toLocaleDateString()}
+                  </small>
+                </div>
+                {review.comment && <p style={{ margin: '4px 0', fontSize: 14 }}>{review.comment}</p>}
+              </div>
+            ))}
+          </div>
         )}
 
         <SectionHeader label="SUPPORT" title="Your reports" />
@@ -2858,54 +2851,31 @@ function Bookings({ user, onBack, onChat, onRebook, dbProviders }) {
 
   useEffect(() => {
     const loadBookings = async () => {
-      if (!user?.name) {
+      if (!user?.user_id) {
         setBookings([])
         setLoading(false)
         return
       }
 
-      const [ownedResult, legacyResult] = await Promise.all([
-        supabase
-          .from('bookings')
-          .select('*')
-          .eq('customer_user_id', user.user_id)
-          .order('created_at', {
-            ascending: false,
-          }),
-        supabase
-          .from('bookings')
-          .select('*')
-          .eq('customer_name', user.name)
-          .order('created_at', {
-            ascending: false,
-          }),
-      ])
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('customer_user_id', user.user_id)
+        .order('created_at', {
+          ascending: false,
+        })
 
-      if (ownedResult.error && legacyResult.error) {
+      if (error) {
         console.error(
           'Failed to load bookings:',
-          ownedResult.error
+          error
         )
 
         setLoading(false)
         return
       }
 
-      const bookingMap = new Map()
-
-      ;[ownedResult.data, legacyResult.data]
-        .flatMap((rows) => rows || [])
-        .forEach((booking) => {
-          bookingMap.set(booking.id, booking)
-        })
-
-      setBookings(
-        Array.from(bookingMap.values()).sort(
-          (firstBooking, secondBooking) =>
-            new Date(secondBooking.created_at || 0) -
-            new Date(firstBooking.created_at || 0)
-        )
-      )
+      setBookings(data || [])
       setLoading(false)
     }
 
@@ -2926,14 +2896,14 @@ function Bookings({ user, onBack, onChat, onRebook, dbProviders }) {
     if (!booking?.id) return
     const { error } = await supabase
       .from('bookings')
-      .update({ completed_at: new Date().toISOString(), reviewed: false })
+      .update({ completed_at: new Date().toISOString(), reviewed: true })
       .eq('id', booking.id)
       .eq('customer_user_id', user.user_id)
 
     if (error) {
       alert('Could not confirm completion: ' + error.message)
     } else {
-      setBookings((current) => current.map((b) => b.id === booking.id ? { ...b, completed_at: new Date().toISOString(), reviewed: false } : b))
+      setBookings((current) => current.map((b) => b.id === booking.id ? { ...b, completed_at: new Date().toISOString(), reviewed: true } : b))
     }
   }
 
@@ -4183,40 +4153,6 @@ function ProviderDashboard({
             notificationError
           )
         }
-
-        if (newStatus.toLowerCase() === 'completed') {
-          const { error: completionError } =
-            await supabase.rpc('create_notification', {
-              p_user_id: booking.customer_user_id,
-              p_type: 'booking',
-              p_title: 'Job completed',
-              p_message: 'The provider marked this job as completed. Please confirm completion.',
-            })
-
-          if (completionError) {
-            console.error(
-              'Failed to create completion notification:',
-              completionError
-            )
-          }
-        }
-
-        if (newStatus.toLowerCase() === 'declined' && reason) {
-          const { error: declineError } =
-            await supabase.rpc('create_notification', {
-              p_user_id: booking.customer_user_id,
-              p_type: 'booking',
-              p_title: 'Booking declined',
-              p_message: `Your booking was declined. Reason: ${reason}`,
-            })
-
-          if (declineError) {
-            console.error(
-              'Failed to create decline notification:',
-              declineError
-            )
-          }
-        }
       }
     }
 
@@ -5226,6 +5162,48 @@ function ProviderDashboard({
               </label>
             </DashboardCard>
 
+            <SectionHeader label="VERIFICATION" title="Identity verification" />
+            <DashboardCard>
+              <VerificationCard verification={verification} type="provider">
+                {verification?.status === 'rejected' && (
+                  <div style={{ marginTop: 12 }}>
+                    <label className="dash-btn dash-btn-primary dash-btn-full">
+                      Resubmit Verification
+                      <input type="file" accept="image/*,.pdf" hidden disabled={featureLoading} onChange={(event) => { const f = event.target.files?.[0]; if (f) { setResubmitDocPreview(URL.createObjectURL(f)); setResubmitDocName(f.name); setResubmitDocFile(f); } }} />
+                    </label>
+                    {resubmitDocPreview && (
+                      <DocPreview url={resubmitDocPreview} name={resubmitDocName} onClear={() => { setResubmitDocPreview(''); setResubmitDocName(''); setResubmitDocFile(null); }} />
+                    )}
+                    {resubmitDocFile && (
+                      <button className="dash-btn dash-btn-primary dash-btn-full" onClick={() => resubmitVerification(resubmitDocFile)} disabled={featureLoading}>
+                        {featureLoading ? 'Submitting...' : 'Submit new verification'}
+                      </button>
+                    )}
+                  </div>
+                )}
+                {!verification && (
+                  <div style={{ marginTop: 12 }}>
+                    <p style={{ fontSize: 13, color: 'var(--nf-text-muted)', marginBottom: 10 }}>Verify your identity to build trust with customers.</p>
+                    <label className="dash-btn dash-btn-outline dash-btn-full">
+                      Verify identity
+                      <input type="file" accept="image/*,.pdf" hidden disabled={featureLoading} onChange={(event) => { const f = event.target.files?.[0]; if (f) { setVerificationDocPreview(URL.createObjectURL(f)); setVerificationDocName(f.name); setVerificationDocFile(f); } }} />
+                    </label>
+                  </div>
+                )}
+                {verificationDocPreview && verification?.status !== 'rejected' && (
+                  <div style={{ marginTop: 12 }}>
+                    <DocPreview url={verificationDocPreview} name={verificationDocName} onClear={() => { setVerificationDocPreview(''); setVerificationDocName(''); setVerificationDocFile(null); }} />
+                    <button className="dash-btn dash-btn-primary dash-btn-full" onClick={() => submitVerification(verificationDocFile)} disabled={featureLoading}>
+                      {featureLoading ? 'Submitting...' : 'Submit verification'}
+                    </button>
+                  </div>
+                )}
+                {verification?.id_document_url && !verificationDocPreview && verification?.status !== 'rejected' && (
+                  <p style={{ marginTop: 8, fontSize: 13, color: 'var(--nf-green)' }}>✓ Document submitted</p>
+                )}
+              </VerificationCard>
+            </DashboardCard>
+
             <SectionHeader label="SERVICES" title="Services you offer" />
             <DashboardCard>
               <p style={{ fontSize: 13, color: 'var(--nf-text-muted)', marginBottom: 12 }}>
@@ -5278,7 +5256,50 @@ function ProviderDashboard({
               </div>
             </DashboardCard>
 
-            <SectionHeader label="PORTFOLIO" title="My Work Samples" />
+            <SectionHeader label="WORK SAMPLES" title="Your work samples" />
+            <DashboardCard>
+              <div className="dash-form-group">
+                <label className="dash-form-label">Caption</label>
+                <input className="dash-form-input" value={sampleCaption} onChange={(e) => setSampleCaption(e.target.value)} placeholder="Describe this work sample..." />
+              </div>
+              <label className="dash-btn dash-btn-outline dash-btn-full" style={{ marginTop: 8 }}>
+                {featureLoading ? 'Uploading...' : 'Upload work sample'}
+                <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={featureLoading} onChange={async (event) => {
+                  const file = event.target.files?.[0]
+                  if (!file || !user?.user_id) return
+                  setFeatureLoading(true)
+                  try {
+                    const path = await uploadPrivateFile('provider-work-samples', user.user_id, file)
+                    const { data, error } = await supabase.from('provider_work_samples').insert({ provider_user_id: user.user_id, image_url: path, caption: sampleCaption || null }).select('*').single()
+                    if (error) throw error
+                    const signedUrl = await getSignedStorageUrl('provider-work-samples', path)
+                    setSamples((current) => [{ ...data, signedUrl }, ...current])
+                    setSampleCaption('')
+                    event.target.value = ''
+                    alert('Work sample uploaded.')
+                  } catch (err) {
+                    alert('Could not upload work sample: ' + err.message)
+                  }
+                  setFeatureLoading(false)
+                }} />
+              </label>
+              {samples.length > 0 && (
+                <div className="sample-grid" style={{ marginTop: 12 }}>
+                  {samples.map((sample) => (
+                    <div key={sample.id} style={{ background: 'var(--nf-bg)', padding: 10, borderRadius: 10 }}>
+                      {sample.signedUrl ? (
+                        <img src={sample.signedUrl} alt={sample.caption || 'Work sample'} loading="lazy" />
+                      ) : (
+                        <div style={{ height: 120, background: '#e8eeea', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nf-text-muted)', fontSize: 12 }}>No image</div>
+                      )}
+                      {sample.caption && <p style={{ fontSize: 12, color: '#68746d', margin: '4px 0 0' }}>{sample.caption}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </DashboardCard>
+
+            <SectionHeader label="PORTFOLIO" title="Portfolio" />
 
             <DashboardCard>
               {editingPortfolioId ? (
@@ -5460,6 +5481,117 @@ function ProviderDashboard({
                 </div>
               </DashboardCard>
             )}
+
+            <SectionHeader label="AVAILABILITY" title="Your availability" />
+            <DashboardCard>
+              <p style={{ fontSize: 13, color: 'var(--nf-text-muted)', marginBottom: 12 }}>
+                Set your weekly availability so customers know when you're reachable.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((dayName, index) => {
+                  const dayAvailability = availability.find((a) => a.day_of_week === index)
+                  const isAvailable = dayAvailability?.is_available ?? true
+                  return (
+                    <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--nf-bg)', borderRadius: 8 }}>
+                      <span style={{ fontWeight: 600, fontSize: 14 }}>{dayName}</span>
+                      <label className="dash-btn dash-btn-outline dash-btn-sm" style={{ cursor: 'pointer', margin: 0 }}>
+                        <input type="checkbox" checked={isAvailable} onChange={() => toggleDayAvailability(index)} style={{ marginRight: 6 }} />
+                        {isAvailable ? 'Available' : 'Unavailable'}
+                      </label>
+                    </div>
+                  )
+                })}
+              </div>
+              <button className="dash-btn dash-btn-primary dash-btn-full" onClick={saveAvailability} disabled={featureLoading} style={{ marginTop: 12 }}>
+                {featureLoading ? 'Saving...' : 'Save availability'}
+              </button>
+            </DashboardCard>
+
+            <SectionHeader label="PACKAGES" title="Service packages" />
+            <DashboardCard>
+              <p style={{ fontSize: 13, color: 'var(--nf-text-muted)', marginBottom: 12 }}>
+                Create service packages with fixed pricing for customers.
+              </p>
+              {packages.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                  {packages.map((pkg) => (
+                    <div key={pkg.id} style={{ background: 'var(--nf-bg)', padding: 12, borderRadius: 10 }}>
+                      {editingPackageId === pkg.id ? (
+                        <div>
+                          <div className="dash-form-group">
+                            <label className="dash-form-label">Package name</label>
+                            <input className="dash-form-input" value={editPackageName} onChange={(e) => setEditPackageName(e.target.value)} />
+                          </div>
+                          <div className="dash-form-group">
+                            <label className="dash-form-label">Description</label>
+                            <textarea className="dash-form-input" rows={2} value={editPackageDescription} onChange={(e) => setEditPackageDescription(e.target.value)} />
+                          </div>
+                          <div className="dash-form-group">
+                            <label className="dash-form-label">Price (₦)</label>
+                            <input className="dash-form-input" type="number" value={editPackagePrice} onChange={(e) => setEditPackagePrice(e.target.value)} />
+                          </div>
+                          <div className="dash-form-group">
+                            <label className="dash-form-label">Duration</label>
+                            <input className="dash-form-input" value={editPackageDuration} onChange={(e) => setEditPackageDuration(e.target.value)} placeholder="e.g. 2 hours" />
+                          </div>
+                          <div className="dash-btn-group">
+                            <button className="dash-btn dash-btn-primary" onClick={() => updatePackage(pkg.id)} disabled={featureLoading}>Save</button>
+                            <button className="dash-btn dash-btn-outline" onClick={cancelEditingPackage} disabled={featureLoading}>Cancel</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                              <strong>{pkg.name}</strong>
+                              <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', margin: '4px 0' }}>{pkg.description || 'No description'}</p>
+                              <p style={{ fontWeight: 800, color: 'var(--nf-green)' }}>₦{Number(pkg.price).toLocaleString()}</p>
+                              {pkg.estimated_duration && <p style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>Duration: {pkg.estimated_duration}</p>}
+                            </div>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button className="dash-btn dash-btn-outline dash-btn-sm" onClick={() => startEditingPackage(pkg)} disabled={featureLoading}>Edit</button>
+                              <button className="dash-btn dash-btn-outline dash-btn-sm" style={{ color: '#dc2626', borderColor: '#dc2626' }} onClick={() => deletePackage(pkg.id)} disabled={featureLoading}>Delete</button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input className="dash-form-input" value={newPackageName} onChange={(e) => setNewPackageName(e.target.value)} placeholder="Package name" style={{ flex: 1, minWidth: 120 }} />
+                <input className="dash-form-input" value={newPackagePrice} onChange={(e) => setNewPackagePrice(e.target.value)} placeholder="Price (₦)" type="number" style={{ flex: 1, minWidth: 100 }} />
+                <input className="dash-form-input" value={newPackageDuration} onChange={(e) => setNewPackageDuration(e.target.value)} placeholder="Duration" style={{ flex: 1, minWidth: 100 }} />
+                <button className="dash-btn dash-btn-primary dash-btn-sm" onClick={addPackage} disabled={featureLoading}>Add</button>
+              </div>
+              <textarea className="dash-form-textarea" value={newPackageDescription} onChange={(e) => setNewPackageDescription(e.target.value)} placeholder="Description (optional)" rows={2} style={{ marginTop: 8 }} />
+            </DashboardCard>
+
+            <SectionHeader label="QUOTES" title="Your quotes" />
+            <DashboardCard>
+              {quotes.length === 0 ? (
+                <EmptyState icon="💰" title="No quotes yet" description="Quotes you send to customers will appear here." />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {quotes.map((quote) => (
+                    <div key={quote.id} style={{ background: 'var(--nf-bg)', padding: 12, borderRadius: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <strong>₦{Number(quote.amount).toLocaleString()}</strong>
+                        <StatusBadge status={quote.status} />
+                      </div>
+                      <p style={{ fontSize: 13 }}>{quote.description}</p>
+                      <small style={{ color: 'var(--nf-text-muted)' }}>Booking #{quote.booking_id} • {new Date(quote.created_at).toLocaleDateString()}</small>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </DashboardCard>
+
+            <SectionHeader label="SUPPORT" title="Help and support" />
+            <DashboardCard>
+              <ReportForm user={user} />
+            </DashboardCard>
 
             <SectionHeader label="MESSAGES" title="Your conversations" />
             <EmptyState
