@@ -80,16 +80,22 @@ function ViewAllServices({ initialCategory, onBack, onService }) {
                 onClick={() => onService(service)}
               >
                 <div className="nf-service-list-icon">
-                  <img
-                    src={getServiceImage(service)}
-                    alt={service.name}
-                    className="nf-service-list-icon-img"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                      e.currentTarget.nextSibling.style.display = 'flex'
-                    }}
-                  />
+                  {getServiceImage(service) ? (
+                    <img
+                      src={getServiceImage(service)}
+                      alt={service.name}
+                      className="nf-service-list-icon-img"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                        e.currentTarget.nextSibling.style.display = 'flex'
+                      }}
+                    />
+                  ) : (
+                    <div className="nf-service-list-icon-fallback" style={{ display: 'flex' }}>
+                      {getServiceIcon(service)}
+                    </div>
+                  )}
                   <div className="nf-service-list-icon-fallback" style={{ display: 'none' }}>
                     {getServiceIcon(service)}
                   </div>
@@ -120,21 +126,27 @@ function ViewAllServices({ initialCategory, onBack, onService }) {
                       key={service.id}
                       onClick={() => onService(service)}
                     >
-                      <div className="service-card-image-wrapper">
-                        <img
-                          src={getServiceImage(service)}
-                          alt={service.name}
-                          className="service-card-image"
-                          loading="lazy"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none'
-                            e.currentTarget.nextSibling.style.display = 'flex'
-                          }}
-                        />
-                        <div className="service-card-image-fallback" style={{ display: 'none' }}>
-                          {getServiceIcon(service)}
-                        </div>
-                      </div>
+                       <div className="service-card-image-wrapper">
+                         {getServiceImage(service) ? (
+                           <img
+                             src={getServiceImage(service)}
+                             alt={service.name}
+                             className="service-card-image"
+                             loading="lazy"
+                             onError={(e) => {
+                               e.currentTarget.style.display = 'none'
+                               e.currentTarget.nextSibling.style.display = 'flex'
+                             }}
+                           />
+                         ) : (
+                           <div className="service-card-image-fallback" style={{ display: 'flex' }}>
+                             {getServiceIcon(service)}
+                           </div>
+                         )}
+                         <div className="service-card-image-fallback" style={{ display: 'none' }}>
+                           {getServiceIcon(service)}
+                         </div>
+                       </div>
                       <strong>{service.name}</strong>
                       <span>{service.description}</span>
                     </button>

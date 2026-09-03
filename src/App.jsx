@@ -530,16 +530,22 @@ function Home({
                 onClick={() => onService(service)}
               >
                 <div className="service-card-image-wrapper">
-                  <img
-                    src={getServiceImage(service)}
-                    alt={service.name}
-                    className="service-card-image"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                      e.currentTarget.nextSibling.style.display = 'flex'
-                    }}
-                  />
+                  {getServiceImage(service) ? (
+                    <img
+                      src={getServiceImage(service)}
+                      alt={service.name}
+                      className="service-card-image"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                        e.currentTarget.nextSibling.style.display = 'flex'
+                      }}
+                    />
+                  ) : (
+                    <div className="service-card-image-fallback" style={{ display: 'flex' }}>
+                      {getServiceIcon(service)}
+                    </div>
+                  )}
                   <div className="service-card-image-fallback" style={{ display: 'none' }}>
                     {getServiceIcon(service)}
                   </div>
@@ -6410,7 +6416,11 @@ function AdminDashboard({ user, onLogout, onHome }) {
                   <div key={s.id} className="dash-card" style={{ padding: 12, marginBottom: 8 }}>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                       <div style={{ width: 64, height: 64, borderRadius: 8, overflow: 'hidden', background: '#e8f0ee', flexShrink: 0 }}>
-                        <img src={getServiceImage(s)} alt={s.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        {getServiceImage(s) ? (
+                          <img src={getServiceImage(s)} alt={s.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🛠️</div>
+                        )}
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <strong>{s.name}</strong>
