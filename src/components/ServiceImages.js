@@ -123,6 +123,16 @@ function normalizeCategory(value) {
     .replace(/\s+/g, ' ')
 }
 
+function normalizeSlug(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[-\s/]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/^-+|-+$/g, '')
+}
+
 function getServiceIcon(service) {
   const category = normalizeCategory(service?.category)
   const name = normalizeCategory(service?.name)
@@ -371,45 +381,66 @@ export const localServiceImages = {
   'wifi-internet-setup': '/images/services/wifi-internet-setup-01.jpeg',
 }
 export function getServiceImage(service) {
-  if (!service) return "/images/services/cleaning-01.jpeg"
+  if (!service) return defaultServiceImage
 
-  const slug = service.slug || service.id
-  const normalizedSlug = normalizeCategory(slug)
+  const candidates = [
+    service.slug,
+    service.id,
+    service.category,
+    service.name,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).trim().toLowerCase())
 
-  if (normalizedSlug && localServiceImages[normalizedSlug]) {
-    return localServiceImages[normalizedSlug]
+  for (const candidate of candidates) {
+    if (localServiceImages[candidate]) {
+      return localServiceImages[candidate]
+    }
   }
 
-  const category = normalizeCategory(service.category)
-  const name = normalizeCategory(service.name)
+  const slugCandidates = candidates.map((value) => normalizeSlug(value))
 
-  if (category && localServiceImages[category]) {
-    return localServiceImages[category]
+  for (const candidate of slugCandidates) {
+    if (localServiceImages[candidate]) {
+      return localServiceImages[candidate]
+    }
   }
 
-  if (name && localServiceImages[name]) {
-    return localServiceImages[name]
+  const fuzzyMatch = Object.keys(localServiceImages).find((key) => {
+    return slugCandidates.some((c) => c.includes(key) || key.includes(c))
+  })
+
+  if (fuzzyMatch) {
+    return localServiceImages[fuzzyMatch]
   }
 
-  return "/images/services/cleaning-01.jpeg"
+  return defaultServiceImage
 }
 
 export function getServiceImageByKey(key) {
-  const normalized = normalizeCategory(key)
+  if (!key) return defaultServiceImage
 
-  if (normalized && localServiceImages[normalized]) {
+  const normalized = String(key).trim().toLowerCase()
+
+  if (localServiceImages[normalized]) {
     return localServiceImages[normalized]
   }
 
+  const slugNormalized = normalizeSlug(key)
+
+  if (localServiceImages[slugNormalized]) {
+    return localServiceImages[slugNormalized]
+  }
+
   const match = Object.keys(localServiceImages).find((k) => {
-    return normalized.includes(k) || k.includes(normalized)
+    return slugNormalized.includes(k) || k.includes(slugNormalized)
   })
 
   if (match) {
     return localServiceImages[match]
   }
 
-  return "/images/services/cleaning-01.jpeg"
+  return defaultServiceImage
 }
 export function getServiceGradient(service) {
   if (!service) return 'linear-gradient(135deg, #087f3d, #066630)'
