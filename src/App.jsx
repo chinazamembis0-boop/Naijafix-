@@ -6410,11 +6410,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
                   <div key={s.id} className="dash-card" style={{ padding: 12, marginBottom: 8 }}>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                       <div style={{ width: 64, height: 64, borderRadius: 8, overflow: 'hidden', background: '#e8f0ee', flexShrink: 0 }}>
-                        {s.image_url ? (
-                          <img src={s.image_url} alt={s.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🛠️</div>
-                        )}
+                        <img src={getServiceImage(s)} alt={s.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <strong>{s.name}</strong>
