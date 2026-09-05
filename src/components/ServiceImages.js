@@ -117,7 +117,7 @@
 
 export function getServiceImage(service) {
   if (!service) return null
-  const slug = String(service.slug || '').toLowerCase().trim()
+  const slug = String(service.slug || service.id || '').toLowerCase().trim()
   if (!slug || !serviceImageSlugs.has(slug)) return null
   return `/images/services/${slug}.png`
 }
