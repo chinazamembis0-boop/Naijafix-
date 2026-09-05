@@ -22,6 +22,7 @@
   'driver-chauffeur',
   'driving-instructor',
   'dry-cleaning',
+  'elderly-care',
   'dstv-satellite',
   'electrical',
   'event-decoration',
@@ -36,6 +37,7 @@
   'hairdressing',
   'handyman',
   'home-tutor',
+  'house-building',
   'interior-decoration',
   'jamb-waec-tutor',
   'language-tutor',
@@ -90,7 +92,7 @@ const serviceImageSlugAliases = {
 
 export function getServiceImage(service) {
   if (!service) return null
-  let slug = String(service.id || '').toLowerCase().trim()
+  let slug = String(service.slug || service.id || '').toLowerCase().trim()
   if (!slug) return null
   if (serviceImageSlugAliases[slug]) {
     slug = serviceImageSlugAliases[slug]
