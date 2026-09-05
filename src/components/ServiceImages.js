@@ -1,158 +1,122 @@
-﻿const serviceIcons = {
-  plumbing: 'ðŸ”§',
-  electrical: 'âš¡',
-  cleaning: 'ðŸ§¹',
-  'ac repair': 'â„ï¸',
-  'generator repair': 'ðŸ”Œ',
-  'phone repair': 'ðŸ“±',
-  'computer repair': 'ðŸ’»',
-  carpentry: 'ðŸªš',
-  painting: 'ðŸŽ¨',
-  'fashion and tailoring': 'ðŸ‘•',
-  barbering: 'ðŸ’ˆ',
-  beauty: 'ðŸ’‡',
-  'house building': 'ðŸ—ï¸',
-  roofing: 'ðŸ ',
-  'tiling and flooring': 'ðŸ”²',
-  'pop and ceiling': 'âœ¨',
-  welding: 'âš’ï¸',
-  'aluminium and glass': 'ðŸªŸ',
-  'furniture making': 'ðŸª‘',
-  'furniture repair': 'ðŸ”¨',
-  'interior decoration': 'ðŸŽ¨',
-  handyman: 'ðŸ”§',
-  'gardening and landscaping': 'ðŸŒ¿',
-  'fumigation and pest control': 'ðŸ›',
-  'solar installation': 'â˜€ï¸',
-  'solar repair': 'ðŸ”†',
-  'inverter installation': 'ðŸ”‹',
-  'inverter repair': 'âš¡',
-  'cctv installation': 'ðŸ“¹',
-  'security systems': 'ðŸ”’',
-  'dstv / satellite installation': 'ðŸ“¡',
-  'borehole services': 'ðŸ’§',
-  'water pump repair': 'ðŸ”§',
-  'water tank services': 'ðŸš°',
-  'auto mechanic': 'ðŸš—',
-  'auto electrical': 'âš¡',
-  'car ac repair': 'â„ï¸',
-  'tyre services': 'ðŸ›ž',
-  vulcanizing: 'ðŸ”§',
-  'car wash': 'ðŸš¿',
-  'car detailing': 'âœ¨',
-  'car painting': 'ðŸŽ¨',
-  'panel beating': 'ðŸ”¨',
-  'car battery services': 'ðŸ”‹',
-  towing: 'ðŸš›',
-  'driver / chauffeur': 'ðŸ§‘â€âœˆï¸',
-  'moving and relocation': 'ðŸ“¦',
-  'dispatch riders': 'ðŸï¸',
-  'package delivery': 'ðŸ“¦',
-  'food delivery': 'ðŸ±',
-  'grocery delivery': 'ðŸ›’',
-  'document delivery': 'ðŸ“„',
-  'errand runner': 'ðŸƒ',
-  'pickup and drop-off': 'ðŸ“',
-  'laptop repair': 'ðŸ’»',
-  'printer repair': 'ðŸ–¨ï¸',
-  'tv repair': 'ðŸ“º',
-  'electronics repair': 'ðŸ”Œ',
-  'wi-fi and internet setup': 'ðŸ“¶',
-  'network installation': 'ðŸŒ',
-  'web development': 'ðŸ’»',
-  'mobile app development': 'ðŸ“±',
-  'graphic design': 'ðŸŽ¨',
-  'video editing': 'ðŸŽ¬',
-  photography: 'ðŸ“·',
-  videography: 'ðŸŽ¥',
-  'social media management': 'ðŸ“±',
-  'digital marketing': 'ðŸ“ˆ',
-  'virtual assistant': 'ðŸ§‘â€ðŸ’»',
-  hairdressing: 'ðŸ’‡',
-  'braiding / locs': 'ðŸ’‡â€â™€ï¸',
-  'makeup artist': 'ðŸ’„',
-  'nail technician': 'ðŸ’…',
-  'manicure and pedicure': 'ðŸ’…',
-  massage: 'ðŸ’†',
-  'fitness trainer': 'ðŸ‹ï¸',
-  'home tutor': 'ðŸ“š',
-  'jamb / waec tutor': 'ðŸ“',
-  'primary / secondary tutor': 'ðŸ“–',
-  'music teacher': 'ðŸŽµ',
-  'language tutor': 'ðŸ—£ï¸',
-  'driving instructor': 'ðŸš—',
-  'nanny / childcare': 'ðŸ‘¶',
-  'elderly care / caregiver': 'ðŸ§“',
-  'home cook / personal chef': 'ðŸ‘¨â€ðŸ³',
-  'clothing alteration': 'âœ‚ï¸',
-  'shoe making': 'ðŸ‘ž',
-  'shoe repair': 'ðŸ‘Ÿ',
-  'bag making': 'ðŸ‘œ',
-  laundry: 'ðŸ‘•',
-  'dry cleaning': 'ðŸ§¥',
-  catering: 'ðŸ½ï¸',
-  'small chops': 'ðŸ¥Ÿ',
-  'cake and baking': 'ðŸŽ‚',
-  'event planning': 'ðŸ“‹',
-  'event decoration': 'ðŸŽŠ',
-  dj: 'ðŸŽ§',
-  'mc / compere': 'ðŸŽ¤',
-  'sound and lighting': 'ðŸ”Š',
-  'event photography': 'ðŸ“¸',
-  'event videography': 'ðŸŽ¬',
-  'equipment rentals': 'ðŸŽª',
-  'pet grooming': 'ðŸ•',
-  'pet sitting': 'ðŸ¾',
-  'pet walking': 'ðŸ•â€ðŸ¦º',
-  'legal services': 'âš–ï¸',
-  accounting: 'ðŸ“Š',
-  'tax services': 'ðŸ’°',
-  'recruitment services': 'ðŸ¤',
-  'travel / tour services': 'âœˆï¸',
-  'printing services': 'ðŸ–¨ï¸',
-  translation: 'ðŸŒ',
-  'professional consulting': 'ðŸ’¼',
+﻿const serviceImageSlugs = new Set([
+  'accounting',
+  'ac-repair',
+  'aluminium-glass',
+  'auto-electrical',
+  'auto-mechanic',
+  'bag-making',
+  'barbering',
+  'beauty',
+  'borehole-services',
+  'braiding-locs',
+  'cake-baking',
+  'car-detailing',
+  'car-painting',
+  'carpentry',
+  'catering',
+  'cctv-installation',
+  'cleaning',
+  'digital-marketing',
+  'dispatch-riders',
+  'dj',
+  'driver-chauffeur',
+  'driving-instructor',
+  'dry-cleaning',
+  'dstv-satellite',
+  'electrical',
+  'event-decoration',
+  'event-planning',
+  'event-videography',
+  'fashion-tailoring',
+  'fitness-trainer',
+  'fumigation-pest-control',
+  'gardening-landscaping',
+  'generator-repair',
+  'graphic-design',
+  'hairdressing',
+  'handyman',
+  'home-tutor',
+  'interior-decoration',
+  'jamb-waec-tutor',
+  'language-tutor',
+  'laptop-repair',
+  'laundry',
+  'makeup-artist',
+  'manicure-pedicure',
+  'massage',
+  'mc-compere',
+  'mobile-app-development',
+  'moving-relocation',
+  'music-teacher',
+  'nail-technician',
+  'nanny-childcare',
+  'network-installation',
+  'painting',
+  'panel-beating',
+  'pet-grooming',
+  'pet-sitting',
+  'pet-walking',
+  'phone-repair',
+  'photography',
+  'plastering-screeding',
+  'plumbing',
+  'pop-ceiling',
+  'primary-secondary-tutor',
+  'printing-services',
+  'professional-consulting',
+  'recruitment-services',
+  'roofing',
+  'shoe-making',
+  'small-chops',
+  'solar-installation',
+  'sound-lighting',
+  'tax-services',
+  'tiling-flooring',
+  'tv-repair',
+  'video-editing',
+  'videography',
+  'virtual-assistant',
+  'water-pump-repair',
+  'web-development',
+  'welding-fabrication',
+  'wifi-internet-setup',
+])
+
+const serviceImageSlugAliases = {
+  'house-building-construction': 'house-building',
+  'elderly-care-caregiver': 'elderly-care',
+  'dstv-satellite-installation': 'dstv-satellite',
 }
-
-function normalizeCategory(value) {
-  return String(value || '')
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, 'and')
-    .replace(/[-_]/g, ' ')
-    .replace(/\s+/g, ' ')
-}
-
-function normalizeSlug(value) {
-  return String(value || '')
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, 'and')
-    .replace(/[-\s/]+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-    .replace(/^-+|-+$/g, '')
-}
-
-function getServiceIcon(service) {
-  const category = normalizeCategory(service?.category)
-  const name = normalizeCategory(service?.name)
-
-  return serviceIcons[category] || serviceIcons[name] || 'ðŸ› ï¸'
-}
-
-const serviceImages = {}
-const defaultServiceImage = null
-
-const flatServiceImages = {}
-export const localServiceImages = {}
 
 export function getServiceImage(service) {
-  return null
+  if (!service) return null
+  let slug = String(service.id || '').toLowerCase().trim()
+  if (!slug) return null
+  if (serviceImageSlugAliases[slug]) {
+    slug = serviceImageSlugAliases[slug]
+  }
+  if (!serviceImageSlugs.has(slug)) return null
+  return `/images/services/${slug}-01.jpeg`
 }
 
 export function getServiceImageByKey(key) {
-  return null
+  if (!key) return null
+  let slug = String(key).toLowerCase().trim()
+  if (!slug) return null
+  if (serviceImageSlugAliases[slug]) {
+    slug = serviceImageSlugAliases[slug]
+  }
+  if (!serviceImageSlugs.has(slug)) return null
+  return `/images/services/${slug}-01.jpeg`
 }
+
+export function getServiceIcon(service) {
+  const category = normalizeCategory(service?.category)
+  const name = normalizeCategory(service?.name)
+
+  return serviceIcons[category] || serviceIcons[name] || '🛠️'
+}
+
 export function getServiceGradient(service) {
   if (!service) return 'linear-gradient(135deg, #087f3d, #066630)'
 
@@ -173,7 +137,118 @@ export function getServiceGradient(service) {
   return gradients[category] || 'linear-gradient(135deg, #087f3d, #066630)'
 }
 
-export { getServiceIcon }
+function normalizeCategory(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[-_]/g, ' ')
+    .replace(/\s+/g, ' ')
+}
 
-export default serviceImages
+const serviceIcons = {
+  plumbing: '🔧',
+  electrical: '⚡',
+  cleaning: '🧹',
+  'ac repair': '❄️',
+  'generator repair': '🔌',
+  'phone repair': '📱',
+  'computer repair': '💻',
+  carpentry: '🪚',
+  painting: '🎨',
+  'fashion and tailoring': '👕',
+  barbering: '💈',
+  beauty: '💇',
+  'house building and construction': '🏗️',
+  roofing: '🏠',
+  'tiling and flooring': '🔲',
+  'pop and ceiling': '✨',
+  'plastering and screeding': '🧱',
+  'welding and fabrication': '⚒️',
+  'aluminium and glass': '🪟',
+  'furniture making': '🪑',
+  'furniture repair': '🔨',
+  'interior decoration': '🎨',
+  handyman: '🔧',
+  'gardening and landscaping': '🌿',
+  'fumigation and pest control': '🐛',
+  'solar installation': '☀️',
+  'solar repair': '🔆',
+  'inverter installation': '🔋',
+  'cctv installation': '📹',
+  'dstv / satellite installation': '📡',
+  'borehole services': '💧',
+  'water pump repair': '🔧',
+  'auto mechanic': '🚗',
+  'auto electrical': '⚡',
+  'car detailing': '✨',
+  'car painting': '🎨',
+  'panel beating': '🔨',
+  'car battery services': '🔋',
+  'driver / chauffeur': '🧑‍✈️',
+  'moving and relocation': '📦',
+  'dispatch riders': '🏍️',
+  'food delivery': '🍱',
+  'grocery delivery': '🛒',
+  'document delivery': '📄',
+  'pickup and drop-off': '📍',
+  'laptop repair': '💻',
+  'printer repair': '🖨️',
+  'tv repair': '📺',
+  'wi-fi and internet setup': '📶',
+  'network installation': '🌐',
+  'web development': '💻',
+  'mobile app development': '📱',
+  'graphic design': '🎨',
+  'video editing': '🎬',
+  photography: '📷',
+  videography: '🎥',
+  'digital marketing': '📈',
+  'virtual assistant': '🧑‍💻',
+  hairdressing: '💇',
+  'braiding / locs': '💇‍♀️',
+  'makeup artist': '💄',
+  'nail technician': '💅',
+  'manicure and pedicure': '💅',
+  massage: '💆',
+  'fitness trainer': '🏋️',
+  'home tutor': '📚',
+  'jamb / waec tutor': '📝',
+  'primary / secondary tutor': '📖',
+  'music teacher': '🎵',
+  'language tutor': '🗣️',
+  'driving instructor': '🚗',
+  'nanny / childcare': '👶',
+  'elderly care / caregiver': '🧓',
+  'home cook / personal chef': '👨‍🍳',
+  'shoe making': '👞',
+  'bag making': '👜',
+  laundry: '👕',
+  'dry cleaning': '🧥',
+  catering: '🍽️',
+  'small chops': '🥟',
+  'cake and baking': '🎂',
+  'event planning': '📋',
+  'event decoration': '🎊',
+  dj: '🎧',
+  'mc / compere': '🎤',
+  'sound and lighting': '🔊',
+  'event photography': '📸',
+  'event videography': '🎬',
+  'equipment rentals': '🎪',
+  'pet grooming': '🐕',
+  'pet sitting': '🐾',
+  'pet walking': '🐕‍🦺',
+  accounting: '📊',
+  'tax services': '💰',
+  'recruitment services': '🤝',
+  'travel / tour services': '✈️',
+  'printing services': '🖨️',
+  translation: '🌍',
+  'professional consulting': '💼',
+}
 
+const flatServiceImages = {}
+export const localServiceImages = {}
+
+export default serviceImageSlugs
