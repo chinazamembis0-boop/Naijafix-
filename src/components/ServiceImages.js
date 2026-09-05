@@ -10,39 +10,57 @@
   'borehole-services',
   'braiding-locs',
   'cake-baking',
+  'car-ac-repair',
+  'car-battery-services',
   'car-detailing',
   'car-painting',
+  'car-wash',
   'carpentry',
   'catering',
   'cctv-installation',
   'cleaning',
+  'clothing-alteration',
+  'computer-repair',
   'digital-marketing',
   'dispatch-riders',
   'dj',
+  'document-delivery',
   'driver-chauffeur',
   'driving-instructor',
   'dry-cleaning',
-  'elderly-care',
   'dstv-satellite',
+  'elderly-care',
   'electrical',
+  'electronics-repair',
+  'equipment-rentals',
+  'errand-runner',
   'event-decoration',
+  'event-photography',
   'event-planning',
   'event-videography',
   'fashion-tailoring',
   'fitness-trainer',
+  'food-delivery',
   'fumigation-pest-control',
+  'furniture-making',
+  'furniture-repair',
   'gardening-landscaping',
   'generator-repair',
   'graphic-design',
+  'grocery-delivery',
   'hairdressing',
   'handyman',
+  'home-cook',
   'home-tutor',
   'house-building',
   'interior-decoration',
+  'inverter-installation',
+  'inverter-repair',
   'jamb-waec-tutor',
   'language-tutor',
   'laptop-repair',
   'laundry',
+  'legal-services',
   'makeup-artist',
   'manicure-pedicure',
   'massage',
@@ -53,6 +71,7 @@
   'nail-technician',
   'nanny-childcare',
   'network-installation',
+  'package-delivery',
   'painting',
   'panel-beating',
   'pet-grooming',
@@ -60,68 +79,64 @@
   'pet-walking',
   'phone-repair',
   'photography',
+  'pickup-dropoff',
   'plastering-screeding',
   'plumbing',
   'pop-ceiling',
   'primary-secondary-tutor',
+  'printer-repair',
   'printing-services',
   'professional-consulting',
   'recruitment-services',
   'roofing',
+  'security-systems',
   'shoe-making',
+  'shoe-repair',
   'small-chops',
+  'social-media-management',
   'solar-installation',
+  'solar-repair',
   'sound-lighting',
   'tax-services',
   'tiling-flooring',
+  'towing',
+  'translation',
+  'travel-tour-services',
   'tv-repair',
+  'tyre-services',
   'video-editing',
   'videography',
   'virtual-assistant',
+  'vulcanizing',
   'water-pump-repair',
+  'water-tank-services',
   'web-development',
   'welding-fabrication',
   'wifi-internet-setup',
 ])
 
-const serviceImageSlugAliases = {
-  'house-building-construction': 'house-building',
-  'elderly-care-caregiver': 'elderly-care',
-  'dstv-satellite-installation': 'dstv-satellite',
-}
-
 export function getServiceImage(service) {
   if (!service) return null
-  let slug = String(service.slug || service.id || '').toLowerCase().trim()
-  if (!slug) return null
-  if (serviceImageSlugAliases[slug]) {
-    slug = serviceImageSlugAliases[slug]
-  }
-  if (!serviceImageSlugs.has(slug)) return null
-  return `/images/services/${slug}-01.jpeg`
+  const slug = String(service.slug || '').toLowerCase().trim()
+  if (!slug || !serviceImageSlugs.has(slug)) return null
+  return `/images/services/${slug}.png`
 }
 
 export function getServiceImageByKey(key) {
   if (!key) return null
-  let slug = String(key).toLowerCase().trim()
-  if (!slug) return null
-  if (serviceImageSlugAliases[slug]) {
-    slug = serviceImageSlugAliases[slug]
-  }
-  if (!serviceImageSlugs.has(slug)) return null
-  return `/images/services/${slug}-01.jpeg`
+  const slug = String(key).toLowerCase().trim()
+  if (!slug || !serviceImageSlugs.has(slug)) return null
+  return `/images/services/${slug}.png`
 }
 
 export function getServiceIcon(service) {
   const category = normalizeCategory(service?.category)
   const name = normalizeCategory(service?.name)
-
   return serviceIcons[category] || serviceIcons[name] || '🛠️'
 }
 
 export function getServiceGradient(service) {
   if (!service) return 'linear-gradient(135deg, #087f3d, #066630)'
-
   const category = normalizeCategory(service.category)
   const gradients = {
     'home-construction': 'linear-gradient(135deg, #8B5E3C, #5D4037)',
@@ -135,7 +150,6 @@ export function getServiceGradient(service) {
     'events-food': 'linear-gradient(135deg, #EF4444, #B91C1C)',
     'professional-services': 'linear-gradient(135deg, #0EA5E9, #0369A1)',
   }
-
   return gradients[category] || 'linear-gradient(135deg, #087f3d, #066630)'
 }
 
