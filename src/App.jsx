@@ -6402,7 +6402,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
                     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                       <div style={{ width: 64, height: 64, borderRadius: 8, overflow: 'hidden', background: '#e8f0ee', flexShrink: 0 }}>
                         {getServiceImage(s) ? (
-                          <img src={getServiceImage(s)} alt={s.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <img src={getServiceImage(s)} alt={s.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         ) : (
                           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🛠️</div>
                         )}

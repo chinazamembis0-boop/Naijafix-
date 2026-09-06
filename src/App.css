@@ -223,7 +223,7 @@ button {
 
 .service-card-image-wrapper {
   width: 100%;
-  height: 110px;
+  height: 160px;
   overflow: hidden;
   position: relative;
   background: #e8f0ee;
@@ -232,7 +232,7 @@ button {
 .service-card-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
@@ -2608,7 +2608,7 @@ select:focus-visible {
 .nf-service-list-icon-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 

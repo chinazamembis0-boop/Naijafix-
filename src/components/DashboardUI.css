@@ -1054,7 +1054,7 @@
 
 .dash-service-card-image-wrapper {
   width: 100%;
-  height: 70px;
+  height: 100px;
   overflow: hidden;
   position: relative;
   background: #e8f0ee;
@@ -1063,7 +1063,7 @@
 .dash-service-card-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
