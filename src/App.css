@@ -2504,6 +2504,34 @@ select:focus-visible {
   font-size: 12px;
 }
 
+.nf-category-card-image-wrapper {
+  width: 100%;
+  height: 140px;
+  overflow: hidden;
+  position: relative;
+  background: #f8fafc;
+  border-radius: 12px;
+  margin-bottom: 4px;
+}
+
+.nf-category-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  padding: 8px;
+}
+
+@media (max-width: 480px) {
+  .nf-category-card-image-wrapper {
+    height: 120px;
+  }
+
+  .nf-category-card-image {
+    padding: 6px;
+  }
+}
+
 .nf-view-all-btn {
   display: block;
   width: 100%;

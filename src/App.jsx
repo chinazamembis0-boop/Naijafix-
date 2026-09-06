@@ -26,6 +26,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { getServiceImage } from './components/ServiceImages.js'
+import { getCategoryIllustration } from './components/CategoryImages.js'
 import { AdPlacement } from './components/AdBanner.jsx'
 import { allServices, serviceCategories } from './components/ServicesData.js'
 import FoodMarketplace from './components/FoodMarketplace.jsx'
@@ -482,17 +483,31 @@ function Home({
           </div>
 
           <div className="nf-category-grid">
-            {serviceCategories.slice(0, 8).map((category) => (
-              <button
-                className="nf-category-card"
-                key={category.id}
-                onClick={() => onViewAllServices?.(category.id)}
-              >
-                <span className="nf-category-card-icon">{category.icon}</span>
-                <strong>{category.name}</strong>
-                <span>{category.services.length} services</span>
-              </button>
-            ))}
+            {serviceCategories.slice(0, 8).map((category) => {
+              const illustration = getCategoryIllustration(category.id)
+              return (
+                <button
+                  className="nf-category-card"
+                  key={category.id}
+                  onClick={() => onViewAllServices?.(category.id)}
+                >
+                  {illustration ? (
+                    <div className="nf-category-card-image-wrapper">
+                      <img
+                        src={illustration}
+                        alt={category.name}
+                        className="nf-category-card-image"
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : (
+                    <span className="nf-category-card-icon">{category.icon}</span>
+                  )}
+                  <strong>{category.name}</strong>
+                  <span>{category.services.length} services</span>
+                </button>
+              )
+            })}
           </div>
 
           <button className="nf-view-all-btn" onClick={() => onViewAllServices?.()}>

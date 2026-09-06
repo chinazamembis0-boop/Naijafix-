@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d1fae5"/>
+      <stop offset="100%" style="stop-color:#a7f3d0"/>
+    </linearGradient>
+    <linearGradient id="scooter" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981"/>
+      <stop offset="100%" style="stop-color:#059669"/>
+    </linearGradient>
+    <linearGradient id="helmet" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="box" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#d97706"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="400" fill="url(#bg)" rx="40"/>
+  
+  <!-- Scooter body -->
+  <path d="M120 200 L140 160 L200 150 L280 160 L300 200 L290 240 L130 240 Z" fill="url(#scooter)" rx="15"/>
+  
+  <!-- Seat -->
+  <path d="M150 160 L200 145 L250 160 L240 175 L160 175 Z" fill="#047857"/>
+  
+  <!-- Front -->
+  <rect x="280" y="170" width="30" height="50" fill="url(#scooter)" rx="8"/>
+  
+  <!-- Handlebars -->
+  <rect x="275" y="150" width="40" height="8" fill="#047857" rx="4"/>
+  <circle cx="280" cy="148" r="5" fill="#fbbf24"/>
+  <circle cx="310" cy="148" r="5" fill="#fbbf24"/>
+  
+  <!-- Wheels -->
+  <circle cx="160" cy="240" r="28" fill="#1e293b"/>
+  <circle cx="160" cy="240" r="14" fill="#64748b"/>
+  <circle cx="260" cy="240" r="28" fill="#1e293b"/>
+  <circle cx="260" cy="240" r="14" fill="#64748b"/>
+  
+  <!-- Rider helmet -->
+  <circle cx="220" cy="120" r="30" fill="url(#helmet)"/>
+  <path d="M195 120 Q220 100 245 120" fill="none" stroke="#f59e0b" stroke-width="3"/>
+  
+  <!-- Package on back -->
+  <rect x="100" y="180" width="40" height="35" fill="url(#box)" rx="6"/>
+  <line x1="120" y1="180" x2="120" y2="215" stroke="#d97706" stroke-width="2"/>
+  <line x1="100" y1="197" x2="140" y2="197" stroke="#d97706" stroke-width="2"/>
+  
+  <!-- Speed lines -->
+  <line x1="60" y1="180" x2="80" y2="180" stroke="#10b981" stroke-width="3" opacity="0.5"/>
+  <line x1="50" y1="200" x2="70" y2="200" stroke="#10b981" stroke-width="3" opacity="0.5"/>
+  <line x1="60" y1="220" x2="80" y2="220" stroke="#10b981" stroke-width="3" opacity="0.5"/>
+  
+  <!-- Decorative -->
+  <circle cx="80" cy="80" r="6" fill="#10b981" opacity="0.3"/>
+  <circle cx="340" cy="100" r="8" fill="#fbbf24" opacity="0.2"/>
+</svg>

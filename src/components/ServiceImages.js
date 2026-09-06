@@ -115,18 +115,30 @@
   'wifi-internet-setup',
 ])
 
+const serviceImageFallbacks = {
+  'dstv-satellite-installation': 'dstv-satellite',
+  'elderly-care-caregiver': 'elderly-care',
+  'home-cook-personal-chef': 'home-cook',
+  'house-building-construction': 'house-building',
+  'pickup-drop-off': 'pickup-dropoff',
+}
+
 export function getServiceImage(service) {
   if (!service) return null
   const slug = String(service.slug || service.id || '').toLowerCase().trim()
-  if (!slug || !serviceImageSlugs.has(slug)) return null
-  return `/images/services/${slug}.png`
+  if (!slug) return null
+  if (serviceImageSlugs.has(slug)) return `/images/services/${slug}.png`
+  const fallback = serviceImageFallbacks[slug]
+  if (fallback && serviceImageSlugs.has(fallback)) return `/images/services/${fallback}.png`
+  return null
 }
 
 export function getServiceImageByKey(key) {
   if (!key) return null
   const slug = String(key).toLowerCase().trim()
-  if (!slug || !serviceImageSlugs.has(slug)) return null
-  return `/images/services/${slug}.png`
+  if (!slug) return null
+  if (serviceImageSlugs.has(slug)) return `/images/services/${slug}.png`
+  return null
 }
 
 export function getServiceIcon(service) {

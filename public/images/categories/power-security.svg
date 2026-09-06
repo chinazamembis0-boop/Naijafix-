@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fef3c7"/>
+      <stop offset="100%" style="stop-color:#fde68a"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fbbf24"/>
+      <stop offset="100%" style="stop-color:#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#2563eb"/>
+    </linearGradient>
+    <linearGradient id="camera" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#64748b"/>
+      <stop offset="100%" style="stop-color:#475569"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="400" fill="url(#bg)" rx="40"/>
+  
+  <!-- Lightning bolt -->
+  <polygon points="180,60 140,180 170,180 150,300 260,150 220,150 250,60" fill="url(#bolt)" stroke="#f59e0b" stroke-width="2"/>
+  
+  <!-- Shield -->
+  <path d="M200 120 L260 140 L260 200 C260 240 230 270 200 290 C170 270 140 240 140 200 L140 140 Z" fill="url(#shield)" opacity="0.9"/>
+  
+  <!-- Lock icon on shield -->
+  <rect x="185" y="190" width="30" height="25" fill="#fbbf24" rx="4"/>
+  <path d="M190 190 L190 180 C190 165 210 165 210 180 L210 190" fill="none" stroke="#fbbf24" stroke-width="4"/>
+  <circle cx="200" cy="202" r="3" fill="#78350f"/>
+  
+  <!-- Camera -->
+  <rect x="280" y="200" width="60" height="45" fill="url(#camera)" rx="8"/>
+  <rect x="290" y="210" width="25" height="25" fill="#1e293b" rx="4"/>
+  <circle cx="302" cy="222" r="8" fill="#3b82f6"/>
+  <rect x="325" y="205" width="10" height="8" fill="#ef4444" rx="2"/>
+  
+  <!-- Decorative elements -->
+  <circle cx="80" cy="120" r="8" fill="#fbbf24" opacity="0.3"/>
+  <circle cx="320" cy="100" r="6" fill="#3b82f6" opacity="0.3"/>
+  <circle cx="100" cy="300" r="10" fill="#ef4444" opacity="0.2"/>
+</svg>

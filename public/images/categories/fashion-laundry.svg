@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff7ed"/>
+      <stop offset="100%" style="stop-color:#ffedd5"/>
+    </linearGradient>
+    <linearGradient id="shirt" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f97316"/>
+      <stop offset="100%" style="stop-color:#ea580c"/>
+    </linearGradient>
+    <linearGradient id="hanger" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#94a3b8"/>
+      <stop offset="100%" style="stop-color:#64748b"/>
+    </linearGradient>
+    <linearGradient id="machine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#2563eb"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="400" fill="url(#bg)" rx="40"/>
+  
+  <!-- Hanger -->
+  <path d="M200 60 L200 90" stroke="url(#hanger)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M160 90 Q200 110 240 90" fill="none" stroke="url(#hanger)" stroke-width="6"/>
+  
+  <!-- Shirt -->
+  <path d="M160 90 L140 110 L140 200 L260 200 L260 110 L240 90 Q200 110 160 90" fill="url(#shirt)"/>
+  
+  <!-- Shirt collar -->
+  <path d="M180 90 L200 120 L220 90" fill="none" stroke="#fbbf24" stroke-width="4"/>
+  
+  <!-- Shirt buttons -->
+  <circle cx="200" cy="140" r="4" fill="#fbbf24"/>
+  <circle cx="200" cy="160" r="4" fill="#fbbf24"/>
+  <circle cx="200" cy="180" r="4" fill="#fbbf24"/>
+  
+  <!-- Washing machine -->
+  <rect x="60" y="220" width="120" height="100" fill="url(#machine)" rx="12"/>
+  <circle cx="120" cy="270" r="35" fill="#1e293b"/>
+  <circle cx="120" cy="270" r="20" fill="#3b82f6"/>
+  
+  <!-- Machine door -->
+  <circle cx="120" cy="270" r="40" fill="none" stroke="#60a5fa" stroke-width="3"/>
+  
+  <!-- Machine controls -->
+  <rect x="140" y="230" width="25" height="15" fill="#1e293b" rx="3"/>
+  <circle cx="152" cy="260" r="5" fill="#fbbf24"/>
+  
+  <!-- Folded clothes -->
+  <rect x="250" y="240" width="70" height="20" fill="#fbbf24" rx="4"/>
+  <rect x="250" y="265" width="70" height="20" fill="#f97316" rx="4"/>
+  <rect x="250" y="290" width="70" height="20" fill="#ef4444" rx="4"/>
+  
+  <!-- Decorative -->
+  <circle cx="80" cy="80" r="6" fill="#f97316" opacity="0.3"/>
+  <circle cx="340" cy="70" r="8" fill="#fbbf24" opacity="0.2"/>
+  <circle cx="320" cy="320" r="5" fill="#3b82f6" opacity="0.3"/>
+</svg>

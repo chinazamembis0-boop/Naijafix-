@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#dbeafe"/>
+      <stop offset="100%" style="stop-color:#bfdbfe"/>
+    </linearGradient>
+    <linearGradient id="car" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#2563eb"/>
+    </linearGradient>
+    <linearGradient id="wheel" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e293b"/>
+      <stop offset="100%" style="stop-color:#0f172a"/>
+    </linearGradient>
+    <linearGradient id="window" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#bfdbfe"/>
+      <stop offset="100%" style="stop-color:#93c5fd"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="400" fill="url(#bg)" rx="40"/>
+  
+  <!-- Car body -->
+  <path d="M80 220 L100 180 L160 160 L240 160 L300 180 L320 220 L320 260 L80 260 Z" fill="url(#car)" rx="20"/>
+  
+  <!-- Car top/cabin -->
+  <path d="M130 180 L150 140 L250 140 L270 180 Z" fill="url(#car)" opacity="0.8"/>
+  
+  <!-- Windows -->
+  <path d="M135 175 L152 145 L200 145 L200 175 Z" fill="url(#window)"/>
+  <path d="M205 175 L205 145 L248 145 L265 175 Z" fill="url(#window)"/>
+  
+  <!-- Wheels -->
+  <circle cx="140" cy="260" r="30" fill="url(#wheel)"/>
+  <circle cx="140" cy="260" r="15" fill="#64748b"/>
+  <circle cx="260" cy="260" r="30" fill="url(#wheel)"/>
+  <circle cx="260" cy="260" r="15" fill="#64748b"/>
+  
+  <!-- Headlights -->
+  <ellipse cx="310" cy="230" rx="8" ry="12" fill="#fbbf24"/>
+  
+  <!-- Road -->
+  <rect x="0" y="290" width="400" height="8" fill="#94a3b8" rx="4"/>
+  
+  <!-- Speed lines -->
+  <line x1="50" y1="240" x2="70" y2="240" stroke="#3b82f6" stroke-width="3" opacity="0.5"/>
+  <line x1="40" y1="250" x2="60" y2="250" stroke="#3b82f6" stroke-width="3" opacity="0.5"/>
+  <line x1="50" y1="260" x2="70" y2="260" stroke="#3b82f6" stroke-width="3" opacity="0.5"/>
+  
+  <!-- Decorative -->
+  <circle cx="80" cy="100" r="6" fill="#fbbf24" opacity="0.3"/>
+  <circle cx="340" cy="80" r="8" fill="#3b82f6" opacity="0.2"/>
+</svg>

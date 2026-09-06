@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f5f3ff"/>
+      <stop offset="100%" style="stop-color:#ede9fe"/>
+    </linearGradient>
+    <linearGradient id="book" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b5cf6"/>
+      <stop offset="100%" style="stop-color:#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="family" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#4f46e5"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="400" height="400" fill="url(#bg)" rx="40"/>
+  
+  <!-- Large book -->
+  <rect x="100" y="140" width="140" height="160" fill="url(#book)" rx="12"/>
+  <rect x="110" y="150" width="120" height="140" fill="#f5f3ff" rx="6"/>
+  
+  <!-- Book spine -->
+  <rect x="100" y="140" width="20" height="160" fill="#6d28d9" rx="6"/>
+  
+  <!-- Book pages lines -->
+  <line x1="140" y1="170" x2="240" y2="170" stroke="#8b5cf6" stroke-width="3"/>
+  <line x1="140" y1="190" x2="240" y2="190" stroke="#8b5cf6" stroke-width="3"/>
+  <line x1="140" y1="210" x2="220" y2="210" stroke="#8b5cf6" stroke-width="3"/>
+  
+  <!-- Family figures -->
+  <!-- Adult -->
+  <circle cx="280" cy="200" r="25" fill="url(#family)"/>
+  <rect x="260" y="230" width="40" height="60" fill="url(#family)" rx="10"/>
+  
+  <!-- Child 1 -->
+  <circle cx="330" cy="240" r="18" fill="#a78bfa"/>
+  <rect x="315" y="262" width="30" height="45" fill="#a78bfa" rx="8"/>
+  
+  <!-- Child 2 -->
+  <circle cx="230" cy="240" r="18" fill="#a78bfa"/>
+  <rect x="215" y="262" width="30" height="45" fill="#a78bfa" rx="8"/>
+  
+  <!-- Graduation cap on adult -->
+  <rect x="270" y="175" width="20" height="5" fill="#fbbf24"/>
+  <rect x="285" y="165" width="5" height="15" fill="#fbbf24"/>
+  
+  <!-- Apple -->
+  <circle cx="320" cy="320" r="15" fill="#ef4444"/>
+  <path d="M320 305 L325 295" stroke="#059669" stroke-width="3"/>
+  
+  <!-- Decorative -->
+  <circle cx="70" cy="100" r="6" fill="#8b5cf6" opacity="0.3"/>
+  <circle cx="350" cy="80" r="8" fill="#6366f1" opacity="0.2"/>
+  <circle cx="60" cy="320" r="5" fill="#fbbf24" opacity="0.3"/>
+</svg>
