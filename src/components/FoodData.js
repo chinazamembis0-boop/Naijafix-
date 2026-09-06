@@ -474,7 +474,7 @@ export async function fetchRestaurants() {
       reviewCount: 0,
       cuisine: r.cuisine || 'Nigerian Food',
       categories: r.cuisine ? [r.cuisine.toLowerCase().replace(/\s+/g, '-')] : ['nigerian-food'],
-      deliveryTime: r.estimated_delivery_minutes ? `${r.estimated_delivery_minutes-10}-${r.estimated_delivery_minutes} min` : '30-45 min',
+      deliveryTime: r.estimated_delivery_minutes ? `${Math.max(5, r.estimated_delivery_minutes-10)}-${r.estimated_delivery_minutes} min` : '30-45 min',
       deliveryFee: Number(r.delivery_fee) || 0,
       isOpen: r.is_open !== false,
       address: r.address || r.city || 'Lagos',
@@ -510,7 +510,7 @@ export async function fetchRestaurantMenu(restaurantId) {
       description: item.description || '',
       price: Number(item.price),
       image: item.image_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&h=200&fit=crop',
-      category: 'main',
+      category: item.category || 'main',
       popular: false,
       _supabaseId: item.id,
     }))
