@@ -7256,15 +7256,15 @@ function App() {
           }),
       ])
 
-       if (
-         !servicesResult.error &&
-         servicesResult.data &&
-         servicesResult.data.length > 0
-       ) {
-         setDbServices(
-           dedupeServices(servicesResult.data)
-         )
-       }
+        if (
+          !servicesResult.error &&
+          servicesResult.data &&
+          servicesResult.data.length > 0
+        ) {
+          setDbServices(
+            dedupeServices([...defaultServices, ...servicesResult.data])
+          )
+        }
 
       if (servicesResult.error) {
         console.error(
