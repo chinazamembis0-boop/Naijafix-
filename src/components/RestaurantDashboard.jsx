@@ -8,7 +8,7 @@ function formatNaira(amount) {
   return `₦${Number(amount).toLocaleString()}`
 }
 
-function RestaurantDashboard({ user, onBack }) {
+function RestaurantDashboard({ user, onBack, onRegister }) {
   const [restaurant, setRestaurant] = useState(null)
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
@@ -247,8 +247,23 @@ function RestaurantDashboard({ user, onBack }) {
         </header>
         <main className="inner-content">
           <span className="section-label">RESTAURANT</span>
-          <h2>No Restaurant Found</h2>
-          <p>You have not registered a restaurant yet. Contact NaijaFix support to set up your restaurant.</p>
+          {!user ? (
+            <>
+              <h2>No Restaurant Found</h2>
+              <p>Please log in to manage your restaurant on NaijaFix.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
+                <button className="primary-full" onClick={onBack}>Go to Home</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h2>No Restaurant Found</h2>
+              <p>You have not registered a restaurant yet. Register your restaurant to start receiving orders.</p>
+              <button className="primary-full" onClick={onRegister} style={{ marginTop: 16 }}>
+                Register Your Restaurant
+              </button>
+            </>
+          )}
         </main>
       </div>
     )

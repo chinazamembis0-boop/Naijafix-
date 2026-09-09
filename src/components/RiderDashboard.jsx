@@ -5,7 +5,7 @@ function formatNaira(amount) {
   return `₦${Number(amount).toLocaleString()}`
 }
 
-function RiderDashboard({ user, onBack }) {
+function RiderDashboard({ user, onBack, onLogin, onSignup }) {
   const [rider, setRider] = useState(null)
   const [loading, setLoading] = useState(true)
   const [deliveries, setDeliveries] = useState([])
@@ -141,9 +141,22 @@ function RiderDashboard({ user, onBack }) {
         </header>
         <main className="inner-content">
           <span className="section-label">RIDER</span>
-          <h2>Become a Delivery Rider</h2>
-          <p>Register as a rider to start accepting delivery assignments.</p>
-          <button className="primary-full" onClick={registerRider}>Register as Rider</button>
+          {!user ? (
+            <>
+              <h2>Become a Delivery Rider</h2>
+              <p>Register as a rider to start accepting delivery assignments.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button className="primary-full" onClick={onSignup}>Create account</button>
+                <button className="secondary-button" onClick={onLogin}>Log in</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h2>Become a Delivery Rider</h2>
+              <p>Register as a rider to start accepting delivery assignments.</p>
+              <button className="primary-full" onClick={registerRider}>Register as Rider</button>
+            </>
+          )}
         </main>
       </div>
     )

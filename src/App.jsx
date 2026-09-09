@@ -34,6 +34,7 @@ import FoodCart from './components/FoodCart.jsx'
 import ViewAllServices from './components/ViewAllServices.jsx'
 import RestaurantDashboard from './components/RestaurantDashboard.jsx'
 import RiderDashboard from './components/RiderDashboard.jsx'
+import RestaurantSignup from './components/RestaurantSignup.jsx'
 
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -386,6 +387,8 @@ function Home({
   onLogin,
   onSignup,
   onProviderSignup,
+  onRiderSignup,
+  onRestaurantSignup,
   onService,
   onViewAllServices,
   onFood,
@@ -444,6 +447,15 @@ function Home({
               >
                 I'm a service provider
               </button>
+
+              {onRiderSignup && (
+                <button
+                  className="secondary-button"
+                  onClick={onRiderSignup}
+                >
+                  Become a Delivery Rider
+                </button>
+              )}
             </div>
 
             <div className="home-search">
@@ -472,6 +484,22 @@ function Home({
                 <span className="nf-home-food-arrow">→</span>
               </div>
             </button>
+            {onRestaurantSignup && (
+              <button
+                className="nf-home-food-banner"
+                onClick={onRestaurantSignup}
+                style={{ marginTop: 10 }}
+              >
+                <div className="nf-home-food-banner-content">
+                  <span className="nf-home-food-icon">🏪</span>
+                  <div>
+                    <h3>Register Your Restaurant</h3>
+                    <p>List your business on NaijaFix and start receiving orders</p>
+                  </div>
+                  <span className="nf-home-food-arrow">→</span>
+                </div>
+              </button>
+            )}
           </section>
         )}
 
@@ -1093,6 +1121,37 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
       }
     }
 
+    if (role === 'rider') {
+      const { error: riderError } =
+        await supabase
+          .from('riders')
+          .upsert(
+            {
+              user_id: userId,
+              full_name: name,
+              phone,
+              vehicle_type: 'motorcycle',
+              active: true,
+              available: true,
+            },
+            { onConflict: 'user_id', ignoreDuplicates: true }
+          )
+
+      if (riderError) {
+        console.error(
+          'Rider profile creation failed:',
+          riderError
+        )
+
+        alert(
+          'Account was created, but the rider profile could not be saved: ' +
+            riderError.message
+        )
+
+        return false
+      }
+    }
+
     const appUser = {
       id: profile.id,
       user_id: userId,
@@ -1173,6 +1232,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
           >
             <option value="customer">Customer</option>
             <option value="provider">Service Provider</option>
+            <option value="rider">Delivery Rider</option>
           </select>
 
           <label>Password</label>
@@ -1241,6 +1301,8 @@ function Dashboard({
   onProfile,
   onProviderDashboard,
   onAdminDashboard,
+  onRiderDashboard,
+  onRestaurantDashboard,
   onConversations,
   onFavorites,
   onProvider,
@@ -1482,6 +1544,10 @@ function Dashboard({
             <button className="dash-btn dash-btn-outline dash-btn-sm" onClick={onAdminDashboard}>⚙️ Admin</button>
           ) : user?.role === 'provider' ? (
             <button className="dash-btn dash-btn-outline dash-btn-sm" onClick={onProviderDashboard}>Provider</button>
+          ) : user?.role === 'rider' ? (
+            <button className="dash-btn dash-btn-outline dash-btn-sm" onClick={onRiderDashboard}>🏍️ Rider</button>
+          ) : user?.role === 'restaurant' ? (
+            <button className="dash-btn dash-btn-outline dash-btn-sm" onClick={onRestaurantDashboard}>🏪 Restaurant</button>
           ) : null
         }
       />
@@ -7430,6 +7496,10 @@ function App() {
             ? 'admin-dashboard'
             : appUser.role === 'provider'
             ? 'provider-dashboard'
+            : appUser.role === 'rider'
+            ? 'rider-dashboard'
+            : appUser.role === 'restaurant'
+            ? 'restaurant-dashboard'
             : 'dashboard'
         )
       }
@@ -7474,13 +7544,17 @@ function App() {
       ? 'admin-dashboard'
       : user?.role === 'provider'
       ? 'provider-dashboard'
+      : user?.role === 'rider'
+      ? 'rider-dashboard'
+      : user?.role === 'restaurant'
+      ? 'restaurant-dashboard'
       : 'dashboard'
 
   const effectivePage = !user
     ? page
     : page === 'admin-dashboard' && user?.role !== 'admin'
     ? 'home'
-    : page === 'dashboard' || page === 'provider-dashboard'
+    : page === 'dashboard' || page === 'provider-dashboard' || page === 'rider-dashboard' || page === 'restaurant-dashboard'
     ? dashboardPageByRole
     : page
 
@@ -7502,6 +7576,10 @@ function App() {
           setPage(
             saved?.role === 'provider'
               ? 'provider-dashboard'
+              : saved?.role === 'rider'
+              ? 'rider-dashboard'
+              : saved?.role === 'restaurant'
+              ? 'restaurant-dashboard'
               : saved?.role === 'admin'
               ? 'admin-dashboard'
               : 'dashboard'
@@ -7528,6 +7606,10 @@ function App() {
             setPage(
               saved.role === 'provider'
                 ? 'provider-dashboard'
+                : saved.role === 'rider'
+                ? 'rider-dashboard'
+                : saved.role === 'restaurant'
+                ? 'restaurant-dashboard'
                 : saved.role === 'admin'
                 ? 'admin-dashboard'
                 : 'dashboard'
@@ -7558,6 +7640,10 @@ function App() {
             setPage(
               saved.role === 'provider'
                 ? 'provider-dashboard'
+                : saved.role === 'rider'
+                ? 'rider-dashboard'
+                : saved.role === 'restaurant'
+                ? 'restaurant-dashboard'
                 : saved.role === 'admin'
                 ? 'admin-dashboard'
                 : 'dashboard'
@@ -7566,6 +7652,48 @@ function App() {
             setPage('login')
           }
         }}
+      />
+    )
+  }
+
+  if (effectivePage === 'rider-signup') {
+    return (
+      <Signup
+        initialRole="rider"
+        onBack={() => setPage('home')}
+        onLogin={() => {
+          const saved = JSON.parse(
+            localStorage.getItem(
+              'naijafixUser'
+            ) || 'null'
+          )
+
+          setCurrentUser(saved)
+
+          if (saved?.user_id) {
+            setPage(
+              saved.role === 'rider'
+                ? 'rider-dashboard'
+                : saved.role === 'provider'
+                ? 'provider-dashboard'
+                : saved.role === 'admin'
+                ? 'admin-dashboard'
+                : 'dashboard'
+            )
+          } else {
+            setPage('login')
+          }
+        }}
+      />
+    )
+  }
+
+  if (effectivePage === 'restaurant-signup') {
+    return (
+      <RestaurantSignup
+        user={user}
+        onBack={() => setPage('home')}
+        onSuccess={() => setPage('restaurant-dashboard')}
       />
     )
   }
@@ -7624,6 +7752,15 @@ function App() {
         }
         onProviderDashboard={() =>
           setPage('provider-dashboard')
+        }
+        onAdminDashboard={() =>
+          setPage('admin-dashboard')
+        }
+        onRiderDashboard={() =>
+          setPage('rider-dashboard')
+        }
+        onRestaurantDashboard={() =>
+          setPage('restaurant-dashboard')
         }
         onConversations={() =>
           setPage('conversations')
@@ -7908,6 +8045,7 @@ function App() {
       <RestaurantDashboard
         user={user}
         onBack={() => setPage('home')}
+        onRegister={() => setPage('restaurant-signup')}
       />
     )
   }
@@ -7917,6 +8055,8 @@ function App() {
       <RiderDashboard
         user={user}
         onBack={() => setPage('home')}
+        onLogin={() => setPage('login')}
+        onSignup={() => setPage('rider-signup')}
       />
     )
   }
@@ -7932,6 +8072,12 @@ function App() {
       }
       onProviderSignup={() =>
         setPage('provider-signup')
+      }
+      onRiderSignup={() =>
+        setPage('rider-signup')
+      }
+      onRestaurantSignup={() =>
+        setPage('restaurant-signup')
       }
       onService={goToService}
       onViewAllServices={(categoryId) => {
