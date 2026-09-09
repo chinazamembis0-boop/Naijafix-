@@ -156,7 +156,7 @@ export function getServiceIcon(service) {
 }
 
 export function getServiceGradient(service) {
-  if (!service) return 'linear-gradient(135deg, #087f3d, #066630)'
+  if (!service) return 'linear-gradient(135deg, #12304A, #0a1f33)'
   const category = normalizeCategory(service.category)
   const gradients = {
     'home-construction': 'linear-gradient(135deg, #8B5E3C, #5D4037)',
@@ -165,12 +165,12 @@ export function getServiceGradient(service) {
     'delivery-errands': 'linear-gradient(135deg, #10B981, #059669)',
     'technology-digital': 'linear-gradient(135deg, #6366F1, #4F46E5)',
     'beauty-personal-care': 'linear-gradient(135deg, #EC4899, #BE185D)',
-    'family-education': 'linear-gradient(135deg, #8B5CF6, #6D28D9)',
+    'family-education': 'linear-gradient(135deg, #8B5CF6, #6D28B9)',
     'fashion-laundry': 'linear-gradient(135deg, #F97316, #C2410C)',
     'events-food': 'linear-gradient(135deg, #EF4444, #B91C1C)',
     'professional-services': 'linear-gradient(135deg, #0EA5E9, #0369A1)',
   }
-  return gradients[category] || 'linear-gradient(135deg, #087f3d, #066630)'
+  return gradients[category] || 'linear-gradient(135deg, #12304A, #0a1f33)'
 }
 
 function normalizeCategory(value) {

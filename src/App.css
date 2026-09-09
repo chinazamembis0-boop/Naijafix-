@@ -9,8 +9,8 @@ html {
 body {
   margin: 0;
   font-family: 'Trebuchet MS', 'Segoe UI', sans-serif;
-  background: #f5f7f6;
-  color: #17221d;
+  background: var(--nf-bg);
+  color: var(--nf-text);
 }
 
 h1,
@@ -55,7 +55,7 @@ button {
 .brand-icon {
   width: 44px;
   height: 44px;
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   border-radius: 12px;
   display: grid;
@@ -81,7 +81,7 @@ button {
 }
 
 .brand span {
-  color: #66736c;
+  color: var(--nf-text-muted);
   font-size: 11px;
 }
 
@@ -89,7 +89,7 @@ button {
 .primary-button,
 .primary-full {
   border: 0;
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   border-radius: 9px;
   font-weight: 800;
@@ -101,7 +101,7 @@ button {
 
 .hero {
   padding: 90px 7%;
-  background: linear-gradient(135deg, #e7f7ed, #ffffff);
+  background: linear-gradient(135deg, var(--nf-navy-light), #ffffff);
 }
 
 .hero-content {
@@ -113,7 +113,7 @@ button {
 .welcome,
 .section-label,
 .dashboard-small {
-  color: #087f3d;
+  color: var(--nf-navy);
   font-weight: 800;
   letter-spacing: 1px;
   font-size: 12px;
@@ -126,13 +126,13 @@ button {
 }
 
 .hero h2 strong {
-  color: #087f3d;
+  color: var(--nf-navy);
 }
 
 .hero p {
   max-width: 700px;
   margin: auto;
-  color: #607068;
+  color: var(--nf-text-muted);
   font-size: 18px;
   line-height: 1.6;
 }
@@ -152,9 +152,9 @@ button {
   align-items: center;
   gap: 10px;
   background: white;
-  border: 1px solid #dce5df;
+  border: 1px solid var(--nf-border-input);
   border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(8, 127, 61, .08);
+  box-shadow: 0 10px 25px rgba(18, 48, 74, .08);
 }
 
 .home-search input {
@@ -173,8 +173,8 @@ button {
 
 .secondary-button {
   background: white;
-  color: #087f3d;
-  border: 1px solid #cfdad3;
+  color: var(--nf-navy);
+  border: 1px solid var(--nf-border);
 }
 
 .section {
@@ -197,7 +197,7 @@ button {
 
 .service-card {
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 15px;
   padding: 23px 15px;
   text-align: left;
@@ -206,7 +206,7 @@ button {
 
 .service-card:hover {
   transform: translateY(-3px);
-  border-color: #087f3d;
+  border-color: var(--nf-navy);
 }
 
 .service-icon {
@@ -226,7 +226,7 @@ button {
   height: 160px;
   overflow: hidden;
   position: relative;
-  background: #e8f0ee;
+  background: var(--nf-bg);
 }
 
 .service-card-image {
@@ -243,7 +243,7 @@ button {
   align-items: center;
   justify-content: center;
   font-size: 36px;
-  background: #e8f0ee;
+  background: var(--nf-bg);
 }
 
 .service-card--image strong {
@@ -260,7 +260,7 @@ button {
 }
 
 .service-card span {
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 13px;
   line-height: 1.5;
   margin-top: 7px;
@@ -277,7 +277,7 @@ button {
 
 .trust-section div {
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 15px;
   padding: 24px;
 }
@@ -292,12 +292,12 @@ button {
 }
 
 .trust-section p {
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 14px;
 }
 
 footer {
-  background: #17221d;
+  background: var(--nf-text);
   color: white;
   padding: 28px 7%;
   display: flex;
@@ -313,7 +313,7 @@ footer .brand span {
 
 .nf-ad-banner {
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 15px;
   overflow: hidden;
   transition: box-shadow 0.2s;
@@ -334,7 +334,7 @@ footer .brand span {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 1px;
-  color: #087f3d;
+  color: var(--nf-navy);
   text-transform: uppercase;
 }
 
@@ -342,7 +342,7 @@ footer .brand span {
   background: transparent;
   border: 0;
   font-size: 20px;
-  color: #68746d;
+  color: var(--nf-text-muted);
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
@@ -350,15 +350,15 @@ footer .brand span {
 }
 
 .nf-ad-dismiss:hover {
-  background: #f5f7f6;
-  color: #17221d;
+  background: var(--nf-bg);
+  color: var(--nf-text);
 }
 
 .nf-ad-image-wrapper {
   width: 100%;
   height: 160px;
   overflow: hidden;
-  background: #e8f0ee;
+  background: var(--nf-bg);
 }
 
 .nf-ad-image {
@@ -374,7 +374,7 @@ footer .brand span {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #e7f7ed, #ffffff);
+  background: linear-gradient(135deg, var(--nf-navy-light), #ffffff);
 }
 
 .nf-ad-fallback-icon {
@@ -384,7 +384,7 @@ footer .brand span {
 .nf-ad-visual {
   width: 100%;
   height: 140px;
-  background: linear-gradient(135deg, #087f3d, #066630);
+  background: linear-gradient(135deg, var(--nf-navy), var(--nf-navy-dark));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -419,13 +419,13 @@ footer .brand span {
 
 .nf-ad-description {
   margin: 0 0 12px;
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 13px;
   line-height: 1.5;
 }
 
 .nf-ad-cta {
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   border: 0;
   padding: 8px 16px;
@@ -437,7 +437,7 @@ footer .brand span {
 }
 
 .nf-ad-cta:hover {
-  background: #066630;
+  background: var(--nf-navy-dark);
 }
 
 .nf-ad-placement {
@@ -488,7 +488,7 @@ footer .brand span {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #e7f7ed, #ffffff);
+  background: linear-gradient(135deg, var(--nf-navy-light), #ffffff);
 }
 
 .nf-ad-video-fallback img {
@@ -535,7 +535,7 @@ footer .brand span {
 }
 
 .nf-ad-video-cta {
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   border: 0;
   padding: 8px 16px;
@@ -548,7 +548,7 @@ footer .brand span {
 }
 
 .nf-ad-video-cta:hover {
-  background: #066630;
+  background: var(--nf-navy-dark);
 }
 
 .nf-ad-video-controls {
@@ -613,7 +613,7 @@ footer .brand span {
 .nf-ad-video-content {
   padding: 12px 14px;
   background: white;
-  border-top: 1px solid #e0e7e2;
+  border-top: 1px solid var(--nf-border);
 }
 
 .nf-ad-video-title {
@@ -624,7 +624,7 @@ footer .brand span {
 
 .nf-ad-video-description {
   margin: 0 0 10px;
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 13px;
   line-height: 1.45;
 }
@@ -709,7 +709,7 @@ footer .brand span {
 }
 
 .auth-card > p {
-  color: #68746d;
+  color: var(--nf-text-muted);
   line-height: 1.5;
 }
 
@@ -725,7 +725,7 @@ footer .brand span {
 .request-form textarea {
   width: 100%;
   padding: 13px;
-  border: 1px solid #d8e1dc;
+  border: 1px solid var(--nf-border-input);
   border-radius: 9px;
   outline: none;
 }
@@ -733,7 +733,7 @@ footer .brand span {
 .auth-card input:focus,
 .request-form input:focus,
 .request-form textarea:focus {
-  border-color: #087f3d;
+  border-color: var(--nf-navy);
 }
 
 .password-field {
@@ -752,7 +752,7 @@ footer .brand span {
   background: transparent;
   border: 0;
   padding: 10px;
-  color: #68746d;
+  color: var(--nf-text-muted);
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -762,7 +762,7 @@ footer .brand span {
 }
 
 .password-toggle:hover {
-  color: #17221d;
+  color: var(--nf-text);
 }
 
 .primary-full {
@@ -774,7 +774,7 @@ footer .brand span {
 .back-link {
   border: 0;
   background: transparent;
-  color: #68746d;
+  color: var(--nf-text-muted);
   margin-bottom: 20px;
 }
 
@@ -786,14 +786,14 @@ footer .brand span {
 .auth-switch button {
   border: 0;
   background: transparent;
-  color: #087f3d;
+  color: var(--nf-navy);
   font-weight: 800;
 }
 
 /* DASHBOARD */
 
 .dashboard {
-  background: #f5f7f6;
+  background: var(--nf-bg);
   padding-bottom: 95px;
 }
 
@@ -803,7 +803,7 @@ footer .brand span {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e0e7e2;
+  border-bottom: 1px solid var(--nf-border);
 }
 
 .dashboard-header h2 {
@@ -813,16 +813,16 @@ footer .brand span {
 
 .dashboard-header p {
   margin: 0;
-  color: #68746d;
+  color: var(--nf-text-muted);
 }
 
 .provider-dashboard-link {
   margin-top: 14px;
-  border: 1px solid #087f3d;
+  border: 1px solid var(--nf-navy);
   border-radius: 8px;
   padding: 9px 14px;
   background: white;
-  color: #087f3d;
+  color: var(--nf-navy);
   font-weight: 800;
 }
 
@@ -832,7 +832,7 @@ footer .brand span {
 .provider-avatar {
   border: 0;
   border-radius: 50%;
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   display: grid;
   place-items: center;
@@ -860,7 +860,7 @@ footer .brand span {
   max-width: 900px;
   margin: 25px auto;
   background: white;
-  border: 1px solid #dce5df;
+  border: 1px solid var(--nf-border-input);
   border-radius: 12px;
   padding: 14px 18px;
   display: flex;
@@ -898,7 +898,7 @@ footer .brand span {
 .dashboard-title button {
   border: 0;
   background: transparent;
-  color: #087f3d;
+  color: var(--nf-navy);
   font-weight: 800;
 }
 
@@ -910,7 +910,7 @@ footer .brand span {
 
 .dashboard-services button {
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 12px;
   padding: 18px 8px;
   display: grid;
@@ -924,7 +924,7 @@ footer .brand span {
 
 .empty-box {
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 15px;
   padding: 35px;
   text-align: center;
@@ -939,12 +939,12 @@ footer .brand span {
 }
 
 .empty-box p {
-  color: #68746d;
+  color: var(--nf-text-muted);
 }
 
 .small-green-button {
   border: 0;
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   border-radius: 8px;
   padding: 10px 16px;
@@ -957,7 +957,7 @@ footer .brand span {
   right: 0;
   bottom: 0;
   background: white;
-  border-top: 1px solid #dce5df;
+  border-top: 1px solid var(--nf-border-input);
   padding: 10px;
   display: flex;
   justify-content: center;
@@ -968,7 +968,7 @@ footer .brand span {
 .dashboard-nav button {
   border: 0;
   background: transparent;
-  color: #68746d;
+  color: var(--nf-text-muted);
   display: grid;
   gap: 3px;
   justify-items: center;
@@ -984,7 +984,7 @@ select:focus-visible {
 }
 
 .dashboard-nav .active {
-  color: #087f3d;
+  color: var(--nf-navy);
   font-weight: 800;
 }
 
@@ -1014,7 +1014,7 @@ select:focus-visible {
   gap: 15px;
   padding: 16px 18px;
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 12px;
 }
 
@@ -1029,7 +1029,7 @@ select:focus-visible {
 
 .recent-booking div span {
   margin-top: 5px;
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1056,7 +1056,7 @@ select:focus-visible {
   width: 100%;
   text-align: left;
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 15px;
   padding: 20px;
   display: grid;
@@ -1077,13 +1077,13 @@ select:focus-visible {
 
 .provider-info p {
   margin: 5px 0;
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 13px;
 }
 
 .verified,
 .verified-badge {
-  color: #087f3d;
+  color: var(--nf-navy);
   font-size: 12px;
   font-weight: 800;
 }
@@ -1093,7 +1093,7 @@ select:focus-visible {
 }
 
 .arrow {
-  color: #087f3d;
+  color: var(--nf-navy);
   font-size: 22px;
 }
 
@@ -1114,21 +1114,21 @@ select:focus-visible {
 }
 
 .provider-location {
-  color: #68746d;
+  color: var(--nf-text-muted);
 }
 
 .stats-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 15px;
   margin: 30px 0;
 }
 
 .stats-row div {
   padding: 20px;
-  border-right: 1px solid #e0e7e2;
+  border-right: 1px solid var(--nf-border);
 }
 
 .stats-row div:last-child {
@@ -1141,7 +1141,7 @@ select:focus-visible {
 }
 
 .stats-row span {
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 12px;
   margin-top: 5px;
 }
@@ -1151,7 +1151,7 @@ select:focus-visible {
 .booking-card,
 .notification-card {
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 15px;
   padding: 25px;
   text-align: left;
@@ -1159,7 +1159,7 @@ select:focus-visible {
 }
 
 .details-card p {
-  color: #68746d;
+  color: var(--nf-text-muted);
   line-height: 1.6;
 }
 
@@ -1167,7 +1167,7 @@ select:focus-visible {
   background: white;
   padding: 25px;
   border-radius: 15px;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
 }
 
 .request-form label {
@@ -1192,22 +1192,22 @@ select:focus-visible {
 }
 
 .booking-status.accepted {
-  background: #e5f7ec;
-  color: #087f3d;
+  background: var(--nf-status-success-bg);
+  color: var(--nf-status-success-text);
 }
 
 .booking-status.declined {
-  background: #fde9e9;
-  color: #b52b2b;
+  background: var(--nf-status-error-bg);
+  color: var(--nf-status-error-text);
 }
 
 .booking-status.pending {
-  background: #fff4d6;
-  color: #8a6500;
+  background: var(--nf-status-warning-bg);
+  color: var(--nf-status-warning-text);
 }
 
 .booking-card p {
-  color: #68746d;
+  color: var(--nf-text-muted);
 }
 
 .notification-card {
@@ -1217,8 +1217,8 @@ select:focus-visible {
 }
 
 .notification-card.unread {
-  border-left: 4px solid #087f3d;
-  background: #fbfffc;
+  border-left: 4px solid var(--nf-navy);
+  background: var(--nf-navy-light);
 }
 
 .notification-card.read {
@@ -1230,7 +1230,7 @@ select:focus-visible {
 }
 
 .notification-card p {
-  color: #68746d;
+  color: var(--nf-text-muted);
 }
 
 .profile-page {
@@ -1257,7 +1257,7 @@ select:focus-visible {
 }
 
 .profile-card span {
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 12px;
   margin-bottom: 5px;
 }
@@ -1281,7 +1281,7 @@ select:focus-visible {
 .request-summary div {
   padding: 15px 12px;
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 12px;
   text-align: center;
 }
@@ -1297,7 +1297,7 @@ select:focus-visible {
 
 .request-summary span {
   margin-top: 4px;
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 12px;
 }
 
@@ -1312,7 +1312,7 @@ select:focus-visible {
   border: 0;
   border-radius: 8px;
   padding: 10px 16px;
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   font-weight: 800;
 }
@@ -1325,7 +1325,7 @@ select:focus-visible {
 
 .feature-panel {
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 15px;
   padding: 20px;
   margin-bottom: 15px;
@@ -1338,7 +1338,7 @@ select:focus-visible {
 }
 
 .feature-panel p {
-  color: #68746d;
+  color: var(--nf-text-muted);
   margin: 5px 0;
 }
 
@@ -1346,7 +1346,7 @@ select:focus-visible {
 .feature-panel textarea {
   width: 100%;
   padding: 10px;
-  border: 1px solid #d8e1dc;
+  border: 1px solid var(--nf-border-input);
   border-radius: 8px;
   margin-bottom: 10px;
 }
@@ -1367,13 +1367,13 @@ select:focus-visible {
   height: 120px;
   object-fit: cover;
   border-radius: 10px;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
 }
 
 .sample-grid p {
   margin: 8px 0 0;
   font-size: 12px;
-  color: #68746d;
+  color: var(--nf-text-muted);
 }
 
 /* MOBILE */
@@ -1467,7 +1467,7 @@ select:focus-visible {
 
   .stats-row div {
     border-right: 0;
-    border-bottom: 1px solid #e0e7e2;
+    border-bottom: 1px solid var(--nf-border);
   }
 }
 
@@ -1477,7 +1477,7 @@ select:focus-visible {
   margin-top: 15px;
   padding: 15px;
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 12px;
   text-align: center;
 }
@@ -1485,7 +1485,7 @@ select:focus-visible {
 .doc-name {
   margin: 0 0 10px;
   font-size: 13px;
-  color: #68746d;
+  color: var(--nf-text-muted);
   word-break: break-all;
 }
 
@@ -1494,16 +1494,16 @@ select:focus-visible {
   max-height: 250px;
   object-fit: contain;
   border-radius: 10px;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
 }
 
 .doc-link {
   display: inline-block;
   margin-top: 10px;
   padding: 10px 16px;
-  border: 1px solid #087f3d;
+  border: 1px solid var(--nf-navy);
   border-radius: 8px;
-  color: #087f3d;
+  color: var(--nf-navy);
   font-weight: 800;
   text-decoration: none;
 }
@@ -1511,7 +1511,7 @@ select:focus-visible {
 .doc-submitted {
   margin-top: 10px;
   font-size: 13px;
-  color: #087f3d;
+  color: var(--nf-navy);
 }
 
 .rejection-reason {
@@ -1568,7 +1568,7 @@ select:focus-visible {
   border: 0;
   background: transparent;
   font-size: 28px;
-  color: #68746d;
+  color: var(--nf-text-muted);
   cursor: pointer;
 }
 
@@ -1589,7 +1589,7 @@ select:focus-visible {
 .doc-iframe {
   width: 100%;
   height: 70vh;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 10px;
 }
 
@@ -1614,7 +1614,7 @@ select:focus-visible {
 }
 
 .section-label {
-  color: #087f3d;
+  color: var(--nf-navy);
   font-weight: 800;
   letter-spacing: 1px;
   font-size: 12px;
@@ -1632,7 +1632,7 @@ select:focus-visible {
 .verification-actions input {
   width: 100%;
   padding: 12px;
-  border: 1px solid #d8e1dc;
+  border: 1px solid var(--nf-border-input);
   border-radius: 9px;
   outline: none;
 }
@@ -1654,7 +1654,7 @@ select:focus-visible {
 }
 
 .button-row button:first-child {
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
 }
 
@@ -1668,7 +1668,7 @@ select:focus-visible {
 
 .professional-card {
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 15px;
   padding: 25px;
   margin-bottom: 20px;
@@ -1681,7 +1681,7 @@ select:focus-visible {
 
 .professional-card p {
   margin: 8px 0;
-  color: #68746d;
+  color: var(--nf-text-muted);
   line-height: 1.5;
 }
 
@@ -1700,15 +1700,15 @@ select:focus-visible {
 }
 
 .professional-actions .primary {
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   border: 0;
 }
 
 .professional-actions .secondary {
   background: white;
-  color: #087f3d;
-  border: 1px solid #cfdad3;
+  color: var(--nf-navy);
+  border: 1px solid var(--nf-border);
 }
 
 .professional-actions .danger {
@@ -1772,7 +1772,7 @@ select:focus-visible {
 
   .stats-row div {
     border-right: 0;
-    border-bottom: 1px solid #e0e7e2;
+    border-bottom: 1px solid var(--nf-border);
   }
 
   .booking-card {
@@ -1814,7 +1814,7 @@ select:focus-visible {
 .admin-verification-card,
 .admin-report-card {
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 15px;
   padding: 22px;
   text-align: left;
@@ -1836,7 +1836,7 @@ select:focus-visible {
 .admin-verification-card p,
 .admin-report-card p {
   margin: 6px 0;
-  color: #68746d;
+  color: var(--nf-text-muted);
   line-height: 1.5;
 }
 
@@ -1846,7 +1846,7 @@ select:focus-visible {
 .admin-report-card textarea {
   width: 100%;
   padding: 12px;
-  border: 1px solid #d8e1dc;
+  border: 1px solid var(--nf-border-input);
   border-radius: 9px;
   margin-top: 12px;
   font: inherit;
@@ -1864,7 +1864,7 @@ select:focus-visible {
   padding: 10px 16px;
   border: 0;
   border-radius: 8px;
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   font-weight: 800;
   cursor: pointer;
@@ -1883,7 +1883,7 @@ select:focus-visible {
 
 .admin-card-body p {
   margin: 5px 0;
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 14px;
 }
 
@@ -1920,7 +1920,7 @@ select:focus-visible {
 .pending-details p,
 .approved-details p {
   margin: 5px 0;
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 14px;
 }
 
@@ -1959,14 +1959,14 @@ select:focus-visible {
 
 .dashboard-footer-actions button:first-child {
   background: white;
-  color: #087f3d;
-  border: 1px solid #cfdad3;
+  color: var(--nf-navy);
+  border: 1px solid var(--nf-border);
 }
 
 .dashboard-footer-actions button:nth-child(2) {
   background: white;
-  color: #087f3d;
-  border: 1px solid #cfdad3;
+  color: var(--nf-navy);
+  border: 1px solid var(--nf-border);
 }
 
 /* PROFILE AVATAR FRAME */
@@ -2118,7 +2118,7 @@ select:focus-visible {
 .chat-screen,
 .conversation-list {
   min-height: 100vh;
-  background: #f5f7f6;
+  background: var(--nf-bg);
 }
 
 .chat-header {
@@ -2133,7 +2133,7 @@ select:focus-visible {
 .chat-header .back-link {
   background: 0;
   border: 0;
-  color: #087f3d;
+  color: var(--nf-navy);
   font-weight: 800;
   cursor: pointer;
   padding: 0;
@@ -2151,7 +2151,7 @@ select:focus-visible {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   display: grid;
   place-items: center;
@@ -2180,7 +2180,7 @@ select:focus-visible {
 
 .chat-header-text span {
   font-size: 12px;
-  color: #607068;
+  color: var(--nf-text-muted);
 }
 
 .chat-messages {
@@ -2203,7 +2203,7 @@ select:focus-visible {
 
 .chat-message.sent {
   align-self: flex-end;
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   border-bottom-right-radius: 4px;
 }
@@ -2211,7 +2211,7 @@ select:focus-visible {
 .chat-message.received {
   align-self: flex-start;
   background: white;
-  color: #17221d;
+  color: var(--nf-text);
   border: 1px solid #e2e8e4;
   border-bottom-left-radius: 4px;
 }
@@ -2243,14 +2243,14 @@ select:focus-visible {
 .chat-composer input {
   flex: 1;
   padding: 10px 12px;
-  border: 1px solid #dce5df;
+  border: 1px solid var(--nf-border-input);
   border-radius: 20px;
   font: inherit;
   outline: none;
 }
 
 .chat-composer input:focus {
-  border-color: #087f3d;
+  border-color: var(--nf-navy);
 }
 
 .chat-composer button {
@@ -2258,7 +2258,7 @@ select:focus-visible {
   padding: 10px 14px;
   border-radius: 20px;
   border: 0;
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   font-weight: 800;
   cursor: pointer;
@@ -2266,8 +2266,8 @@ select:focus-visible {
 
 .chat-composer .photo-button {
   background: white;
-  color: #087f3d;
-  border: 1px solid #cfdad3;
+  color: var(--nf-navy);
+  border: 1px solid var(--nf-border);
 }
 
 .chat-composer .photo-button:disabled {
@@ -2316,7 +2316,7 @@ select:focus-visible {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   display: grid;
   place-items: center;
@@ -2347,7 +2347,7 @@ select:focus-visible {
 .conversation-body p {
   margin: 4px 0 0;
   font-size: 13px;
-  color: #607068;
+  color: var(--nf-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2360,7 +2360,7 @@ select:focus-visible {
 
 .conversation-meta time {
   font-size: 11px;
-  color: #607068;
+  color: var(--nf-text-muted);
   display: block;
 }
 
@@ -2369,7 +2369,7 @@ select:focus-visible {
   margin-top: 4px;
   padding: 2px 8px;
   border-radius: 10px;
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   font-size: 11px;
   font-weight: 800;
@@ -2378,12 +2378,12 @@ select:focus-visible {
 .chat-empty {
   padding: 40px 20px;
   text-align: center;
-  color: #607068;
+  color: var(--nf-text-muted);
 }
 
 .chat-empty h4 {
   margin: 10px 0 6px;
-  color: #17221d;
+  color: var(--nf-text);
 }
 
 .message-image {
@@ -2408,12 +2408,12 @@ select:focus-visible {
   object-fit: contain;
   border-radius: 12px;
   cursor: pointer;
-  background: #f5f7f6;
+  background: var(--nf-bg);
 }
 
 .chat-image-loading {
   padding: 10px 14px;
-  color: #607068;
+  color: var(--nf-text-muted);
   font-size: 13px;
   font-style: italic;
 }
@@ -2473,7 +2473,7 @@ select:focus-visible {
 
 .nf-category-card {
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 15px;
   padding: 20px 15px;
   text-align: center;
@@ -2486,7 +2486,7 @@ select:focus-visible {
 
 .nf-category-card:hover {
   transform: translateY(-3px);
-  border-color: #087f3d;
+  border-color: var(--nf-navy);
 }
 
 .nf-category-card-icon {
@@ -2500,7 +2500,7 @@ select:focus-visible {
 }
 
 .nf-category-card span {
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 12px;
 }
 
@@ -2537,9 +2537,9 @@ select:focus-visible {
   width: 100%;
   padding: 14px;
   background: white;
-  border: 2px solid #087f3d;
+  border: 2px solid var(--nf-navy);
   border-radius: 12px;
-  color: #087f3d;
+  color: var(--nf-navy);
   font-weight: 800;
   font-size: 14px;
   cursor: pointer;
@@ -2547,7 +2547,7 @@ select:focus-visible {
 }
 
 .nf-view-all-btn:hover {
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
 }
 
@@ -2569,7 +2569,7 @@ select:focus-visible {
 }
 
 .nf-category-scroll::-webkit-scrollbar-thumb {
-  background: #cfdad3;
+  background: var(--nf-border);
   border-radius: 4px;
 }
 
@@ -2577,23 +2577,23 @@ select:focus-visible {
   flex-shrink: 0;
   padding: 8px 16px;
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 20px;
   font-size: 13px;
   font-weight: 600;
-  color: #607068;
+  color: var(--nf-text-muted);
   cursor: pointer;
   transition: .2s;
 }
 
 .nf-category-chip:hover {
-  border-color: #087f3d;
-  color: #087f3d;
+  border-color: var(--nf-navy);
+  color: var(--nf-navy);
 }
 
 .nf-category-chip--active {
-  background: #087f3d;
-  border-color: #087f3d;
+  background: var(--nf-navy);
+  border-color: var(--nf-navy);
   color: white;
 }
 
@@ -2609,14 +2609,14 @@ select:focus-visible {
   gap: 14px;
   padding: 14px;
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 12px;
   text-align: left;
   transition: .2s;
 }
 
 .nf-service-list-item:hover {
-  border-color: #087f3d;
+  border-color: var(--nf-navy);
 }
 
 .nf-service-list-icon {
@@ -2626,7 +2626,7 @@ select:focus-visible {
   flex-shrink: 0;
   border-radius: 10px;
   overflow: hidden;
-  background: #e8f0ee;
+  background: var(--nf-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2647,7 +2647,7 @@ select:focus-visible {
   align-items: center;
   justify-content: center;
   font-size: 28px;
-  background: #e8f0ee;
+  background: var(--nf-bg);
 }
 
 .nf-service-list-info {
@@ -2662,7 +2662,7 @@ select:focus-visible {
 
 .nf-service-list-info p {
   margin: 0;
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2670,7 +2670,7 @@ select:focus-visible {
 }
 
 .nf-service-list-arrow {
-  color: #087f3d;
+  color: var(--nf-navy);
   font-weight: 800;
   flex-shrink: 0;
 }
@@ -2701,7 +2701,7 @@ select:focus-visible {
 .nf-home-food-banner {
   display: block;
   width: 100%;
-  background: linear-gradient(135deg, #087f3d, #066630);
+  background: linear-gradient(135deg, var(--nf-navy), var(--nf-navy-dark));
   border: 0;
   border-radius: 15px;
   padding: 20px;
@@ -2750,7 +2750,7 @@ select:focus-visible {
 
 .nf-cart-icon-btn {
   position: relative;
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   border: 0;
   border-radius: 10px;
@@ -2783,7 +2783,7 @@ select:focus-visible {
 
 .nf-restaurant-card {
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 15px;
   overflow: hidden;
   text-align: left;
@@ -2794,7 +2794,7 @@ select:focus-visible {
 
 .nf-restaurant-card:hover {
   transform: translateY(-3px);
-  border-color: #087f3d;
+  border-color: var(--nf-navy);
 }
 
 .nf-restaurant-card--closed {
@@ -2807,7 +2807,7 @@ select:focus-visible {
   height: 140px;
   overflow: hidden;
   position: relative;
-  background: #e8f0ee;
+  background: var(--nf-bg);
 }
 
 .nf-restaurant-card-image {
@@ -2824,7 +2824,7 @@ select:focus-visible {
   align-items: center;
   justify-content: center;
   font-size: 36px;
-  background: #e8f0ee;
+  background: var(--nf-bg);
 }
 
 .nf-restaurant-card-closed-overlay {
@@ -2870,19 +2870,19 @@ select:focus-visible {
 }
 
 .nf-restaurant-card-rating span {
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-weight: 400;
 }
 
 .nf-restaurant-card-cuisine {
   margin: 0;
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 13px;
 }
 
 .nf-restaurant-card-desc {
   margin: 0;
-  color: #607068;
+  color: var(--nf-text-muted);
   font-size: 12px;
   line-height: 1.4;
   display: -webkit-box;
@@ -2898,7 +2898,7 @@ select:focus-visible {
   padding-top: 8px;
   border-top: 1px solid #f0f4f2;
   font-size: 12px;
-  color: #607068;
+  color: var(--nf-text-muted);
 }
 
 /* =========================================
@@ -2914,7 +2914,7 @@ select:focus-visible {
   height: 200px;
   overflow: hidden;
   position: relative;
-  background: #e8f0ee;
+  background: var(--nf-bg);
 }
 
 .nf-menu-hero-image {
@@ -2944,13 +2944,13 @@ select:focus-visible {
 
 .nf-menu-cuisine {
   margin: 0 0 8px;
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 14px;
 }
 
 .nf-menu-desc {
   margin: 0 0 12px;
-  color: #607068;
+  color: var(--nf-text-muted);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -2960,7 +2960,7 @@ select:focus-visible {
   flex-wrap: wrap;
   gap: 12px;
   font-size: 13px;
-  color: #607068;
+  color: var(--nf-text-muted);
   margin-bottom: 8px;
 }
 
@@ -2970,14 +2970,14 @@ select:focus-visible {
 
 .nf-menu-address {
   margin: 0;
-  color: #607068;
+  color: var(--nf-text-muted);
   font-size: 13px;
 }
 
 .nf-menu-cart-summary {
   margin: 16px 7%;
   padding: 14px 16px;
-  background: #087f3d;
+  background: var(--nf-navy);
   border-radius: 12px;
   color: white;
   display: flex;
@@ -3003,7 +3003,7 @@ select:focus-visible {
 .nf-menu-section-title {
   margin: 0 0 14px;
   font-size: 18px;
-  color: #17221d;
+  color: var(--nf-text);
 }
 
 .nf-menu-items {
@@ -3017,7 +3017,7 @@ select:focus-visible {
   gap: 12px;
   padding: 12px;
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 12px;
 }
 
@@ -3049,7 +3049,7 @@ select:focus-visible {
 
 .nf-menu-item-desc {
   margin: 0 0 8px;
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 13px;
   line-height: 1.4;
 }
@@ -3057,7 +3057,7 @@ select:focus-visible {
 .nf-menu-item-price {
   margin: 0;
   font-weight: 800;
-  color: #087f3d;
+  color: var(--nf-navy);
   font-size: 15px;
 }
 
@@ -3068,7 +3068,7 @@ select:focus-visible {
   overflow: hidden;
   position: relative;
   flex-shrink: 0;
-  background: #e8f0ee;
+  background: var(--nf-bg);
 }
 
 .nf-menu-item-image {
@@ -3097,7 +3097,7 @@ select:focus-visible {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   border: 0;
   font-size: 20px;
@@ -3121,7 +3121,7 @@ select:focus-visible {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: #087f3d;
+  background: var(--nf-navy);
   color: white;
   border: 0;
   font-size: 16px;
@@ -3156,7 +3156,7 @@ select:focus-visible {
   gap: 12px;
   padding: 14px;
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 12px;
 }
 
@@ -3172,7 +3172,7 @@ select:focus-visible {
 
 .nf-cart-item-price {
   margin: 0;
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 13px;
 }
 
@@ -3186,7 +3186,7 @@ select:focus-visible {
 .nf-cart-item-subtotal {
   margin: 0;
   font-weight: 800;
-  color: #087f3d;
+  color: var(--nf-navy);
 }
 
 .nf-cart-address {
@@ -3201,19 +3201,19 @@ select:focus-visible {
 .nf-cart-address input {
   width: 100%;
   padding: 12px 14px;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 10px;
   font-size: 14px;
   outline: none;
 }
 
 .nf-cart-address input:focus {
-  border-color: #087f3d;
+  border-color: var(--nf-navy);
 }
 
 .nf-cart-summary {
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 20px;
@@ -3223,22 +3223,22 @@ select:focus-visible {
   display: flex;
   justify-content: space-between;
   padding: 8px 0;
-  color: #607068;
+  color: var(--nf-text-muted);
   font-size: 14px;
 }
 
 .nf-cart-summary-total {
-  border-top: 2px solid #e0e7e2;
+  border-top: 2px solid var(--nf-border);
   margin-top: 8px;
   padding-top: 14px;
   font-weight: 800;
   font-size: 18px;
-  color: #17221d;
+  color: var(--nf-text);
 }
 
 .nf-cart-note {
   text-align: center;
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 12px;
   margin-top: 12px;
   font-style: italic;
@@ -3335,18 +3335,18 @@ select:focus-visible {
   flex-shrink: 0;
   padding: 8px 16px;
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 20px;
   font-size: 13px;
   font-weight: 600;
-  color: #607068;
+  color: var(--nf-text-muted);
   cursor: pointer;
   transition: .2s;
 }
 
 .nf-order-tab--active {
-  background: #087f3d;
-  border-color: #087f3d;
+  background: var(--nf-navy);
+  border-color: var(--nf-navy);
   color: white;
 }
 
@@ -3358,7 +3358,7 @@ select:focus-visible {
 
 .nf-order-card {
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 12px;
   padding: 16px;
 }
@@ -3419,13 +3419,13 @@ select:focus-visible {
 .nf-order-notes {
   margin: 4px 0;
   font-size: 13px;
-  color: #607068;
+  color: var(--nf-text-muted);
 }
 
 .nf-order-items {
   margin: 10px 0;
   padding: 10px;
-  background: #f5f7f6;
+  background: var(--nf-bg);
   border-radius: 8px;
 }
 
@@ -3442,7 +3442,7 @@ select:focus-visible {
   font-weight: 800;
   font-size: 16px;
   padding-top: 10px;
-  border-top: 1px solid #e0e7e2;
+  border-top: 1px solid var(--nf-border);
   margin-bottom: 10px;
 }
 
@@ -3465,28 +3465,28 @@ select:focus-visible {
 .nf-service-toggle {
   padding: 8px 14px;
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
-  color: #607068;
+  color: var(--nf-text-muted);
   cursor: pointer;
   transition: .2s;
 }
 
 .nf-service-toggle:hover {
-  border-color: #087f3d;
-  color: #087f3d;
+  border-color: var(--nf-navy);
+  color: var(--nf-navy);
 }
 
 .nf-service-toggle--active {
-  background: #087f3d;
-  border-color: #087f3d;
+  background: var(--nf-navy);
+  border-color: var(--nf-navy);
   color: white;
 }
 
 .nf-service-toggle--active:hover {
-  background: #066630;
+  background: var(--nf-navy-dark);
   color: white;
 }
 
@@ -3503,7 +3503,7 @@ select:focus-visible {
 
 .nf-restaurant-image-card {
   background: white;
-  border: 1px solid #e0e7e2;
+  border: 1px solid var(--nf-border);
   border-radius: 12px;
   padding: 16px;
   text-align: center;
@@ -3513,7 +3513,7 @@ select:focus-visible {
   display: block;
   font-size: 12px;
   font-weight: 800;
-  color: #087f3d;
+  color: var(--nf-navy);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 10px;
@@ -3524,7 +3524,7 @@ select:focus-visible {
   height: 140px;
   border-radius: 10px;
   overflow: hidden;
-  background: #e8f0ee;
+  background: var(--nf-bg);
   margin-bottom: 10px;
   display: flex;
   align-items: center;
@@ -3543,7 +3543,7 @@ select:focus-visible {
 }
 
 .nf-restaurant-image-placeholder {
-  color: #68746d;
+  color: var(--nf-text-muted);
   font-size: 13px;
 }
 
@@ -3583,7 +3583,7 @@ select:focus-visible {
   height: 200px;
   border-radius: 12px;
   overflow: hidden;
-  background: #e8f0ee;
+  background: var(--nf-bg);
   margin-bottom: 16px;
 }
 

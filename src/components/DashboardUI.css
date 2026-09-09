@@ -117,30 +117,30 @@
 
 .dash-status-accepted,
 .dash-status-approved {
-  background: var(--nf-green-light);
-  color: var(--nf-green);
+  background: var(--nf-status-success-bg);
+  color: var(--nf-status-success-text);
 }
 
 .dash-status-declined,
 .dash-status-rejected {
-  background: var(--nf-red-light);
-  color: var(--nf-red);
+  background: var(--nf-status-error-bg);
+  color: var(--nf-status-error-text);
 }
 
 .dash-status-open {
-  background: var(--nf-yellow);
-  color: var(--nf-yellow-text);
+  background: var(--nf-status-warning-bg);
+  color: var(--nf-status-warning-text);
 }
 
 .dash-status-in_review {
-  background: var(--nf-blue);
-  color: var(--nf-blue-text);
+  background: var(--nf-status-info-bg);
+  color: var(--nf-status-info-text);
 }
 
 .dash-status-resolved,
 .dash-status-closed {
-  background: var(--nf-green-light);
-  color: var(--nf-green);
+  background: var(--nf-status-success-bg);
+  color: var(--nf-status-success-text);
 }
 
 .dash-status-not-submitted {
@@ -512,7 +512,7 @@
 
 .dash-notification-unread {
   border-left: 3px solid var(--nf-green);
-  background: #fbfffc;
+  background: var(--nf-navy-light);
 }
 
 .dash-notification-read {
@@ -1057,7 +1057,7 @@
   height: 100px;
   overflow: hidden;
   position: relative;
-  background: #e8f0ee;
+  background: var(--nf-bg);
 }
 
 .dash-service-card-image {
@@ -1074,7 +1074,7 @@
   align-items: center;
   justify-content: center;
   font-size: 24px;
-  background: #e8f0ee;
+  background: var(--nf-bg);
 }
 
 .dash-service-card--image .dash-service-card-name {

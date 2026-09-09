@@ -2452,7 +2452,7 @@ function ProviderDetails({
                   {item.signedUrl ? (
                     <img src={item.signedUrl} alt={item.title} loading="lazy" />
                   ) : (
-                    <div style={{ height: 120, background: '#e8eeea', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nf-text-muted)', fontSize: 12 }}>No image</div>
+                    <div style={{ height: 120, background: 'var(--nf-bg)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nf-text-muted)', fontSize: 12 }}>No image</div>
                   )}
                   <p style={{ fontWeight: 700, fontSize: 13, margin: '6px 0 2px' }}>{item.title}</p>
                   {item.service_id && (
@@ -2460,14 +2460,14 @@ function ProviderDetails({
                       {(detailServices || []).find((s) => s.id === item.service_id)?.name || 'Service'}
                     </p>
                   )}
-                  {item.description && <p style={{ fontSize: 12, color: '#68746d', margin: '4px 0 0' }}>{item.description}</p>}
+                  {item.description && <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', margin: '4px 0 0' }}>{item.description}</p>}
                   {(item.beforeSignedUrl || item.afterSignedUrl) && (
                     <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                       {item.beforeSignedUrl && (
-                        <img src={item.beforeSignedUrl} alt="Before" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, border: '1px solid #e0e7e2', cursor: 'pointer' }} onClick={() => { setLightboxUrl(item.beforeSignedUrl); setLightboxAlt('Before') }} />
+                        <img src={item.beforeSignedUrl} alt="Before" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--nf-border)', cursor: 'pointer' }} onClick={() => { setLightboxUrl(item.beforeSignedUrl); setLightboxAlt('Before') }} />
                       )}
                       {item.afterSignedUrl && (
-                        <img src={item.afterSignedUrl} alt="After" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, border: '1px solid #e0e7e2', cursor: 'pointer' }} onClick={() => { setLightboxUrl(item.afterSignedUrl); setLightboxAlt('After') }} />
+                        <img src={item.afterSignedUrl} alt="After" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--nf-border)', cursor: 'pointer' }} onClick={() => { setLightboxUrl(item.afterSignedUrl); setLightboxAlt('After') }} />
                       )}
                     </div>
                   )}
@@ -2511,7 +2511,7 @@ function ProviderDetails({
                   </div>
                   {review.comment && <p style={{ margin: '4px 0', fontSize: 14 }}>{review.comment}</p>}
                   {review.provider_response && (
-                    <div style={{ background: '#f0fdf4', padding: 8, borderRadius: 6, marginTop: 6 }}>
+                    <div style={{ background: 'var(--nf-navy-light)', padding: 8, borderRadius: 6, marginTop: 6 }}>
                       <strong style={{ fontSize: 12 }}>Provider response</strong>
                       <p style={{ margin: 0, fontSize: 13 }}>{review.provider_response}</p>
                     </div>
@@ -5215,7 +5215,7 @@ function ProviderDashboard({
             <SectionHeader label="BUSINESS PROFILE" title="Your business" />
             <DashboardCard>
               {coverImageUrl && (
-                <div style={{ width: '100%', height: 160, borderRadius: 12, overflow: 'hidden', marginBottom: 12, background: '#e8f0ee' }}>
+                <div style={{ width: '100%', height: 160, borderRadius: 12, overflow: 'hidden', marginBottom: 12, background: 'var(--nf-bg)' }}>
                   <img src={coverImageUrl} alt="Business cover" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
               )}
@@ -5411,9 +5411,9 @@ function ProviderDashboard({
                       {sample.signedUrl ? (
                         <img src={sample.signedUrl} alt={sample.caption || 'Work sample'} loading="lazy" />
                       ) : (
-                        <div style={{ height: 120, background: '#e8eeea', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nf-text-muted)', fontSize: 12 }}>No image</div>
+                        <div style={{ height: 120, background: 'var(--nf-bg)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nf-text-muted)', fontSize: 12 }}>No image</div>
                       )}
-                      {sample.caption && <p style={{ fontSize: 12, color: '#68746d', margin: '4px 0 0' }}>{sample.caption}</p>}
+                      {sample.caption && <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', margin: '4px 0 0' }}>{sample.caption}</p>}
                     </div>
                   ))}
                 </div>
@@ -5451,7 +5451,7 @@ function ProviderDashboard({
                     <label className="dash-form-label">Main Image</label>
                     {portfolioPreview.image ? (
                       <div style={{ position: 'relative', display: 'inline-block' }}>
-                        <img src={portfolioPreview.image} alt="Preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid #e0e7e2' }} />
+                        <img src={portfolioPreview.image} alt="Preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid var(--nf-border)' }} />
                         <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" style={{ marginLeft: 8, position: 'absolute', top: -8, right: -8 }} onClick={() => clearPortfolioFile('image')}>✕</button>
                       </div>
                     ) : (
@@ -5465,7 +5465,7 @@ function ProviderDashboard({
                     <label className="dash-form-label">Before Image (optional)</label>
                     {portfolioPreview.before ? (
                       <div style={{ position: 'relative', display: 'inline-block' }}>
-                        <img src={portfolioPreview.before} alt="Before preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid #e0e7e2' }} />
+                        <img src={portfolioPreview.before} alt="Before preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid var(--nf-border)' }} />
                         <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" style={{ marginLeft: 8, position: 'absolute', top: -8, right: -8 }} onClick={() => clearPortfolioFile('before')}>✕</button>
                       </div>
                     ) : (
@@ -5479,7 +5479,7 @@ function ProviderDashboard({
                     <label className="dash-form-label">After Image (optional)</label>
                     {portfolioPreview.after ? (
                       <div style={{ position: 'relative', display: 'inline-block' }}>
-                        <img src={portfolioPreview.after} alt="After preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid #e0e7e2' }} />
+                        <img src={portfolioPreview.after} alt="After preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid var(--nf-border)' }} />
                         <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" style={{ marginLeft: 8, position: 'absolute', top: -8, right: -8 }} onClick={() => clearPortfolioFile('after')}>✕</button>
                       </div>
                     ) : (
@@ -5530,7 +5530,7 @@ function ProviderDashboard({
                     <label className="dash-form-label">Main Image</label>
                     {portfolioPreview.image ? (
                       <div style={{ position: 'relative', display: 'inline-block' }}>
-                        <img src={portfolioPreview.image} alt="Preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid #e0e7e2' }} />
+                        <img src={portfolioPreview.image} alt="Preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid var(--nf-border)' }} />
                         <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" style={{ marginLeft: 8, position: 'absolute', top: -8, right: -8 }} onClick={() => clearPortfolioFile('image')}>✕</button>
                       </div>
                     ) : (
@@ -5544,7 +5544,7 @@ function ProviderDashboard({
                     <label className="dash-form-label">Before Image (optional)</label>
                     {portfolioPreview.before ? (
                       <div style={{ position: 'relative', display: 'inline-block' }}>
-                        <img src={portfolioPreview.before} alt="Before preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid #e0e7e2' }} />
+                        <img src={portfolioPreview.before} alt="Before preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid var(--nf-border)' }} />
                         <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" style={{ marginLeft: 8, position: 'absolute', top: -8, right: -8 }} onClick={() => clearPortfolioFile('before')}>✕</button>
                       </div>
                     ) : (
@@ -5558,7 +5558,7 @@ function ProviderDashboard({
                     <label className="dash-form-label">After Image (optional)</label>
                     {portfolioPreview.after ? (
                       <div style={{ position: 'relative', display: 'inline-block' }}>
-                        <img src={portfolioPreview.after} alt="After preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid #e0e7e2' }} />
+                        <img src={portfolioPreview.after} alt="After preview" style={{ maxHeight: 120, borderRadius: 8, border: '1px solid var(--nf-border)' }} />
                         <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" style={{ marginLeft: 8, position: 'absolute', top: -8, right: -8 }} onClick={() => clearPortfolioFile('after')}>✕</button>
                       </div>
                     ) : (
@@ -5584,7 +5584,7 @@ function ProviderDashboard({
                       {item.signedUrl ? (
                         <img src={item.signedUrl} alt={item.title} loading="lazy" />
                       ) : (
-                        <div style={{ height: 120, background: '#e8eeea', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nf-text-muted)', fontSize: 12 }}>No image</div>
+                        <div style={{ height: 120, background: 'var(--nf-bg)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nf-text-muted)', fontSize: 12 }}>No image</div>
                       )}
                       <p style={{ fontWeight: 700, fontSize: 13, margin: '6px 0 2px' }}>{item.title}</p>
                       {item.service_id && (
@@ -5592,7 +5592,7 @@ function ProviderDashboard({
                           {(allAvailableServices || []).find((s) => s.id === item.service_id)?.name || 'Service'}
                         </p>
                       )}
-                      {item.description && <p style={{ fontSize: 12, color: '#68746d', margin: '4px 0 0' }}>{item.description}</p>}
+                      {item.description && <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', margin: '4px 0 0' }}>{item.description}</p>}
                       <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
                         <button className="dash-btn dash-btn-outline dash-btn-sm" onClick={() => startEditingPortfolio(item)} disabled={featureLoading}>Edit</button>
                         <button className="dash-btn dash-btn-outline dash-btn-sm" style={{ color: '#dc2626', borderColor: '#dc2626' }} onClick={() => deletePortfolioItem(item.id)} disabled={featureLoading}>Delete</button>
@@ -6530,7 +6530,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
                 {services.map((s) => (
                   <div key={s.id} className="dash-card" style={{ padding: 12, marginBottom: 8 }}>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                      <div style={{ width: 64, height: 64, borderRadius: 8, overflow: 'hidden', background: '#e8f0ee', flexShrink: 0 }}>
+                      <div style={{ width: 64, height: 64, borderRadius: 8, overflow: 'hidden', background: 'var(--nf-bg)', flexShrink: 0 }}>
                         {getServiceImage(s) ? (
                           <img src={getServiceImage(s)} alt={s.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         ) : (
@@ -6662,7 +6662,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
                 {ads.map((ad) => (
                   <div key={ad.id} className="dash-card" style={{ padding: 12, marginBottom: 8 }}>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                      <div style={{ width: 80, height: 60, borderRadius: 8, overflow: 'hidden', background: '#e8f0ee', flexShrink: 0 }}>
+                      <div style={{ width: 80, height: 60, borderRadius: 8, overflow: 'hidden', background: 'var(--nf-bg)', flexShrink: 0 }}>
                         {ad.image_url ? (
                           <img src={ad.image_url.startsWith('http') ? ad.image_url : ''} alt={ad.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
@@ -6709,7 +6709,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
                   <p><strong>Customer:</strong> {customerNames[review.customer_user_id] || 'Unknown'}</p>
                   <p><strong>Provider:</strong> {providerNames[review.provider_user_id] || 'Unknown'}</p>
                   {review.comment && <p>{review.comment}</p>}
-                  {review.provider_response && <div style={{ background: '#f0fdf4', padding: 8, borderRadius: 6, marginTop: 6 }}><strong>Provider response:</strong> <p style={{ margin: 0 }}>{review.provider_response}</p></div>}
+                  {review.provider_response && <div style={{ background: 'var(--nf-navy-light)', padding: 8, borderRadius: 6, marginTop: 6 }}><strong>Provider response:</strong> <p style={{ margin: 0 }}>{review.provider_response}</p></div>}
                 </div>
               ))
             )}
@@ -7254,7 +7254,7 @@ function ChatScreen({ user, conversation, partnerName, partnerAvatar, bookingCon
             }
           }}
         />
-        <label className="photo-button" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '10px 14px', borderRadius: '20px', border: '1px solid #cfdad3', background: 'white', color: '#087f3d', fontWeight: 800, fontSize: 14 }}>
+        <label className="photo-button" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '10px 14px', borderRadius: '20px', border: '1px solid var(--nf-border)', background: 'white', color: 'var(--nf-navy)', fontWeight: 800, fontSize: 14 }}>
           📷
           <input type="file" accept="image/jpeg,image/png,image/webp" hidden disabled={sending} onChange={handlePhotoSelect} />
         </label>

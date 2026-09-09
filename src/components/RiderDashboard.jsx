@@ -221,7 +221,7 @@ function RiderDashboard({ user, onBack, onLogin, onSignup }) {
                   <span className={`nf-order-status nf-order-status--${order.status}`}>{order.status.replace(/_/g, ' ')}</span>
                 </div>
                 <p className="nf-order-address">📍 {order.delivery_address}</p>
-                <p style={{ fontSize: 13, color: '#607068' }}>From: {order.restaurant?.name || 'Restaurant'}</p>
+                <p style={{ fontSize: 13, color: 'var(--nf-text-muted)' }}>From: {order.restaurant?.name || 'Restaurant'}</p>
                 <div className="nf-order-total">
                   <span>Total</span>
                   <span>{formatNaira(order.total)}</span>
