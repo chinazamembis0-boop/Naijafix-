@@ -165,7 +165,7 @@ function getServiceIcon(service) {
 function dedupeServices(services) {
   const seen = new Set()
   return (services || []).filter((s) => {
-    const key = normalizeCategory(s.slug || s.name)
+    const key = normalizeCategory(s.slug || s.id || s.name)
     if (seen.has(key)) return false
     seen.add(key)
     return true
@@ -2506,6 +2506,8 @@ function ProviderDetails({
 function RequestService({
   provider,
   service,
+  serviceSlugToIdMap,
+  serviceNameToIdMap,
   user,
   onBack,
   onComplete,
@@ -2567,6 +2569,28 @@ function RequestService({
     })
   }
 
+  const resolveServiceId = (svc, slugToId, nameToId) => {
+    if (!svc) return null
+
+    if (Number.isInteger(svc.service_id)) return svc.service_id
+
+    if (Number.isInteger(svc.id)) return svc.id
+
+    if (svc.slug && typeof svc.slug === 'string' && slugToId[svc.slug]) {
+      return slugToId[svc.slug]
+    }
+
+    if (typeof svc.id === 'string' && slugToId[svc.id]) {
+      return slugToId[svc.id]
+    }
+
+    if (svc.name && typeof svc.name === 'string' && nameToId[svc.name]) {
+      return nameToId[svc.name]
+    }
+
+    return null
+  }
+
   const uploadBookingPhotos = async (bookingId) => {
     for (const photo of bookingPhotos) {
       try {
@@ -2623,6 +2647,33 @@ function RequestService({
         return
       }
 
+      const resolvedServiceId = resolveServiceId(
+        service,
+        serviceSlugToIdMap,
+        serviceNameToIdMap
+      )
+
+      const serviceNameForDisplay =
+        service?.name || provider?.category || 'Service'
+
+      const isUnresolvableCatalogService =
+        service && service.name && resolvedServiceId === null
+
+      if (isUnresolvableCatalogService) {
+        console.error('Service ID resolution failed:', {
+          serviceName: service.name,
+          serviceId: service.id,
+          serviceSlug: service.slug,
+          service_id: service.service_id,
+        })
+        alert(
+          `Unable to resolve service ID for "${service.name}". ` +
+          'Please try selecting a different service or contact support.'
+        )
+        setLoading(false)
+        return
+      }
+
       const { data, error } =
         await supabase
           .from('bookings')
@@ -2631,10 +2682,8 @@ function RequestService({
             customer_user_id: authenticatedUser.id,
             provider_name:
               provider?.business_name || '',
-            service_name:
-              service?.name ||
-              provider?.category ||
-              'Service',
+            service_name: serviceNameForDisplay,
+            service_id: resolvedServiceId,
             booking_date: date,
             preferred_time: preferredTime || null,
             status: 'Pending',
@@ -2892,7 +2941,7 @@ function Bookings({ user, onBack, onChat, onRebook, dbProviders }) {
     if (!onRebook) return
     const provider = dbProviders.find((p) => p.business_name === booking.provider_name)
     if (provider) {
-      onRebook(provider, booking.service_name)
+      onRebook(provider, booking.service_name, booking.service_id)
     } else {
       alert('Provider not found for rebooking.')
     }
@@ -2902,14 +2951,14 @@ function Bookings({ user, onBack, onChat, onRebook, dbProviders }) {
     if (!booking?.id) return
     const { error } = await supabase
       .from('bookings')
-      .update({ completed_at: new Date().toISOString(), reviewed: true })
+      .update({ completed_at: new Date().toISOString(), reviewed: true, status: 'Completed' })
       .eq('id', booking.id)
       .eq('customer_user_id', user.user_id)
 
     if (error) {
       alert('Could not confirm completion: ' + error.message)
     } else {
-      setBookings((current) => current.map((b) => b.id === booking.id ? { ...b, completed_at: new Date().toISOString(), reviewed: true } : b))
+      setBookings((current) => current.map((b) => b.id === booking.id ? { ...b, completed_at: new Date().toISOString(), reviewed: true, status: 'Completed' } : b))
     }
   }
 
@@ -7168,6 +7217,12 @@ function App() {
   const [dbProviders, setDbProviders] =
     useState([])
 
+  const [serviceSlugToIdMap, setServiceSlugToIdMap] =
+    useState({})
+
+  const [serviceNameToIdMap, setServiceNameToIdMap] =
+    useState({})
+
   const [selectedService, setSelectedService] =
     useState(null)
 
@@ -7261,6 +7316,14 @@ function App() {
           servicesResult.data &&
           servicesResult.data.length > 0
         ) {
+          const slugMap = {}
+          const nameMap = {}
+          servicesResult.data.forEach((s) => {
+            if (s.slug) slugMap[s.slug] = s.id
+            if (s.name) nameMap[s.name] = s.id
+          })
+          setServiceSlugToIdMap(slugMap)
+          setServiceNameToIdMap(nameMap)
           setDbServices(
             dedupeServices([...defaultServices, ...servicesResult.data])
           )
@@ -7636,6 +7699,8 @@ function App() {
       <RequestService
         provider={selectedProvider}
         service={selectedService}
+        serviceSlugToIdMap={serviceSlugToIdMap}
+        serviceNameToIdMap={serviceNameToIdMap}
         user={user}
         onBack={() =>
           setPage('provider')
@@ -7684,9 +7749,9 @@ function App() {
             setPage('chat')
           }
         }}
-        onRebook={(provider, serviceName) => {
+        onRebook={(provider, serviceName, serviceId) => {
           setSelectedProvider(provider)
-          setSelectedService({ id: serviceName || provider.category, name: serviceName || provider.category, category: provider.category })
+          setSelectedService({ id: serviceName || provider.category, name: serviceName || provider.category, category: provider.category, service_id: serviceId || null })
           setPage('request')
         }}
       />

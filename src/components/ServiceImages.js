@@ -29,9 +29,7 @@
   'driving-instructor',
   'dry-cleaning',
   'dstv-satellite',
-  'dstv-satellite-installation',
   'elderly-care',
-  'elderly-care-caregiver',
   'electrical',
   'electronics-repair',
   'equipment-rentals',
@@ -53,10 +51,8 @@
   'hairdressing',
   'handyman',
   'home-cook',
-  'home-cook-personal-chef',
   'home-tutor',
   'house-building',
-  'house-building-construction',
   'interior-decoration',
   'inverter-installation',
   'inverter-repair',
@@ -84,7 +80,6 @@
   'phone-repair',
   'photography',
   'pickup-dropoff',
-  'pickup-drop-off',
   'plastering-screeding',
   'plumbing',
   'pop-ceiling',
@@ -120,27 +115,35 @@
   'wifi-internet-setup',
 ])
 
-const serviceImageFallbacks = {
-  'dstv-satellite-installation': 'dstv-satellite',
-  'elderly-care-caregiver': 'elderly-care',
-  'home-cook-personal-chef': 'home-cook',
+const serviceImageSlugAliases = {
   'house-building-construction': 'house-building',
+  'dstv-satellite-installation': 'dstv-satellite',
   'pickup-drop-off': 'pickup-dropoff',
+  'elderly-care-caregiver': 'elderly-care',
+  'home-cook-personal-chef': 'home-cook'
 }
+
+function getCanonicalServiceSlug(service) {
+  if (!service) return ''
+  const value = service.slug || service.id
+  if (value === null || value === undefined || /^\d+$/.test(String(value).trim())) return ''
+  const slug = String(value).toLowerCase().trim()
+  return serviceImageSlugAliases[slug] || slug
+}
+
+const serviceImageFallbacks = {}
 
 export function getServiceImage(service) {
   if (!service) return null
-  const slug = String(service.slug || service.id || '').toLowerCase().trim()
+  const slug = getCanonicalServiceSlug(service)
   if (!slug) return null
   if (serviceImageSlugs.has(slug)) return `/images/services/${slug}.png`
-  const fallback = serviceImageFallbacks[slug]
-  if (fallback && serviceImageSlugs.has(fallback)) return `/images/services/${fallback}.png`
   return null
 }
 
 export function getServiceImageByKey(key) {
   if (!key) return null
-  const slug = String(key).toLowerCase().trim()
+  const slug = getCanonicalServiceSlug({ slug: key })
   if (!slug) return null
   if (serviceImageSlugs.has(slug)) return `/images/services/${slug}.png`
   return null
