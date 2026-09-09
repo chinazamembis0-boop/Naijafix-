@@ -320,7 +320,7 @@ footer .brand span {
 }
 
 .nf-ad-banner:hover {
-  box-shadow: 0 4px 16px rgba(23, 34, 29, .1);
+  box-shadow: 0 4px 16px rgba(23, 33, 43, .1);
 }
 
 .nf-ad-header {
@@ -690,7 +690,7 @@ footer .brand span {
 .auth-page {
   min-height: 100vh;
   padding: 30px 20px;
-  background: #e8f7ee;
+  background: var(--nf-bg);
   display: grid;
   place-items: center;
 }
@@ -979,7 +979,7 @@ button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
-  outline: 3px solid rgba(8, 127, 61, .25);
+  outline: 3px solid rgba(18, 48, 74, .25);
   outline-offset: 2px;
 }
 
@@ -2712,7 +2712,7 @@ select:focus-visible {
 
 .nf-home-food-banner:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(8, 127, 61, 0.25);
+  box-shadow: 0 8px 24px rgba(18, 48, 74, 0.25);
 }
 
 .nf-home-food-banner-content {

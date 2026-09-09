@@ -313,7 +313,7 @@ export function BookingCard({ booking, onAccept, onDecline, onMessage, showActio
       {booking.service_location && <p>📍 {booking.service_location}</p>}
       {booking.notes && <p style={{ marginTop: 6 }}>{booking.notes}</p>}
       {booking.total_price != null && booking.total_price !== undefined && (
-        <p style={{ fontWeight: 800, color: 'var(--nf-green)' }}>₦{booking.total_price}</p>
+        <p style={{ fontWeight: 800, color: 'var(--nf-navy)' }}>₦{booking.total_price}</p>
       )}
       {showActions && isPending && (onAccept || onDecline) && (
         <div className="dash-booking-actions">

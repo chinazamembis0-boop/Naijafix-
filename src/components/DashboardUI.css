@@ -36,7 +36,7 @@
 .dash-brand-icon {
   width: 36px;
   height: 36px;
-  background: var(--nf-green);
+  background: var(--nf-navy);
   color: white;
   border-radius: var(--nf-radius-sm);
   display: grid;
@@ -79,7 +79,7 @@
 }
 
 .dash-section-label {
-  color: var(--nf-green);
+  color: var(--nf-navy);
   font-weight: 800;
   letter-spacing: 1px;
   font-size: 10px;
@@ -216,17 +216,17 @@
 }
 
 .dash-btn-primary {
-  background: var(--nf-green);
+  background: var(--nf-navy);
   color: white;
 }
 
 .dash-btn-primary:hover:not(:disabled) {
-  background: var(--nf-green-dark);
+  background: var(--nf-navy-dark);
 }
 
 .dash-btn-outline {
   background: var(--nf-white);
-  color: var(--nf-green);
+  color: var(--nf-navy);
   border: 1px solid var(--nf-border);
 }
 
@@ -307,7 +307,7 @@
 }
 
 .dash-tab-active {
-  background: var(--nf-green) !important;
+  background: var(--nf-navy) !important;
   color: white !important;
 }
 
@@ -370,7 +370,7 @@
   margin-top: 2px;
 }
 
-.dash-stat-green { border-left: 3px solid var(--nf-green); }
+.dash-stat-green { border-left: 3px solid var(--nf-navy); }
 .dash-stat-red { border-left: 3px solid var(--nf-red); }
 .dash-stat-yellow { border-left: 3px solid #d4a72c; }
 .dash-stat-blue { border-left: 3px solid var(--nf-blue-text); }
@@ -381,7 +381,7 @@
 }
 
 .dash-verification-card.dash-status-approved {
-  border-left-color: var(--nf-green);
+  border-left-color: var(--nf-navy);
 }
 
 .dash-verification-card.dash-status-rejected {
@@ -466,7 +466,7 @@
 .dash-admin-response {
   margin-top: 8px;
   padding: 10px;
-  background: var(--nf-green-mint);
+  background: var(--nf-navy-light);
   border: 1px solid #bbf7d0;
   border-radius: var(--nf-radius-sm);
 }
@@ -511,7 +511,7 @@
 }
 
 .dash-notification-unread {
-  border-left: 3px solid var(--nf-green);
+  border-left: 3px solid var(--nf-navy);
   background: var(--nf-navy-light);
 }
 
@@ -551,7 +551,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--nf-green);
+  background: var(--nf-navy);
   flex-shrink: 0;
   margin-top: 6px;
 }
@@ -706,7 +706,7 @@
 }
 
 .dash-admin-nav-active {
-  background: var(--nf-green) !important;
+  background: var(--nf-navy) !important;
   color: white !important;
 }
 
@@ -783,7 +783,7 @@
 .dash-form-input:focus,
 .dash-form-select:focus,
 .dash-form-textarea:focus {
-  border-color: var(--nf-green);
+  border-color: var(--nf-navy);
 }
 
 .dash-form-textarea {
@@ -850,7 +850,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: var(--nf-green);
+  background: var(--nf-navy);
   color: white;
   display: grid;
   place-items: center;
@@ -904,7 +904,7 @@
   margin-top: 3px;
   padding: 2px 7px;
   border-radius: 10px;
-  background: var(--nf-green);
+  background: var(--nf-navy);
   color: white;
   font-size: 10px;
   font-weight: 800;
@@ -922,7 +922,7 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: var(--nf-green);
+  background: var(--nf-navy);
   color: white;
   display: grid;
   place-items: center;
@@ -1033,7 +1033,7 @@
 }
 
 .dash-service-card:hover {
-  border-color: var(--nf-green);
+  border-color: var(--nf-navy);
   box-shadow: var(--shadow);
 }
 
@@ -1149,7 +1149,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: var(--nf-green);
+  background: var(--nf-navy);
   color: white;
   border: 0;
   display: grid;
@@ -1225,7 +1225,7 @@
 }
 
 .dash-bottom-nav button.dash-nav-active {
-  color: var(--nf-green);
+  color: var(--nf-navy);
 }
 
 .dash-bottom-nav-icon {

@@ -2399,7 +2399,7 @@ function ProviderDetails({
                 <div key={pkg.id} style={{ background: 'var(--nf-bg)', padding: 12, borderRadius: 10 }}>
                   <strong>{pkg.name}</strong>
                   <p style={{ margin: '4px 0', fontSize: 13 }}>{pkg.description}</p>
-                  <p style={{ fontWeight: 800, color: 'var(--nf-green)' }}>₦{Number(pkg.price).toLocaleString()}</p>
+                  <p style={{ fontWeight: 800, color: 'var(--nf-navy)' }}>₦{Number(pkg.price).toLocaleString()}</p>
                   {pkg.estimated_duration && <p style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>Duration: {pkg.estimated_duration}</p>}
                 </div>
               ))}
@@ -3955,7 +3955,7 @@ function Profile({ user, onBack, onLogout }) {
             </div>
           )}
           {customerVerification?.id_document_url && !cvDocPreview && customerVerification?.status !== 'rejected' && (
-            <p style={{ marginTop: 8, fontSize: 13, color: 'var(--nf-green)' }}>✓ Document submitted</p>
+            <p style={{ marginTop: 8, fontSize: 13, color: 'var(--nf-navy)' }}>✓ Document submitted</p>
           )}
         </VerificationCard>
 
@@ -5320,7 +5320,7 @@ function ProviderDashboard({
                   </div>
                 )}
                 {verification?.id_document_url && !verificationDocPreview && verification?.status !== 'rejected' && (
-                  <p style={{ marginTop: 8, fontSize: 13, color: 'var(--nf-green)' }}>✓ Document submitted</p>
+                  <p style={{ marginTop: 8, fontSize: 13, color: 'var(--nf-navy)' }}>✓ Document submitted</p>
                 )}
               </VerificationCard>
             </DashboardCard>
@@ -5666,7 +5666,7 @@ function ProviderDashboard({
                             <div>
                               <strong>{pkg.name}</strong>
                               <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', margin: '4px 0' }}>{pkg.description || 'No description'}</p>
-                              <p style={{ fontWeight: 800, color: 'var(--nf-green)' }}>₦{Number(pkg.price).toLocaleString()}</p>
+                              <p style={{ fontWeight: 800, color: 'var(--nf-navy)' }}>₦{Number(pkg.price).toLocaleString()}</p>
                               {pkg.estimated_duration && <p style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>Duration: {pkg.estimated_duration}</p>}
                             </div>
                             <div style={{ display: 'flex', gap: 6 }}>
