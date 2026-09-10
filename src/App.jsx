@@ -946,6 +946,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
     phone: '',
     password: '',
     role: initialRole,
+    category: 'General',
   })
 
   const [showPassword, setShowPassword] = useState(false)
@@ -1014,7 +1015,8 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
           name,
           email,
           phone,
-          role
+          role,
+          form.category
         )
 
         if (ok) {
@@ -1033,7 +1035,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
     setLoading(false)
   }
 
-  const finishSignup = async (userId, name, email, phone, role) => {
+  const finishSignup = async (userId, name, email, phone, role, category = 'General') => {
     const { data: existingProfile, error: existingProfileError } =
       await supabase
         .from('profiles')
@@ -1094,7 +1096,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
             {
               user_id: userId,
               business_name: name,
-              category: 'General',
+              category: category || 'General',
               location: phone || 'Nigeria',
               phone,
               description: '',
@@ -1234,6 +1236,31 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
             <option value="provider">Service Provider</option>
             <option value="rider">Delivery Rider</option>
           </select>
+
+          {form.role === 'provider' && (
+            <>
+              <label>Service category</label>
+
+              <select
+                value={form.category}
+                onChange={(event) =>
+                  updateForm('category', event.target.value)
+                }
+              >
+                <option value="General">General</option>
+                {serviceCategories.map((categoryGroup) => (
+                  <option key={categoryGroup.id} value={categoryGroup.name}>
+                    {categoryGroup.name}
+                  </option>
+                ))}
+                {allServices.map((service) => (
+                  <option key={service.id} value={service.name}>
+                    {service.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
 
           <label>Password</label>
 
