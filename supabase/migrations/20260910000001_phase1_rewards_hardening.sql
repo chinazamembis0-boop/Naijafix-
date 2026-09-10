@@ -15,11 +15,13 @@
 --
 -- Attribution design note:
 --   adjust_customer_points is service_role-only (granted only to
---   service_role, revoked from public/anon/authenticated). Therefore
---   auth.uid() inside the function reflects the service-role caller context,
---   which is a trusted server-side actor, NOT an arbitrary authenticated
---   customer. We use auth.uid() as the attribution source and never accept a
---   client-supplied user id as the actor.
+--   service_role, revoked from public/anon/authenticated). A bare service_role
+--   call carries no session JWT, so auth.uid() inside the function is NULL.
+--   Attribution therefore comes from an explicit trusted p_created_by parameter
+--   supplied by the server-side caller (edge function / trigger), falling back
+--   to auth.uid() when one is provided. Because the function is
+--   service_role-only, no authenticated client can supply p_created_by, so no
+--   client-supplied user id can ever be recorded as the actor.
 
 -- ============================================================
 -- 1. get_customer_rewards: enforce caller ownership
@@ -69,7 +71,8 @@ $$;
 create or replace function public.adjust_customer_points(
   p_customer_user_id uuid,
   p_points_delta integer,
-  p_reason text default null
+  p_reason text default null,
+  p_created_by uuid default null
 )
 returns jsonb
 language plpgsql
@@ -122,8 +125,11 @@ begin
    where cr.customer_user_id = p_customer_user_id;
 
   -- Audit trail: attribute the adjustment to the trusted server-side actor.
-  -- auth.uid() reflects the service-role caller context here; we never accept
-  -- a client-supplied user id as the actor.
+  -- p_created_by is supplied by the trusted server-side caller (edge function
+  -- / trigger). auth.uid() alone is NOT sufficient here: a bare service_role
+  -- call has no session JWT, so auth.uid() would be NULL. We accept an
+  -- explicit trusted actor and fall back to auth.uid() when one is provided.
+  -- The function is service_role-only, so no client can supply p_created_by.
   insert into public.customer_reward_transactions (
     customer_user_id,
     points_delta,
@@ -136,7 +142,7 @@ begin
     p_points_delta,
     coalesce(v_row.points_balance, 0),
     p_reason,
-    auth.uid(),
+    coalesce(p_created_by, auth.uid()),
     now()
   );
 
