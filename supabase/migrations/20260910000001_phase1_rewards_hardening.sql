@@ -67,8 +67,15 @@ $$;
 -- ============================================================
 -- 2 & 3. adjust_customer_points: trusted attribution + explicit
 --     non-negative balance invariant
--- ============================================================
-create or replace function public.adjust_customer_points(
+-- NOTE: the signature grows by one optional parameter (p_created_by).
+-- CREATE OR REPLACE FUNCTION cannot change an existing function's argument
+-- list, so the previous 3-arg overload is dropped first. No caller exists yet
+-- (verified: only these migrations reference the function), so nothing is
+-- broken. cascade also removes the old 3-arg EXECUTE grants, which are
+-- re-applied below.
+drop function if exists public.adjust_customer_points(uuid, integer, text) cascade;
+
+create function public.adjust_customer_points(
   p_customer_user_id uuid,
   p_points_delta integer,
   p_reason text default null,
@@ -164,7 +171,7 @@ revoke execute on function public.get_customer_rewards(uuid) from public;
 revoke execute on function public.get_customer_rewards(uuid) from anon;
 grant execute on function public.get_customer_rewards(uuid) to authenticated;
 
-revoke execute on function public.adjust_customer_points(uuid, integer, text) from public;
-revoke execute on function public.adjust_customer_points(uuid, integer, text) from anon;
-revoke execute on function public.adjust_customer_points(uuid, integer, text) from authenticated;
-grant execute on function public.adjust_customer_points(uuid, integer, text) to service_role;
+revoke execute on function public.adjust_customer_points(uuid, integer, text, text) from public;
+revoke execute on function public.adjust_customer_points(uuid, integer, text, text) from anon;
+revoke execute on function public.adjust_customer_points(uuid, integer, text, text) from authenticated;
+grant execute on function public.adjust_customer_points(uuid, integer, text, text) to service_role;
