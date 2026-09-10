@@ -3972,34 +3972,6 @@ function Profile({ user, onBack, onLogout }) {
   )
 }
 
-function ReviewResponse({ reviewId, onRespond }) {
-  const [text, setText] = useState('')
-  const [sending, setSending] = useState(false)
-
-  const submit = async () => {
-    if (!text.trim()) return
-    setSending(true)
-    await onRespond(reviewId, text)
-    setText('')
-    setSending(false)
-  }
-
-  return (
-    <div style={{ marginTop: 6, display: 'flex', gap: 8 }}>
-      <input
-        className="dash-form-input"
-        placeholder="Write a response..."
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        style={{ flex: 1 }}
-      />
-      <button type="button" className="dash-btn dash-btn-primary dash-btn-sm" onClick={submit} disabled={sending}>
-        {sending ? '...' : 'Reply'}
-      </button>
-    </div>
-  )
-}
-
 function ReviewForm({ providerUserId, user, onReviewSubmitted }) {
   const [rating, setRating] = useState(0)
   const [hoverRating, setHoverRating] = useState(0)
@@ -4102,7 +4074,6 @@ function ReviewForm({ providerUserId, user, onReviewSubmitted }) {
 
 function ProviderDashboard({
   user,
-  onHome,
   onNotifications,
   onConversations,
   onBookings,
@@ -4136,7 +4107,6 @@ function ProviderDashboard({
   const [resubmitDocPreview, setResubmitDocPreview] = useState('')
   const [resubmitDocName, setResubmitDocName] = useState('')
   const [resubmitDocFile, setResubmitDocFile] = useState(null)
-  const [supportReports, setSupportReports] = useState([])
   const [availability, setAvailability] = useState([])
   const [packages, setPackages] = useState([])
   const [editingPackageId, setEditingPackageId] = useState(null)
@@ -4150,9 +4120,6 @@ function ProviderDashboard({
   const [newPackageDescription, setNewPackageDescription] = useState('')
   const [newPackagePrice, setNewPackagePrice] = useState('')
   const [newPackageDuration, setNewPackageDuration] = useState('')
-  const [newQuoteAmount, setNewQuoteAmount] = useState('')
-  const [newQuoteDescription, setNewQuoteDescription] = useState('')
-  const [newQuoteBookingId, setNewQuoteBookingId] = useState('')
   const [proposedTimes, setProposedTimes] = useState({})
   const [portfolio, setPortfolio] = useState([])
   const [portfolioForm, setPortfolioForm] = useState({
@@ -4402,18 +4369,6 @@ function ProviderDashboard({
         setBookings(data || [])
       }
 
-      const { data: reportsData, error: reportsError } = await supabase
-        .from('support_reports')
-        .select('*')
-        .eq('reporter_user_id', user.user_id)
-        .order('created_at', { ascending: false })
-
-      if (reportsError) {
-        console.error('Failed to load support reports:', reportsError)
-      } else {
-        setSupportReports(reportsData || [])
-      }
-
       const { count: unreadCount, error: unreadError } = await supabase
         .from('notifications')
         .select('id', { count: 'exact', head: true })
@@ -4524,20 +4479,6 @@ function ProviderDashboard({
       setLogoUrl(await getSignedStorageUrl('provider-media', path))
       setProviderProfile((current) => ({ ...current, logo_url: path }))
     } catch (error) { alert('Could not update logo: ' + error.message) }
-    setFeatureLoading(false)
-  }
-
-  const uploadSample = async (file, caption) => {
-    if (!file || !user?.user_id) return
-    setFeatureLoading(true)
-    try {
-      const path = await uploadPrivateFile('provider-work-samples', user.user_id, file)
-      const { data, error } = await supabase.from('provider_work_samples').insert({ provider_user_id: user.user_id, image_url: path, caption: caption || null }).select('*').single()
-      if (error) throw error
-      const signedUrl = await getSignedStorageUrl('provider-work-samples', path)
-      setSamples((current) => [{ ...data, signedUrl }, ...current])
-      setSampleCaption('')
-    } catch (error) { alert('Could not upload work sample: ' + error.message) }
     setFeatureLoading(false)
   }
 
@@ -4836,48 +4777,6 @@ function ProviderDashboard({
     setFeatureLoading(false)
   }
 
-  const handleResubmitDocSelect = (event) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    if (resubmitDocPreview) {
-      URL.revokeObjectURL(resubmitDocPreview)
-    }
-    const objectUrl = URL.createObjectURL(file)
-    setResubmitDocPreview(objectUrl)
-    setResubmitDocName(file.name)
-    setResubmitDocFile(file)
-  }
-
-  const clearResubmitDoc = () => {
-    if (resubmitDocPreview) {
-      URL.revokeObjectURL(resubmitDocPreview)
-    }
-    setResubmitDocPreview('')
-    setResubmitDocName('')
-    setResubmitDocFile(null)
-  }
-
-  const handleVerificationDocSelect = (event) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    if (verificationDocPreview) {
-      URL.revokeObjectURL(verificationDocPreview)
-    }
-    const objectUrl = URL.createObjectURL(file)
-    setVerificationDocPreview(objectUrl)
-    setVerificationDocName(file.name)
-    setVerificationDocFile(file)
-  }
-
-  const clearVerificationDoc = () => {
-    if (verificationDocPreview) {
-      URL.revokeObjectURL(verificationDocPreview)
-    }
-    setVerificationDocPreview('')
-    setVerificationDocName('')
-    setVerificationDocFile(null)
-  }
-
   const saveAvailability = async () => {
     if (!user?.user_id) return
     setFeatureLoading(true)
@@ -4977,86 +4876,6 @@ function ProviderDashboard({
     } else {
       setPackages((current) => current.map((p) => p.id === id ? data : p))
       cancelEditingPackage()
-    }
-    setFeatureLoading(false)
-  }
-
-  const sendQuote = async () => {
-    if (!newQuoteBookingId || !newQuoteAmount || !newQuoteDescription.trim()) {
-      alert('Please fill in all quote fields.')
-      return
-    }
-    setFeatureLoading(true)
-    const { data, error } = await supabase.from('quotes').insert({
-      booking_id: Number(newQuoteBookingId),
-      provider_user_id: user.user_id,
-      amount: Number(newQuoteAmount),
-      description: newQuoteDescription.trim(),
-      status: 'pending',
-    }).select('*').single()
-    if (error) {
-      alert('Could not send quote: ' + error.message)
-    } else {
-      setQuotes((current) => [data, ...current])
-      setNewQuoteBookingId('')
-      setNewQuoteAmount('')
-      setNewQuoteDescription('')
-
-      const { data: booking } = await supabase
-        .from('bookings')
-        .select('customer_user_id')
-        .eq('id', Number(newQuoteBookingId))
-        .maybeSingle()
-
-      if (booking?.customer_user_id) {
-        const { error: notificationError } = await supabase.rpc('create_notification', {
-          p_user_id: booking.customer_user_id,
-          p_type: 'quote',
-          p_title: 'New quote received',
-          p_message: `You received a new quote of ₦${Number(newQuoteAmount).toLocaleString()} for your booking.`,
-        })
-
-        if (notificationError) {
-          console.error('Failed to create quote notification:', notificationError)
-        }
-      }
-    }
-    setFeatureLoading(false)
-  }
-
-  const updateQuoteStatus = async (quoteId, status) => {
-    setFeatureLoading(true)
-    const { error } = await supabase.from('quotes').update({ status, updated_at: new Date().toISOString() }).eq('id', quoteId)
-    if (error) {
-      alert('Could not update quote: ' + error.message)
-    } else {
-      setQuotes((current) => current.map((q) => q.id === quoteId ? { ...q, status } : q))
-
-      const quote = quotes.find((q) => q.id === quoteId)
-      if (quote?.provider_user_id) {
-        const { error: notificationError } = await supabase.rpc('create_notification', {
-          p_user_id: quote.provider_user_id,
-          p_type: 'quote',
-          p_title: status === 'accepted' ? 'Quote accepted' : 'Quote declined',
-          p_message: `Your quote for booking #${quote.booking_id} was ${status}.`,
-        })
-
-        if (notificationError) {
-          console.error('Failed to create quote status notification:', notificationError)
-        }
-      }
-    }
-    setFeatureLoading(false)
-  }
-
-  const respondToReview = async (reviewId, response) => {
-    if (!response.trim()) return
-    setFeatureLoading(true)
-    const { error } = await supabase.from('reviews').update({ provider_response: response.trim(), responded_at: new Date().toISOString() }).eq('id', reviewId)
-    if (error) {
-      alert('Could not respond to review: ' + error.message)
-    } else {
-      setProviderReviews((current) => current.map((r) => r.id === reviewId ? { ...r, provider_response: response.trim(), responded_at: new Date().toISOString() } : r))
     }
     setFeatureLoading(false)
   }
@@ -7308,8 +7127,6 @@ function App() {
   const [foodDeliveryFee, setFoodDeliveryFee] = useState(0)
   const [foodRestaurantId, setFoodRestaurantId] = useState(null)
   const [selectedFoodCategory, setSelectedFoodCategory] = useState('')
-  const [foodOrderPlaced, setFoodOrderPlaced] = useState(false)
-  const [foodDeliveryAddress, setFoodDeliveryAddress] = useState('')
 
   const isInitialLoad = useRef(true)
 
@@ -8028,8 +7845,6 @@ function App() {
         }}
         onBack={() => setPage('food')}
         onPlaceOrder={(order) => {
-          setFoodOrderPlaced(true)
-          setFoodDeliveryAddress(order.deliveryAddress)
           setFoodCart([])
           setFoodDeliveryFee(0)
           setFoodRestaurantId(null)

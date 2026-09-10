@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchRestaurants, fetchRestaurantsByCategory, foodCategories, searchRestaurants } from './FoodData.js'
+import { fetchRestaurants, foodCategories, searchRestaurants } from './FoodData.js'
 import RestaurantCard from './RestaurantCard.jsx'
 import FoodMenu from './FoodMenu.jsx'
 

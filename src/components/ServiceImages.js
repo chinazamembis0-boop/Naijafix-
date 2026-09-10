@@ -131,8 +131,6 @@ function getCanonicalServiceSlug(service) {
   return serviceImageSlugAliases[slug] || slug
 }
 
-const serviceImageFallbacks = {}
-
 export function getServiceImage(service) {
   if (!service) return null
   const slug = getCanonicalServiceSlug(service)
@@ -284,7 +282,6 @@ const serviceIcons = {
   'professional consulting': '💼',
 }
 
-const flatServiceImages = {}
 export const localServiceImages = {}
 
 export default serviceImageSlugs
