@@ -1305,6 +1305,7 @@ function Dashboard({
   onRestaurantDashboard,
   onConversations,
   onFavorites,
+  onRewards,
   onProvider,
   onLogout,
 }) {
@@ -1576,6 +1577,11 @@ function Dashboard({
             {onFavorites && (
               <button className="dash-btn dash-btn-outline dash-btn-full" onClick={onFavorites}>
                 ❤️ Saved providers
+              </button>
+            )}
+            {onRewards && (
+              <button className="dash-btn dash-btn-outline dash-btn-full" onClick={onRewards}>
+                🎁 Rewards
               </button>
             )}
           </div>
@@ -2049,6 +2055,7 @@ function ProviderDetails({
   const [detailServices, setDetailServices] = useState([])
   const [coverImageUrl, setCoverImageUrl] = useState('')
   const [logoImageUrl, setLogoImageUrl] = useState('')
+  const [reputation, setReputation] = useState(null)
 
   useEffect(() => {
     const loadSamples = async () => {
@@ -2224,6 +2231,26 @@ function ProviderDetails({
     loadPackages()
     loadAvailability()
     loadDetailServices()
+
+    const loadReputation = async () => {
+      if (!provider?.user_id) {
+        return
+      }
+      try {
+        const { data, error } = await supabase.rpc('get_provider_reputation', {
+          p_provider_user_id: provider.user_id,
+        })
+        if (error) {
+          console.error('Failed to load provider reputation:', error)
+        } else {
+          setReputation(data || null)
+        }
+      } catch (error) {
+        console.error('Failed to load provider reputation:', error)
+      }
+    }
+
+    loadReputation()
   }, [provider, user])
 
   const toggleFavorite = async () => {
@@ -2374,6 +2401,35 @@ function ProviderDetails({
             <span>Category</span>
           </div>
         </div>
+
+        {reputation && (
+          <section className="details-card">
+            <h3>Platform activity</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+              <div style={{ background: 'var(--nf-bg)', padding: 10, borderRadius: 8 }}>
+                <div style={{ fontWeight: 800, color: 'var(--nf-navy)' }}>{reputation.completed_bookings}</div>
+                <div style={{ fontSize: 11, color: 'var(--nf-text-muted)' }}>Completed jobs</div>
+              </div>
+              <div style={{ background: 'var(--nf-bg)', padding: 10, borderRadius: 8 }}>
+                <div style={{ fontWeight: 800, color: 'var(--nf-navy)' }}>{reputation.total_bookings}</div>
+                <div style={{ fontSize: 11, color: 'var(--nf-text-muted)' }}>Total requests</div>
+              </div>
+              <div style={{ background: 'var(--nf-bg)', padding: 10, borderRadius: 8 }}>
+                <div style={{ fontWeight: 800, color: 'var(--nf-navy)' }}>{reputation.review_count}</div>
+                <div style={{ fontSize: 11, color: 'var(--nf-text-muted)' }}>Reviews</div>
+              </div>
+              <div style={{ background: 'var(--nf-bg)', padding: 10, borderRadius: 8 }}>
+                <div style={{ fontWeight: 800, color: 'var(--nf-navy)' }}>{reputation.favorite_count}</div>
+                <div style={{ fontSize: 11, color: 'var(--nf-text-muted)' }}>Saved by customers</div>
+              </div>
+            </div>
+            {reputation.total_bookings > 0 && (
+              <p style={{ marginTop: 10, fontSize: 12, color: 'var(--nf-text-muted)' }}>
+                Completion rate: {Math.round((reputation.completed_bookings / reputation.total_bookings) * 100)}% from {reputation.total_bookings} recorded requests.
+              </p>
+            )}
+          </section>
+        )}
 
         <section className="details-card">
           <h3>About this provider</h3>
@@ -4136,6 +4192,8 @@ function ProviderDashboard({
     after: '',
   })
   const [editingPortfolioId, setEditingPortfolioId] = useState(null)
+  const [reputation, setReputation] = useState(null)
+  const [favoriteCount, setFavoriteCount] = useState(0)
 
   useEffect(() => {
     return () => {
@@ -4396,6 +4454,29 @@ function ProviderDashboard({
       if (!reviewsResult.error) setProviderReviews(reviewsResult.data || [])
       if (!providerServicesResult.error) setProviderServices(providerServicesResult.data || [])
       if (!allServicesResult.error) setAllAvailableServices(allServicesResult.data || [])
+
+      try {
+        const { data: repData, error: repError } = await supabase.rpc('get_provider_reputation', {
+          p_provider_user_id: user.user_id,
+        })
+        if (repError) {
+          console.error('Failed to load provider reputation:', repError)
+        } else {
+          setReputation(repData || null)
+        }
+      } catch (error) {
+        console.error('Failed to load provider reputation:', error)
+      }
+
+      try {
+        const { count, error: favError } = await supabase
+          .from('favorites')
+          .select('id', { count: 'exact', head: true })
+          .eq('provider_user_id', user.user_id)
+        if (!favError) setFavoriteCount(count || 0)
+      } catch (error) {
+        console.error('Failed to load favorite count:', error)
+      }
 
       const { data: portfolioData, error: portfolioError } = await supabase
         .from('provider_portfolio_items')
@@ -4981,6 +5062,38 @@ function ProviderDashboard({
               <StatCard icon="❌" value={declinedBookings.length} label="Declined" color="red" />
               <StatCard icon="⭐" value={providerReviews.length} label="Reviews" color="blue" />
             </StatGrid>
+
+            {reputation && (
+              <DashboardCard>
+                <h3 style={{ marginBottom: 12 }}>Performance overview</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+                  <div style={{ background: 'var(--nf-bg)', padding: 12, borderRadius: 10 }}>
+                    <div style={{ fontWeight: 800, color: 'var(--nf-navy)' }}>{reputation.total_bookings}</div>
+                    <div style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>Total requests</div>
+                  </div>
+                  <div style={{ background: 'var(--nf-bg)', padding: 12, borderRadius: 10 }}>
+                    <div style={{ fontWeight: 800, color: 'var(--nf-navy)' }}>{reputation.completed_bookings}</div>
+                    <div style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>Completed</div>
+                  </div>
+                  <div style={{ background: 'var(--nf-bg)', padding: 12, borderRadius: 10 }}>
+                    <div style={{ fontWeight: 800, color: 'var(--nf-navy)' }}>{reputation.average_rating || 'New'}</div>
+                    <div style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>Avg rating</div>
+                  </div>
+                  <div style={{ background: 'var(--nf-bg)', padding: 12, borderRadius: 10 }}>
+                    <div style={{ fontWeight: 800, color: 'var(--nf-navy)' }}>{favoriteCount}</div>
+                    <div style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>Saved by customers</div>
+                  </div>
+                </div>
+                {bookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0) > 0 && (
+                  <p style={{ marginTop: 12, fontSize: 13, color: 'var(--nf-text-muted)' }}>
+                    Booking value: ₦{bookings.reduce((sum, b) => sum + (Number(b.total_price) || 0), 0).toLocaleString()}
+                  </p>
+                )}
+                <p style={{ marginTop: 8, fontSize: 11, color: 'var(--nf-text-muted)' }}>
+                  Metrics are calculated from real platform activity. NaijaFix is not yet processing marketplace payments, so this is booking value, not earnings.
+                </p>
+              </DashboardCard>
+            )}
 
             <AdPlacement position="inline" />
 
@@ -5604,6 +5717,9 @@ function AdminDashboard({ user, onLogout, onHome }) {
   const [adImageUploading, setAdImageUploading] = useState(false)
   const [ads, setAds] = useState([])
   const [adsLoading, setAdsLoading] = useState(true)
+  const [settings, setSettings] = useState(null)
+  const [settingsLoading, setSettingsLoading] = useState(false)
+  const [savingSettings, setSavingSettings] = useState(false)
 
   const loadAdminDataRef = useRef(null)
 
@@ -6129,14 +6245,60 @@ function AdminDashboard({ user, onLogout, onHome }) {
 
   const [activeTab, setActiveTab] = useState('overview')
 
+  const loadSettings = useCallback(async () => {
+    setSettingsLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('marketplace_settings')
+        .select('*')
+        .eq('id', 1)
+        .maybeSingle()
+      if (error) {
+        console.error('Failed to load marketplace settings:', error)
+      } else {
+        setSettings(data || null)
+      }
+    } catch (error) {
+      console.error('Failed to load marketplace settings:', error)
+    }
+    setSettingsLoading(false)
+  }, [setSettings, setSettingsLoading])
+
+  const saveSettings = async () => {
+    if (!settings) return
+    setSavingSettings(true)
+    try {
+      const { error } = await supabase
+        .from('marketplace_settings')
+        .update({
+          service_commission_percent: Number(settings.service_commission_percent) || 0,
+          restaurant_commission_percent: Number(settings.restaurant_commission_percent) || 0,
+          delivery_margin_percent: Number(settings.delivery_margin_percent) || 0,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', 1)
+      if (error) {
+        alert('Could not save marketplace settings: ' + error.message)
+      } else {
+        alert('Marketplace settings saved.')
+        loadSettings()
+      }
+    } catch (error) {
+      alert('Could not save marketplace settings: ' + (error?.message || 'Unknown error'))
+    }
+    setSavingSettings(false)
+  }
+
   const handleTabChange = useCallback((tabId) => {
     setActiveTab(tabId)
     if (tabId === 'support-reports') {
       setTimeout(() => markReportsAsViewed(), 0)
     } else if (tabId === 'notifications') {
       setTimeout(() => markNotificationsAsRead(), 0)
+    } else if (tabId === 'settings') {
+      setTimeout(() => loadSettings(), 0)
     }
-  }, [markReportsAsViewed, markNotificationsAsRead])
+  }, [markReportsAsViewed, markNotificationsAsRead, loadSettings])
 
   const openVerificationDocument = async (path, type) => {
     if (!path) return
@@ -6167,6 +6329,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
     { id: 'bookings', icon: '📅', label: 'Bookings' },
     { id: 'services', icon: '🏷️', label: 'Services' },
     { id: 'ads', icon: '📢', label: 'Ads' },
+    { id: 'settings', icon: '⚙️', label: 'Settings' },
     { id: 'provider-verifications', icon: '🪪', label: 'Providers', badge: pendingProvider },
     { id: 'customer-verifications', icon: '🆔', label: 'Customers', badge: pendingCustomer },
     { id: 'support-reports', icon: '📋', label: 'Reports', badge: openReports },
@@ -6507,6 +6670,43 @@ function AdminDashboard({ user, onLogout, onHome }) {
                   </div>
                 ))}
               </div>
+            )}
+          </>
+        )}
+
+        {activeTab === 'settings' && (
+          <>
+            <SectionHeader label="SETTINGS" title="Marketplace settings" action={
+              <button className="dash-btn dash-btn-primary dash-btn-sm" onClick={loadSettings} disabled={settingsLoading}>
+                {settingsLoading ? 'Loading...' : '↻ Refresh'}
+              </button>
+            } />
+            {settingsLoading || !settings ? (
+              <LoadingState text="Loading marketplace settings..." />
+            ) : (
+              <DashboardCard>
+                <p style={{ fontSize: 13, color: 'var(--nf-text-muted)', marginBottom: 16 }}>
+                  Configure marketplace commission rates. These values are configuration only — no payments are collected in this phase.
+                </p>
+                <div className="dash-form-group">
+                  <label className="dash-form-label">Service commission (%)</label>
+                  <input className="dash-form-input" type="number" min="0" max="100" step="0.01" value={settings.service_commission_percent ?? 0} onChange={(e) => setSettings((current) => ({ ...current, service_commission_percent: Number(e.target.value) || 0 }))} />
+                </div>
+                <div className="dash-form-group">
+                  <label className="dash-form-label">Restaurant commission (%)</label>
+                  <input className="dash-form-input" type="number" min="0" max="100" step="0.01" value={settings.restaurant_commission_percent ?? 0} onChange={(e) => setSettings((current) => ({ ...current, restaurant_commission_percent: Number(e.target.value) || 0 }))} />
+                </div>
+                <div className="dash-form-group">
+                  <label className="dash-form-label">Delivery margin (%)</label>
+                  <input className="dash-form-input" type="number" min="0" max="100" step="0.01" value={settings.delivery_margin_percent ?? 0} onChange={(e) => setSettings((current) => ({ ...current, delivery_margin_percent: Number(e.target.value) || 0 }))} />
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', marginTop: 8 }}>
+                  Last updated: {settings.updated_at ? new Date(settings.updated_at).toLocaleString() : 'Not set'}
+                </p>
+                <button className="dash-btn dash-btn-primary dash-btn-full" onClick={saveSettings} disabled={savingSettings} style={{ marginTop: 12 }}>
+                  {savingSettings ? 'Saving...' : 'Save settings'}
+                </button>
+              </DashboardCard>
             )}
           </>
         )}
@@ -7092,6 +7292,114 @@ function ChatScreen({ user, conversation, partnerName, partnerAvatar, bookingCon
   )
 }
 
+function Rewards({ user, onBack }) {
+  const [rewards, setRewards] = useState(null)
+  const [transactions, setTransactions] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const loadRewards = async () => {
+      if (!user?.user_id) {
+        setLoading(false)
+        return
+      }
+
+      setLoading(true)
+      try {
+        const { data, error } = await supabase.rpc('get_customer_rewards', {
+          p_customer_user_id: user.user_id,
+        })
+
+        if (error) {
+          console.error('Failed to load rewards:', error)
+        } else {
+          setRewards(data || null)
+        }
+      } catch (error) {
+        console.error('Failed to load rewards:', error)
+      }
+
+      try {
+        const { data: txData } = await supabase
+          .from('customer_reward_transactions')
+          .select('*')
+          .eq('customer_user_id', user.user_id)
+          .order('created_at', { ascending: false })
+          .limit(20)
+        setTransactions(txData || [])
+      } catch (error) {
+        console.error('Failed to load reward transactions:', error)
+      }
+
+      setLoading(false)
+    }
+
+    loadRewards()
+  }, [user])
+
+  return (
+    <div className="inner-page">
+      <header className="inner-header">
+        <button className="back-link" onClick={onBack}>← Back</button>
+        <Logo />
+      </header>
+      <main className="inner-content">
+        <span className="section-label">LOYALTY</span>
+        <h2>Your rewards</h2>
+
+        {loading ? (
+          <div className="empty-box large-empty">
+            <span>⏳</span>
+            <h4>Loading rewards...</h4>
+          </div>
+        ) : (
+          <>
+            <div className="details-card" style={{ textAlign: 'center', padding: 24 }}>
+              <div style={{ fontSize: 14, color: 'var(--nf-text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Points balance</div>
+              <div style={{ fontSize: 48, fontWeight: 800, color: 'var(--nf-navy)', marginTop: 4 }}>
+                {rewards?.points_balance ?? 0}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--nf-text-muted)', marginTop: 6 }}>
+                Lifetime points: {rewards?.lifetime_points ?? 0}
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', marginTop: 12, maxWidth: 320, marginInline: 'auto' }}>
+                NaijaFix rewards are a loyalty foundation. Points are not yet redeemable for cash and no marketplace payments are active.
+              </p>
+            </div>
+
+            <SectionHeader label="ACTIVITY" title="Recent activity" />
+            {transactions.length === 0 ? (
+              <div className="empty-box">
+                <span>🎁</span>
+                <h4>No reward activity yet</h4>
+                <p>Complete bookings and refer friends to earn points in the future.</p>
+              </div>
+            ) : (
+              <div className="details-card">
+                {transactions.map((tx) => (
+                  <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #e2e8e4' }}>
+                    <div>
+                      <strong style={{ color: tx.points_delta >= 0 ? '#166534' : '#991b1b' }}>
+                        {tx.points_delta >= 0 ? '+' : ''}{tx.points_delta} pts
+                      </strong>
+                      {tx.reason && <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--nf-text-muted)' }}>{tx.reason}</p>}
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>Balance</div>
+                      <strong style={{ fontSize: 14 }}>{tx.balance_after}</strong>
+                      <div style={{ fontSize: 11, color: 'var(--nf-text-muted)' }}>{new Date(tx.created_at).toLocaleDateString()}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </main>
+    </div>
+  )
+}
+
 function App() {
   const [page, setPage] =
     useState('home')
@@ -7585,6 +7893,7 @@ function App() {
         onFavorites={() =>
           setPage('favorites')
         }
+        onRewards={() => setPage('rewards')}
         onProvider={(provider) => {
           setSelectedProvider(provider)
           setPage('provider')
@@ -7734,6 +8043,15 @@ function App() {
           setSelectedProvider(provider)
           setPage('provider')
         }}
+      />
+    )
+  }
+
+  if (effectivePage === 'rewards') {
+    return (
+      <Rewards
+        user={user}
+        onBack={() => setPage('dashboard')}
       />
     )
   }
