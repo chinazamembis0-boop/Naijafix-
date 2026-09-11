@@ -1233,6 +1233,18 @@ select:focus-visible {
   color: var(--nf-text-muted);
 }
 
+.notification-clickable {
+  cursor: pointer;
+  border-color: var(--nf-border, #e5e7eb);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.notification-clickable:hover,
+.notification-clickable:focus-visible {
+  background: var(--nf-bg, #f8fafc);
+  outline: none;
+}
+
 .profile-page {
   text-align: center;
 }

@@ -3433,7 +3433,7 @@ function Favorites({ user, onBack, onProvider }) {
   )
 }
 
-function Notifications({ user, onBack }) {
+function Notifications({ user, onBack, onOpenBooking }) {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -3552,37 +3552,60 @@ function Notifications({ user, onBack }) {
           </div>
         ) : (
           <div>
-            {notifications.map((notification) => (
-              <div
-                className={`notification-card ${
-                  notification.is_read ? 'read' : 'unread'
-                }`}
-                key={notification.id}
-              >
-                <span>
-                  {getNotificationIcon(notification.type)}
-                </span>
+            {notifications.map((notification) => {
+              const bookingId =
+                notification?.metadata?.booking_id || null
+              const clickable = bookingId && onOpenBooking
 
-                <div>
-                  <strong>
-                    {notification.title || 'Notification'}
-                  </strong>
+              return (
+                <div
+                  className={`notification-card ${
+                    notification.is_read ? 'read' : 'unread'
+                  }${clickable ? ' notification-clickable' : ''}`}
+                  key={notification.id}
+                  onClick={
+                    clickable
+                      ? () => onOpenBooking(bookingId)
+                      : undefined
+                  }
+                  role={clickable ? 'button' : undefined}
+                  tabIndex={clickable ? 0 : undefined}
+                  onKeyDown={
+                    clickable
+                      ? (event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault()
+                            onOpenBooking(bookingId)
+                          }
+                        }
+                      : undefined
+                  }
+                >
+                  <span>
+                    {getNotificationIcon(notification.type)}
+                  </span>
 
-                  <p>
-                    {notification.message || ''}
-                  </p>
+                  <div>
+                    <strong>
+                      {notification.title || 'Notification'}
+                    </strong>
 
-                  <small>
-                    {notification.type || 'update'}{' '}
-                    {notification.created_at
-                      ? new Date(
-                          notification.created_at
-                        ).toLocaleString()
-                      : ''}
-                  </small>
+                    <p>
+                      {notification.message || ''}
+                    </p>
+
+                    <small>
+                      {notification.type || 'update'}{' '}
+                      {notification.created_at
+                        ? new Date(
+                            notification.created_at
+                          ).toLocaleString()
+                        : ''}
+                    </small>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </main>
@@ -7718,6 +7741,20 @@ function App() {
     setPage('services')
   }
 
+  // Open a booking from a notification. Routes to the bookings view that the
+  // user is allowed to see; the booking itself is still guarded by RLS, so a
+  // user can never be routed to a booking they cannot read.
+  const openBookingFromNotification = (bookingId) => {
+    if (!bookingId) return
+    if (user?.role === 'provider') {
+      setPage('provider-dashboard')
+    } else if (user?.role === 'admin') {
+      setPage('admin-dashboard')
+    } else {
+      setPage('bookings')
+    }
+  }
+
   const handleLogout = async () => {
     await supabase.auth.signOut()
 
@@ -8092,9 +8129,8 @@ function App() {
     return (
       <Notifications
         user={user}
-        onBack={() =>
-          setPage('dashboard')
-        }
+        onBack={() => setPage('dashboard')}
+        onOpenBooking={openBookingFromNotification}
       />
     )
   }
@@ -8130,6 +8166,7 @@ function App() {
         onBack={() =>
           setPage('provider-dashboard')
         }
+        onOpenBooking={openBookingFromNotification}
       />
     )
   }
