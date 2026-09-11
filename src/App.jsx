@@ -1847,6 +1847,19 @@ function Services({
       providerCategory.includes(serviceCategory) ||
       serviceCategory.includes(providerCategory)
 
+    // A provider's real offering lives in provider_services (multi-service),
+    // while providers.category is only a coarse fallback. Match the searched
+    // service against the provider's actual service tokens too, so a
+    // multi-service provider is discoverable even when their category is a
+    // generic value such as "General".
+    const matchesServiceToken =
+      !serviceCategory ||
+      Array.from(provider.serviceTokens || []).some((token) =>
+        token === serviceCategory ||
+        token.includes(serviceCategory) ||
+        serviceCategory.includes(token)
+      )
+
     const matchesSearch = !searchText || providerText.includes(searchText)
     const matchesVerified = !verifiedOnly || provider.verified
     const matchesEmergency = !emergencyOnly || provider.emergency_available
@@ -1855,7 +1868,7 @@ function Services({
       (typeof provider.rating === 'number' && provider.rating >= minRating)
 
     return (
-      matchesCategory &&
+      (matchesCategory || matchesServiceToken) &&
       matchesSearch &&
       matchesVerified &&
       matchesEmergency &&
@@ -7509,25 +7522,29 @@ function App() {
     const loadInitialData = async () => {
       setLoadingData(true)
 
-      const [
-        servicesResult,
-        providersResult,
-      ] = await Promise.all([
-         supabase
-           .from('services')
-           .select('*')
-           .eq('active', true)
-           .order('name', {
-             ascending: true,
-           }),
+      const [servicesResult, providersResult, providerServicesResult] =
+        await Promise.all([
+          supabase
+            .from('services')
+            .select('*')
+            .eq('active', true)
+            .order('name', {
+              ascending: true,
+            }),
 
-        supabase
-          .from('providers')
-          .select('*')
-          .order('business_name', {
-            ascending: true,
-          }),
-      ])
+          supabase
+            .from('providers')
+            .select('*')
+            .order('business_name', {
+              ascending: true,
+            }),
+
+          // Provider service relationships. Customers can read these
+          // (RLS: "Anyone can view provider-service relationships").
+          supabase
+            .from('provider_services')
+            .select('provider_user_id, service_id'),
+        ])
 
         if (
           !servicesResult.error &&
@@ -7554,6 +7571,25 @@ function App() {
         )
       }
 
+      // Enrich each provider with the normalized service tokens they actually
+      // offer (from provider_services). A provider's providers.category is
+      // only a coarse fallback; their real, multi-service offering lives in
+      // provider_services. Without this, a provider whose category is
+      // "General" is invisible to customers browsing by service.
+      const serviceById = new Map(
+        (servicesResult.data || []).map((s) => [s.id, s])
+      )
+      const serviceTokenByProvider = new Map()
+      ;(providerServicesResult.data || []).forEach((ps) => {
+        const service = serviceById.get(ps.service_id)
+        if (!service) return
+        const tokens =
+          serviceTokenByProvider.get(ps.provider_user_id) || new Set()
+        tokens.add(normalizeCategory(service.name))
+        tokens.add(normalizeCategory(service.category))
+        serviceTokenByProvider.set(ps.provider_user_id, tokens)
+      })
+
       if (providersResult.error) {
         console.error(
           'Failed to load providers:',
@@ -7561,7 +7597,11 @@ function App() {
         )
       } else {
         setDbProviders(
-          providersResult.data || []
+          (providersResult.data || []).map((provider) => ({
+            ...provider,
+            serviceTokens:
+              serviceTokenByProvider.get(provider.user_id) || new Set(),
+          }))
         )
       }
 
