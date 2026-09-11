@@ -42,12 +42,9 @@ declare
   v_booking record;
   v_customer_user_id uuid;
   v_provider_user_id uuid;
-  v_admin_user_id uuid;
-  v_title text;
-  v_message text;
   v_metadata jsonb;
   v_decline_reason text;
-  v_cursor refcursor;
+  v_admin_user_id uuid;
 begin
   select * into v_booking from public.bookings where id = p_booking_id;
   if not found then
@@ -95,11 +92,9 @@ begin
 
     -- Notify every authorized admin. Resolved here so the caller cannot
     -- redirect or suppress admin activity notifications.
-    open v_cursor as
-      select p.user_id from public.profiles p where p.role = 'admin';
+    for v_admin_user_id in
+      select p.user_id from public.profiles p where p.role = 'admin'
     loop
-      fetch next from v_cursor into v_admin_user_id;
-      exit when not found;
       insert into public.notifications
         (user_id, type, title, message, is_read, metadata, created_at)
       values (
@@ -112,7 +107,6 @@ begin
         now()
       );
     end loop;
-    close v_cursor;
 
   -- STATUS TRANSITIONS (accepted / declined / etc.)
   --   Customer: (existing behaviour) status update.
@@ -137,11 +131,11 @@ begin
       );
     end if;
 
-    open v_cursor as
-      select p.user_id from public.profiles p where p.role = 'admin';
+    -- Notify every authorized admin. Resolved here so the caller cannot
+    -- redirect or suppress admin activity notifications.
+    for v_admin_user_id in
+      select p.user_id from public.profiles p where p.role = 'admin'
     loop
-      fetch next from v_cursor into v_admin_user_id;
-      exit when not found;
       insert into public.notifications
         (user_id, type, title, message, is_read, metadata, created_at)
       values (
@@ -158,7 +152,6 @@ begin
         now()
       );
     end loop;
-    close v_cursor;
   end if;
 end;
 $$;
