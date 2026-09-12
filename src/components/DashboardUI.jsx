@@ -302,6 +302,9 @@ export function BookingCard({ booking, onAccept, onDecline, onMessage, showActio
         <h4>{booking.service_name || booking.customer_name || 'Service request'}</h4>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {booking.emergency && <span className="dash-status-badge dash-status-declined">🚨 Emergency</span>}
+          {booking.provider_completed_at && status !== 'completed' && status !== 'cancelled' && status !== 'declined' && (
+            <span className="dash-status-badge dash-status-pending">✅ Awaiting customer confirmation</span>
+          )}
           <StatusBadge status={booking.status} />
         </div>
       </div>

@@ -3111,17 +3111,39 @@ function Bookings({ user, onBack, onChat, onRebook, dbProviders }) {
 
   const confirmCompletion = async (booking) => {
     if (!booking?.id) return
-    const { error } = await supabase
-      .from('bookings')
-      .update({ completed_at: new Date().toISOString(), reviewed: true, status: 'Completed' })
-      .eq('id', booking.id)
-      .eq('customer_user_id', user.user_id)
+
+    // The final Completed transition is authorized server-side by
+    // confirm_booking_completion, which requires the authenticated customer
+    // to own the booking AND the provider to have marked it complete first.
+    // This client call is idempotent: a second press hits the already-Completed
+    // branch in the function and produces no duplicate side effects.
+    const { data, error } = await supabase.rpc(
+      'confirm_booking_completion',
+      {
+        p_booking_id: booking.id,
+      }
+    )
 
     if (error) {
       alert('Could not confirm completion: ' + error.message)
-    } else {
-      setBookings((current) => current.map((b) => b.id === booking.id ? { ...b, completed_at: new Date().toISOString(), reviewed: true, status: 'Completed' } : b))
+      return
     }
+
+    setBookings((current) =>
+      current.map((b) =>
+        b.id === booking.id
+          ? {
+              ...b,
+              status: 'Completed',
+              completed_at: data?.completed_at || new Date().toISOString(),
+              provider_completed_at:
+                b.provider_completed_at ||
+                booking.provider_completed_at ||
+                new Date().toISOString(),
+            }
+          : b
+      )
+    )
   }
 
   const acceptProposedTime = async (booking) => {
@@ -3330,14 +3352,18 @@ function Bookings({ user, onBack, onChat, onRebook, dbProviders }) {
                   </div>
                 )}
 
-                {String(booking.status || '').toLowerCase() === 'completed' && !booking.reviewed && (
-                  <button
-                    className="dash-btn dash-btn-primary dash-btn-full"
-                    onClick={() => confirmCompletion(booking)}
-                    style={{ marginTop: 8 }}
-                  >
-                    ✅ Confirm job completed
-                  </button>
+                {booking.provider_completed_at && String(booking.status || '').toLowerCase() !== 'completed' && String(booking.status || '').toLowerCase() !== 'cancelled' && String(booking.status || '').toLowerCase() !== 'declined' && (
+                  <div style={{ marginTop: 8 }}>
+                    <p style={{ fontSize: 13, color: 'var(--nf-text-muted)', marginBottom: 6 }}>
+                      ✅ Your provider marked this service as completed. Confirm when the work has been completed to your satisfaction.
+                    </p>
+                    <button
+                      className="dash-btn dash-btn-primary dash-btn-full"
+                      onClick={() => confirmCompletion(booking)}
+                    >
+                      Confirm completion
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
@@ -4316,7 +4342,15 @@ function ProviderDashboard({
 
     setUpdatingBookingId(bookingId)
 
-    const updates = { status: newStatus }
+    // Provider "Mark completed" records that the PROVIDER says the service is
+    // done. It must NOT set the final Completed state, because customer
+    // confirmation is still required. The final Completed transition is made
+    // only by confirm_booking_completion (authenticated customer, gated).
+    const isProviderCompletion =
+      String(newStatus || '').toLowerCase() === 'completed'
+    const updates = isProviderCompletion
+      ? { provider_completed_at: new Date().toISOString() }
+      : { status: newStatus }
     if (reason) {
       updates.decline_reason = reason
     }
@@ -4344,7 +4378,12 @@ function ProviderDashboard({
       setBookings((currentBookings) =>
         currentBookings.map((booking) =>
           booking.id === bookingId
-            ? { ...booking, status: newStatus, decline_reason: reason || booking.decline_reason }
+            ? {
+                ...booking,
+                ...(isProviderCompletion
+                  ? { provider_completed_at: new Date().toISOString() }
+                  : { status: newStatus, decline_reason: reason || booking.decline_reason }),
+              }
             : booking
         )
       )
@@ -4353,7 +4392,9 @@ function ProviderDashboard({
         const { error: notificationError } =
           await supabase.rpc('create_booking_notification', {
             p_booking_id: booking.id,
-            p_event: newStatus.toLowerCase(),
+            p_event: isProviderCompletion
+              ? 'provider_completed'
+              : newStatus.toLowerCase(),
           })
 
         if (notificationError) {
