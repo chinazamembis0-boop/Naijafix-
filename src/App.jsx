@@ -5224,8 +5224,8 @@ function ProviderDashboard({
                 const status = String(booking.status || 'Pending').toLowerCase()
                 const isPending = status === 'pending'
                 const isAccepted = status === 'accepted'
-                const isOnTheWay = status === 'provider_on_the_way'
-                const isInProgress = status === 'in_progress'
+                const isOnTheWay = status === 'provider on the way'
+                const isInProgress = status === 'in progress'
                 return (
                   <BookingCard
                     key={booking.id}
