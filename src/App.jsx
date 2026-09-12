@@ -1750,7 +1750,12 @@ function Dashboard({
               <div style={{ marginBottom: 12 }}>
                 <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Upcoming</p>
                 {upcomingBookings.map((booking) => (
-                  <BookingCard key={booking.id} booking={booking} showActions={false} onConfirmCompletion={confirmCompletion} />
+                  <div key={booking.id} style={{ position: 'relative' }}>
+                    {booking.status && String(booking.status).toLowerCase() === 'completed' && booking.reviewed && (
+                      <span className="dash-status-badge dash-status-pending" style={{ marginBottom: 4 }}>✅ Reviewed</span>
+                    )}
+                    <BookingCard booking={booking} showActions={false} onConfirmCompletion={confirmCompletion} />
+                  </div>
                 ))}
               </div>
             )}
@@ -1758,7 +1763,15 @@ function Dashboard({
               <div>
                 <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Past</p>
                 {recentBookings.filter(b => !upcomingBookings.includes(b)).map((booking) => (
-                  <BookingCard key={booking.id} booking={booking} showActions={false} onConfirmCompletion={confirmCompletion} />
+                  <div key={booking.id} style={{ position: 'relative' }}>
+                    {booking.status && String(booking.status).toLowerCase() === 'completed' && booking.reviewed && (
+                      <span className="dash-status-badge dash-status-pending" style={{ marginBottom: 4 }}>✅ Reviewed</span>
+                    )}
+                    {booking.status && String(booking.status).toLowerCase() === 'completed' && !booking.reviewed && (
+                      <span className="dash-status-badge dash-status-declined" style={{ marginBottom: 4 }}>⏳ Awaiting review</span>
+                    )}
+                    <BookingCard booking={booking} showActions={false} onConfirmCompletion={confirmCompletion} />
+                  </div>
                 ))}
               </div>
             )}
@@ -4191,36 +4204,54 @@ function ReviewForm({ providerUserId, user, onReviewSubmitted }) {
         return
       }
 
-      const { error } = await supabase.from('reviews').insert({
-        booking_id: completedBooking.id,
-        customer_user_id: user.user_id,
-        provider_user_id: providerUserId,
-        rating,
-        comment: comment.trim() || null,
-      })
-
-      if (error) {
-        if (error.code === '23505') {
-          alert('You have already reviewed this provider for this booking.')
-        } else {
-          alert('Could not submit review: ' + error.message)
+      const { data: result, error: rpcError } = await supabase.rpc(
+        'submit_customer_review',
+        {
+          p_booking_id: completedBooking.id,
+          p_rating: rating,
+          p_comment: comment.trim() || '',
         }
-      } else {
+      )
+
+      if (rpcError) {
+        alert('Could not submit review: ' + rpcError.message)
+        setSubmitting(false)
+        return
+      }
+
+      if (result && result.already_reviewed) {
+        alert(result.message || 'You have already reviewed this booking.')
+        setRating(0)
+        setComment('')
+        onReviewSubmitted?.()
+        setSubmitting(false)
+        return
+      }
+
+      if (result && result.success) {
         alert('Review submitted successfully!')
         setRating(0)
         setComment('')
         onReviewSubmitted?.()
 
-        const { error: notificationError } = await supabase.rpc('create_notification', {
-          p_user_id: providerUserId,
-          p_type: 'review',
-          p_title: 'New review',
-          p_message: `${user.name || 'A customer'} left you a ${rating}-star review.`,
-        })
+        const targetProviderId = result.provider_user_id || providerUserId
 
-        if (notificationError) {
-          console.error('Failed to create review notification:', notificationError)
+        try {
+          const { error: notificationError } = await supabase.rpc('create_notification', {
+            p_user_id: targetProviderId,
+            p_type: 'review',
+            p_title: 'New review',
+            p_message: `${user.name || 'A customer'} left you a ${rating}-star review.`,
+          })
+
+          if (notificationError) {
+            console.error('Failed to create review notification:', notificationError)
+          }
+        } catch {
+          console.error('Failed to create review notification')
         }
+      } else {
+        alert('Could not submit review.')
       }
     } catch (error) {
       alert('Could not submit review: ' + error.message)
@@ -4307,6 +4338,8 @@ function ProviderDashboard({
   const [editPackageDuration, setEditPackageDuration] = useState('')
   const [quotes, setQuotes] = useState([])
   const [providerReviews, setProviderReviews] = useState([])
+  const [responseText, setResponseText] = useState({})
+  const [respondingTo, setRespondingTo] = useState(null)
   const [newPackageName, setNewPackageName] = useState('')
   const [newPackageDescription, setNewPackageDescription] = useState('')
   const [newPackagePrice, setNewPackagePrice] = useState('')
@@ -5243,6 +5276,96 @@ function ProviderDashboard({
                   Metrics are calculated from real platform activity. NaijaFix is not yet processing marketplace payments, so this is booking value, not earnings.
                 </p>
               </DashboardCard>
+            )}
+
+            <SectionHeader label="REVIEWS" title="Customer reviews" />
+            {providerReviews.length === 0 ? (
+              <div className="dash-card">
+                <p style={{ color: 'var(--nf-text-muted)', fontSize: 13 }}>No reviews yet.</p>
+              </div>
+            ) : (
+              providerReviews.map((review) => (
+                <div key={review.id} className="dash-card" style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <strong>⭐ {review.rating}/5</strong>
+                    <small style={{ color: 'var(--nf-text-muted)' }}>
+                      {new Date(review.created_at).toLocaleDateString()}
+                    </small>
+                  </div>
+                  {review.comment && <p style={{ margin: '6px 0 4px', fontSize: 14 }}>{review.comment}</p>}
+                  {review.provider_response && (
+                    <div style={{ background: 'var(--nf-navy-light)', padding: 8, borderRadius: 6, marginTop: 6 }}>
+                      <strong style={{ fontSize: 12 }}>Your response</strong>
+                      <p style={{ margin: 0, fontSize: 13 }}>{review.provider_response}</p>
+                    </div>
+                  )}
+                  {(!review.provider_response) && review.provider_user_id === user.user_id && (
+                    <div style={{ marginTop: 8 }}>
+                      {respondingTo === review.id ? (
+                        <div>
+                          <textarea
+                            className="dash-form-textarea"
+                            placeholder="Respond to this review..."
+                            value={responseText[review.id] || ''}
+                            onChange={(e) => setResponseText((current) => ({ ...current, [review.id]: e.target.value }))}
+                          />
+                          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                            <button
+                              className="dash-btn dash-btn-primary dash-btn-sm"
+                              onClick={async () => {
+                                try {
+                                  await supabase.rpc('update_review_provider_response', {
+                                    p_review_id: review.id,
+                                    p_provider_response: responseText[review.id] || '',
+                                  })
+                                  setProviderReviews((current) =>
+                                    current.map((r) =>
+                                      r.id === review.id
+                                        ? { ...r, provider_response: responseText[review.id], responded_at: new Date().toISOString() }
+                                        : r
+                                    )
+                                  )
+                                  setRespondingTo(null)
+                                  setResponseText((current) => {
+                                    const next = { ...current }
+                                    delete next[review.id]
+                                    return next
+                                  })
+                                } catch (error) {
+                                  alert('Could not save response: ' + error.message)
+                                }
+                              }}
+                            >
+                              Save response
+                            </button>
+                            <button
+                              className="dash-btn dash-btn-outline dash-btn-sm"
+                              onClick={() => {
+                                setRespondingTo(null)
+                                setResponseText((current) => {
+                                  const next = { ...current }
+                                  delete next[review.id]
+                                  return next
+                                })
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          className="dash-btn dash-btn-outline dash-btn-sm"
+                          style={{ marginTop: 6 }}
+                          onClick={() => setRespondingTo(review.id)}
+                        >
+                          Respond to review
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
             )}
 
             <AdPlacement position="inline" />
