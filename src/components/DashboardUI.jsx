@@ -292,7 +292,7 @@ export function StatGrid({ children }) {
   return <div className="dash-stat-grid">{children}</div>
 }
 
-export function BookingCard({ booking, onAccept, onDecline, onMessage, showActions = true, onProviderOnTheWay, onMarkInProgress, onMarkCompleted, onAcceptTime, onProposeTime, proposedTime, onProposedTimeChange }) {
+export function BookingCard({ booking, onAccept, onDecline, onMessage, showActions = true, onProviderOnTheWay, onMarkInProgress, onMarkCompleted, onAcceptTime, onProposeTime, proposedTime, onProposedTimeChange, onConfirmCompletion }) {
   const status = String(booking.status || 'Pending').toLowerCase()
   const isPending = status === 'pending'
   const isAccepted = status === 'accepted'
@@ -391,6 +391,17 @@ export function BookingCard({ booking, onAccept, onDecline, onMessage, showActio
         <div className="dash-booking-actions">
           <button type="button" className="dash-btn dash-btn-outline" onClick={() => onMessage(booking)}>
             💬 Message
+          </button>
+        </div>
+      )}
+      {booking.provider_completed_at && status !== 'completed' && status !== 'cancelled' && status !== 'declined' && (
+        <div style={{ marginTop: 8 }}>
+          <button
+            type="button"
+            className="dash-btn dash-btn-primary dash-btn-full"
+            onClick={() => onConfirmCompletion?.(booking)}
+          >
+            Confirm completion
           </button>
         </div>
       )}

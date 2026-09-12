@@ -1346,6 +1346,31 @@ function Dashboard({
   const [recentReviews, setRecentReviews] = useState([])
   const [favoriteProviders, setFavoriteProviders] = useState([])
 
+  const confirmCompletion = async (booking) => {
+    if (!booking?.id) return
+    const { data, error } = await supabase.rpc(
+      'confirm_booking_completion',
+      { p_booking_id: booking.id }
+    )
+    if (error) {
+      alert('Could not confirm completion: ' + error.message)
+      return
+    }
+    setRecentBookings((current) =>
+      current.map((b) =>
+        b.id === booking.id
+          ? {
+              ...b,
+              status: 'Completed',
+              completed_at: data?.completed_at || new Date().toISOString(),
+              provider_completed_at:
+                b.provider_completed_at || booking.provider_completed_at || new Date().toISOString(),
+            }
+          : b
+      )
+    )
+  }
+
   useEffect(() => {
     let cancelled = false
 
@@ -1547,6 +1572,12 @@ function Dashboard({
 
   const pendingCount = recentBookings.filter(b => String(b.status).toLowerCase() === 'pending').length
   const acceptedCount = recentBookings.filter(b => String(b.status).toLowerCase() === 'accepted').length
+  const awaitingConfirmation = recentBookings.filter(
+    (b) => b.provider_completed_at
+      && String(b.status || '').toLowerCase() !== 'completed'
+      && String(b.status || '').toLowerCase() !== 'cancelled'
+      && String(b.status || '').toLowerCase() !== 'declined'
+  )
 
   const popularProviders = (providers || [])
     .slice()
@@ -1696,6 +1727,21 @@ function Dashboard({
           title="My bookings"
           action={<button className="dash-btn dash-btn-outline dash-btn-sm" onClick={onBookings}>View all →</button>}
         />
+        {awaitingConfirmation.length > 0 && (
+          <div className="dash-card" style={{ marginBottom: 12, borderColor: 'var(--nf-gold)', background: 'rgba(212,167,44,0.06)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div>
+                <strong>✅ Your provider marked {awaitingConfirmation.length === 1 ? 'a service' : 'services'} as completed</strong>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--nf-text-muted)' }}>
+                  Confirm when the work has been completed to your satisfaction.
+                </p>
+              </div>
+              <button className="dash-btn dash-btn-primary dash-btn-sm" onClick={onBookings}>
+                Confirm completion →
+              </button>
+            </div>
+          </div>
+        )}
         {activityLoading ? (
           <LoadingState text="Loading your activity..." />
         ) : recentBookings.length > 0 ? (
@@ -1704,7 +1750,7 @@ function Dashboard({
               <div style={{ marginBottom: 12 }}>
                 <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Upcoming</p>
                 {upcomingBookings.map((booking) => (
-                  <BookingCard key={booking.id} booking={booking} showActions={false} />
+                  <BookingCard key={booking.id} booking={booking} showActions={false} onConfirmCompletion={confirmCompletion} />
                 ))}
               </div>
             )}
@@ -1712,7 +1758,7 @@ function Dashboard({
               <div>
                 <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Past</p>
                 {recentBookings.filter(b => !upcomingBookings.includes(b)).map((booking) => (
-                  <BookingCard key={booking.id} booking={booking} showActions={false} />
+                  <BookingCard key={booking.id} booking={booking} showActions={false} onConfirmCompletion={confirmCompletion} />
                 ))}
               </div>
             )}
