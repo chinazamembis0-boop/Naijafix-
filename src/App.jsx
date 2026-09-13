@@ -6167,7 +6167,18 @@ function AdminDashboard({ user, onLogout, onHome }) {
       if (providersResult.error) {
         console.error('Failed to load providers:', providersResult.error)
       } else {
-        setProviders(providersResult.data || [])
+        const providerList = providersResult.data || []
+        setProviders(providerList)
+        // Build the admin name map from the authoritative providers table so
+        // that reviews and quotes can resolve every provider, including ones
+        // that have no provider_verifications row.
+        const providerNamesMap = {}
+        providerList.forEach((p) => {
+          if (p.user_id && p.business_name) {
+            providerNamesMap[p.user_id] = p.business_name
+          }
+        })
+        setProviderNames(providerNamesMap)
       }
 
       if (bookingsResult.error) {
