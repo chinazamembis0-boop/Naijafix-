@@ -2902,7 +2902,7 @@ function RequestService({
             customer_name: user.name,
             customer_user_id: authenticatedUser.id,
             provider_name:
-              provider?.business_name || '',
+              provider?.business_name || null,
             service_name: serviceNameForDisplay,
             service_id: resolvedServiceId,
             booking_date: date,
@@ -5981,6 +5981,15 @@ function AdminDashboard({ user, onLogout, onHome }) {
   const [rejectReason, setRejectReason] = useState({})
   const [providerNames, setProviderNames] = useState({})
   const [customerNames, setCustomerNames] = useState({})
+
+  const resolveProviderName = (booking) => {
+    if (booking.provider_name) return booking.provider_name
+    if (booking.provider_user_id) {
+      const provider = providers.find((p) => p.user_id === booking.provider_user_id)
+      if (provider?.business_name) return provider.business_name
+    }
+    return 'Unknown'
+  }
   const [reporterNames, setReporterNames] = useState({})
   const [reportStatus, setReportStatus] = useState({})
   const [reportResponse, setReportResponse] = useState({})
@@ -6765,7 +6774,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
                     <StatusBadge status={b.status} />
                   </div>
                   <p><strong>Customer:</strong> {b.customer_name || 'Unknown'}</p>
-                  <p><strong>Provider:</strong> {b.provider_name || 'Unknown'}</p>
+                  <p><strong>Provider:</strong> {resolveProviderName(b)}</p>
                   <p style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>{b.booking_date} {b.preferred_time || ''}</p>
                 </div>
               ))
