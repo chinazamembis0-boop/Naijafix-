@@ -292,10 +292,12 @@ export function StatGrid({ children }) {
   return <div className="dash-stat-grid">{children}</div>
 }
 
-export function BookingCard({ booking, onAccept, onDecline, onMessage, showActions = true, onProviderOnTheWay, onMarkInProgress, onMarkCompleted, onAcceptTime, onProposeTime, proposedTime, onProposedTimeChange, onConfirmCompletion }) {
+export function BookingCard({ booking, onAccept, onDecline, onMessage, showActions = true, onProviderOnTheWay, onMarkInProgress, onMarkCompleted, onAcceptTime, onProposeTime, proposedTime, onProposedTimeChange, onConfirmCompletion, onReview }) {
   const status = String(booking.status || 'Pending').toLowerCase()
   const isPending = status === 'pending'
   const isAccepted = status === 'accepted'
+  const isCompleted = status === 'completed'
+  const isUnreviewed = isCompleted && !booking.reviewed
   return (
     <div className="dash-booking-card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
@@ -402,6 +404,17 @@ export function BookingCard({ booking, onAccept, onDecline, onMessage, showActio
             onClick={() => onConfirmCompletion?.(booking)}
           >
             Confirm completion
+          </button>
+        </div>
+      )}
+      {isUnreviewed && onReview && (
+        <div style={{ marginTop: 8 }}>
+          <button
+            type="button"
+            className="dash-btn dash-btn-primary dash-btn-full"
+            onClick={() => onReview(booking)}
+          >
+            ⭐ Leave a review
           </button>
         </div>
       )}

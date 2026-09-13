@@ -1334,6 +1334,7 @@ function Dashboard({
   onFavorites,
   onRewards,
   onProvider,
+  onReviewBooking,
   onLogout,
 }) {
   const [search, setSearch] = useState('')
@@ -1754,7 +1755,7 @@ function Dashboard({
                     {booking.status && String(booking.status).toLowerCase() === 'completed' && booking.reviewed && (
                       <span className="dash-status-badge dash-status-pending" style={{ marginBottom: 4 }}>✅ Reviewed</span>
                     )}
-                    <BookingCard booking={booking} showActions={false} onConfirmCompletion={confirmCompletion} />
+                    <BookingCard booking={booking} showActions={false} onConfirmCompletion={confirmCompletion} onReview={onReviewBooking} />
                   </div>
                 ))}
               </div>
@@ -1770,7 +1771,7 @@ function Dashboard({
                     {booking.status && String(booking.status).toLowerCase() === 'completed' && !booking.reviewed && (
                       <span className="dash-status-badge dash-status-declined" style={{ marginBottom: 4 }}>⏳ Awaiting review</span>
                     )}
-                    <BookingCard booking={booking} showActions={false} onConfirmCompletion={confirmCompletion} />
+                    <BookingCard booking={booking} showActions={false} onConfirmCompletion={confirmCompletion} onReview={onReviewBooking} />
                   </div>
                 ))}
               </div>
@@ -2138,6 +2139,7 @@ function ProviderDetails({
   onBack,
   onRequest,
   onChat,
+  reviewBookingId,
 }) {
   const [samples, setSamples] = useState([])
   const [loadingSamples, setLoadingSamples] = useState(true)
@@ -2682,7 +2684,7 @@ function ProviderDetails({
         <section className="details-card">
           <h3>Leave a review</h3>
           {user && user.role === 'customer' ? (
-            <ReviewForm providerUserId={provider.user_id} user={user} onReviewSubmitted={() => {
+            <ReviewForm providerUserId={provider.user_id} bookingId={reviewBookingId} user={user} onReviewSubmitted={() => {
               const loadReviews = async () => {
                 const { data } = await supabase.from('reviews').select('*').eq('provider_user_id', provider.user_id).order('created_at', { ascending: false }).limit(10)
                 setReviews(data || [])
@@ -3118,7 +3120,7 @@ function RequestService({
   )
 }
 
-function Bookings({ user, onBack, onChat, onRebook, dbProviders }) {
+function Bookings({ user, onBack, onChat, onRebook, dbProviders, onReviewBooking }) {
   const [bookings, setBookings] =
     useState([])
 
@@ -3397,6 +3399,15 @@ function Bookings({ user, onBack, onChat, onRebook, dbProviders }) {
                     style={{ marginTop: 8 }}
                   >
                     Book again
+                  </button>
+                )}
+                {onReviewBooking && String(booking.status || '').toLowerCase() === 'completed' && !booking.reviewed && (
+                  <button
+                    className="dash-btn dash-btn-primary dash-btn-full"
+                    onClick={() => onReviewBooking(booking)}
+                    style={{ marginTop: 8 }}
+                  >
+                    ⭐ Leave a review
                   </button>
                 )}
 
@@ -4176,7 +4187,7 @@ function Profile({ user, onBack, onLogout }) {
   )
 }
 
-function ReviewForm({ providerUserId, user, onReviewSubmitted }) {
+function ReviewForm({ providerUserId, bookingId, user, onReviewSubmitted }) {
   const [rating, setRating] = useState(0)
   const [hoverRating, setHoverRating] = useState(0)
   const [comment, setComment] = useState('')
@@ -4189,25 +4200,29 @@ function ReviewForm({ providerUserId, user, onReviewSubmitted }) {
     }
     setSubmitting(true)
     try {
-      const { data: completedBooking } = await supabase
-        .from('bookings')
-        .select('id')
-        .eq('customer_user_id', user.user_id)
-        .eq('provider_user_id', providerUserId)
-        .eq('status', 'Completed')
-        .limit(1)
-        .maybeSingle()
-
-      if (!completedBooking) {
-        alert('You can only review providers after a completed booking.')
-        setSubmitting(false)
-        return
+      let pBookingId = bookingId
+      if (!pBookingId) {
+        // Backward-compatible fallback: only used when ReviewForm is opened
+        // without an explicit booking context (e.g. from the provider page).
+        const { data: completedBooking } = await supabase
+          .from('bookings')
+          .select('id')
+          .eq('customer_user_id', user.user_id)
+          .eq('provider_user_id', providerUserId)
+          .eq('status', 'Completed')
+          .limit(1)
+          .maybeSingle()
+        if (!completedBooking) {
+          alert('You can only review providers after a completed booking.')
+          setSubmitting(false)
+          return
+        }
+        pBookingId = completedBooking.id
       }
-
       const { data: result, error: rpcError } = await supabase.rpc(
         'submit_customer_review',
         {
-          p_booking_id: completedBooking.id,
+          p_booking_id: pBookingId,
           p_rating: rating,
           p_comment: comment.trim() || '',
         }
@@ -5988,6 +6003,16 @@ function AdminDashboard({ user, onLogout, onHome }) {
       const provider = providers.find((p) => p.user_id === booking.provider_user_id)
       if (provider?.business_name) return provider.business_name
     }
+    // Historical fallback: recover the provider from the deterministic
+    // bookings.id -> reviews.booking_id (UNIQUE) -> reviews.provider_user_id
+    // -> providers.user_id -> providers.business_name relationship.
+    // Safe because reviews.booking_id is unique (one review per booking) and
+    // providers.user_id is unique, so this never guesses or assigns the wrong provider.
+    const review = (reviews || []).find((r) => r.booking_id === booking.id)
+    if (review?.provider_user_id) {
+      const provider = providers.find((p) => p.user_id === review.provider_user_id)
+      if (provider?.business_name) return provider.business_name
+    }
     return 'Unknown'
   }
   const [reporterNames, setReporterNames] = useState({})
@@ -7704,6 +7729,8 @@ function App() {
   const [selectedProvider, setSelectedProvider] =
     useState(null)
 
+  const [reviewBookingId, setReviewBookingId] = useState(null)
+
   const [user, setCurrentUser] =
     useState(null)
 
@@ -8217,7 +8244,29 @@ function App() {
           setPage('favorites')
         }
         onRewards={() => setPage('rewards')}
+        onReviewBooking={(booking) => {
+          setReviewBookingId(booking.id)
+          setSelectedProvider(null)
+          void supabase
+            .from('providers')
+            .select('*')
+            .eq('user_id', booking.provider_user_id)
+            .maybeSingle()
+            .then((result) => {
+              if (result.data) {
+                setSelectedProvider(result.data)
+                setPage('provider')
+              } else if (booking.provider_name) {
+                setSelectedProvider({
+                  user_id: booking.provider_user_id,
+                  business_name: booking.provider_name,
+                })
+                setPage('provider')
+              }
+            })
+        }}
         onProvider={(provider) => {
+          setReviewBookingId(null)
           setSelectedProvider(provider)
           setPage('provider')
         }}
@@ -8236,6 +8285,7 @@ function App() {
           setPage('dashboard')
         }
         onProvider={(provider) => {
+          setReviewBookingId(null)
           setSelectedProvider(provider)
           setPage('provider')
         }}
@@ -8249,13 +8299,17 @@ function App() {
         provider={selectedProvider}
         service={selectedService}
         user={user}
-        onBack={() =>
+        reviewBookingId={reviewBookingId}
+        onBack={() => {
+          setReviewBookingId(null)
           setPage('services')
-        }
-        onRequest={() =>
+        }}
+        onRequest={() => {
+          setReviewBookingId(null)
           setPage('request')
-        }
+        }}
         onChat={(provider) => {
+          setReviewBookingId(null)
           const conversationPromise = getOrCreateConversation(
             provider.user_id,
             provider.business_name,
@@ -8303,6 +8357,27 @@ function App() {
       <Bookings
         user={user}
         dbProviders={dbProviders}
+        onReviewBooking={(booking) => {
+          setReviewBookingId(booking.id)
+          setSelectedProvider(null)
+          void supabase
+            .from('providers')
+            .select('*')
+            .eq('user_id', booking.provider_user_id)
+            .maybeSingle()
+            .then((result) => {
+              if (result.data) {
+                setSelectedProvider(result.data)
+                setPage('provider')
+              } else if (booking.provider_name) {
+                setSelectedProvider({
+                  user_id: booking.provider_user_id,
+                  business_name: booking.provider_name,
+                })
+                setPage('provider')
+              }
+            })
+        }}
         onBack={() =>
           setPage('dashboard')
         }
