@@ -1,0 +1,15 @@
+# NaijaFix Phase 2B-2 Step 2: Supabase Edge Function auth configuration.
+#
+# Minimum configuration for the Paystack test-mode backend.
+#
+# - paystack-init and paystack-verify keep the default verify_jwt = true
+#   behavior: they require an authenticated customer JWT and enforce
+#   ownership inside the function body via auth.getUser().
+#
+# - paystack-webhook is the ONLY function configured with verify_jwt =
+#   false, because Paystack calls it with no Supabase JWT. It performs
+#   its own HMAC SHA-512 signature validation before trusting the event,
+#   and it verifies the transaction server-side before any state change.
+
+[functions.paystack-webhook]
+verify_jwt = false

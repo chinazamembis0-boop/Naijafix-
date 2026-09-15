@@ -2912,6 +2912,7 @@ function RequestService({
             status: 'Pending',
             notes: description.trim(),
             total_price: selectedPackage ? selectedPackage.price : null,
+            package_id: selectedPackage ? selectedPackage.id : null,
             service_location:
               location.trim(),
             provider_user_id: provider?.user_id || null,
@@ -3267,6 +3268,35 @@ function Bookings({ user, onBack, onChat, onRebook, dbProviders, onReviewBooking
     }
   }
 
+  const handlePayment = useCallback(async (booking) => {
+    if (!booking?.id) return
+    try {
+      const { data: paymentData, error: paymentError } = await supabase.rpc('create_payment_for_booking', { p_booking_id: booking.id })
+      if (paymentError) throw paymentError
+      if (!paymentData?.id) throw new Error('No payment returned')
+
+      let idempotencyKey = paymentData.idempotency_key
+      if (paymentData.status === 'unpaid' || (paymentData.status === 'pending' && !paymentData.idempotency_key)) {
+        idempotencyKey = crypto.randomUUID()
+        const { error: initiateError } = await supabase.rpc('initiate_payment', {
+          p_booking_id: booking.id,
+          p_idempotency_key: idempotencyKey,
+        })
+        if (initiateError) throw initiateError
+      }
+
+      const { data: paystackData, error: paystackError } = await supabase.functions.invoke('paystack-init', {
+        body: { booking_id: booking.id, idempotency_key: idempotencyKey },
+      })
+      if (paystackError) throw paystackError
+      if (paystackData.authorization_url) {
+        window.location.href = paystackData.authorization_url
+      }
+    } catch (err) {
+      alert('Payment failed: ' + (err.message || 'Unknown error'))
+    }
+  }, [])
+
   return (
     <div className="inner-page">
       <header className="inner-header">
@@ -3371,6 +3401,16 @@ function Bookings({ user, onBack, onChat, onRebook, dbProviders, onReviewBooking
                       {booking.total_price}
                     </p>
                   )}
+
+                {String(booking.status || '').toLowerCase() === 'accepted' && booking.total_price && (
+                  <button
+                    className="dash-btn dash-btn-primary dash-btn-full"
+                    onClick={() => handlePayment(booking)}
+                    style={{ marginTop: 8 }}
+                  >
+                    💳 Pay ₦{booking.total_price}
+                  </button>
+                )}
 
                 {onChat && (
                   <button

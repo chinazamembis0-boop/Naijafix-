@@ -292,7 +292,7 @@ export function StatGrid({ children }) {
   return <div className="dash-stat-grid">{children}</div>
 }
 
-export function BookingCard({ booking, onAccept, onDecline, onMessage, showActions = true, onProviderOnTheWay, onMarkInProgress, onMarkCompleted, onAcceptTime, onProposeTime, proposedTime, onProposedTimeChange, onConfirmCompletion, onReview }) {
+export function BookingCard({ booking, onAccept, onDecline, onMessage, onPay, showActions = true, onProviderOnTheWay, onMarkInProgress, onMarkCompleted, onAcceptTime, onProposeTime, proposedTime, onProposedTimeChange, onConfirmCompletion, onReview }) {
   const status = String(booking.status || 'Pending').toLowerCase()
   const isPending = status === 'pending'
   const isAccepted = status === 'accepted'
@@ -334,8 +334,13 @@ export function BookingCard({ booking, onAccept, onDecline, onMessage, showActio
           )}
         </div>
       )}
-      {showActions && isAccepted && (onProviderOnTheWay || onMarkInProgress) && (
+      {showActions && isAccepted && booking.total_price != null && (onPay || onProviderOnTheWay || onMarkInProgress) && (
         <div className="dash-booking-actions">
+          {onPay && (
+            <button type="button" className="dash-btn dash-btn-primary" onClick={() => onPay(booking)}>
+              💳 Pay ₦{booking.total_price}
+            </button>
+          )}
           {onProviderOnTheWay && (
             <button type="button" className="dash-btn dash-btn-outline" onClick={() => onProviderOnTheWay(booking)}>
               🚗 On the way
