@@ -1727,15 +1727,49 @@ function Dashboard({
     const handlePopstate = () => {
       loadUnreadNotifications()
     }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('focus', handleFocus)
-    window.addEventListener('popstate', handlePopstate)
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', handleFocus)
-      window.removeEventListener('popstate', handlePopstate)
-    }
-  }, [user, loadUnreadNotifications])
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+      window.addEventListener('focus', handleFocus)
+      window.addEventListener('popstate', handlePopstate)
+
+      // Realtime subscription so the notification badge updates while the
+      // customer dashboard is already mounted.
+      const channelName = `dashboard-notifications-${user.user_id}`
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.user_id}`,
+          },
+          (payload) => {
+            const newNotification = payload.new
+            if (!newNotification?.id) return
+            if (!newNotification.is_read) {
+              setUnreadNotifications((current) => current + 1)
+            }
+          }
+        )
+        .subscribe((status) => {
+          if (
+            status === 'SUBSCRIBED' ||
+            status === 'CHANNEL_ERROR' ||
+            status === 'TIMED_OUT' ||
+            status === 'CLOSED'
+          ) {
+            console.log('[NaijaFix Realtime] Dashboard notifications subscription:', status)
+          }
+        })
+
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
+        window.removeEventListener('focus', handleFocus)
+        window.removeEventListener('popstate', handlePopstate)
+        supabase.removeChannel(channel)
+      }
+    }, [user, loadUnreadNotifications])
 
   const searchText = search.trim().toLowerCase()
 
@@ -3825,6 +3859,57 @@ function Favorites({ user, onBack, onProvider }) {
 function Notifications({ user, onBack, onOpenBooking }) {
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
+  const realtimeChannelRef = useRef(null)
+  const seenNotificationIdsRef = useRef(new Set())
+
+  useEffect(() => {
+    if (!user?.user_id) {
+      return
+    }
+
+    const channelName = `notifications-${user.user_id}`
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.user_id}`,
+        },
+        (payload) => {
+          const newNotification = payload.new
+          if (!newNotification?.id) return
+          if (seenNotificationIdsRef.current.has(newNotification.id)) return
+          seenNotificationIdsRef.current.add(newNotification.id)
+
+          setNotifications((current) => {
+            if (current.some((n) => n.id === newNotification.id)) return current
+            return [newNotification, ...current]
+          })
+        }
+      )
+      .subscribe((status) => {
+        if (
+          status === 'SUBSCRIBED' ||
+          status === 'CHANNEL_ERROR' ||
+          status === 'TIMED_OUT' ||
+          status === 'CLOSED'
+        ) {
+          console.log('[NaijaFix Realtime] Notifications subscription:', status)
+        }
+      })
+
+    realtimeChannelRef.current = channel
+
+    return () => {
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current)
+        realtimeChannelRef.current = null
+      }
+    }
+  }, [user?.user_id])
 
   useEffect(() => {
     const loadNotifications = async () => {
@@ -3854,6 +3939,7 @@ function Notifications({ user, onBack, onOpenBooking }) {
         return
       }
 
+      ;(data || []).forEach((n) => seenNotificationIdsRef.current.add(n.id))
       setNotifications(data || [])
       setLoading(false)
 
@@ -5235,11 +5321,45 @@ function ProviderDashboard({
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('focus', handleFocus)
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', handleFocus)
-    }
-  }, [user])
+
+      // Realtime subscription so the provider notification badge updates while
+      // the dashboard is already mounted.
+      const channelName = `provider-notifications-${user.user_id}`
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.user_id}`,
+          },
+          (payload) => {
+            const newNotification = payload.new
+            if (!newNotification?.id) return
+            if (!newNotification.is_read) {
+              setUnreadNotifications((current) => current + 1)
+            }
+          }
+        )
+        .subscribe((status) => {
+          if (
+            status === 'SUBSCRIBED' ||
+            status === 'CHANNEL_ERROR' ||
+            status === 'TIMED_OUT' ||
+            status === 'CLOSED'
+          ) {
+            console.log('[NaijaFix Realtime] Provider notifications subscription:', status)
+          }
+        })
+
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
+        window.removeEventListener('focus', handleFocus)
+        supabase.removeChannel(channel)
+      }
+    }, [user])
 
   const uploadProviderPhoto = async (file) => {
     if (!file || !user?.user_id || !providerProfile) return
@@ -6840,6 +6960,52 @@ function AdminDashboard({ user, onLogout, onHome }) {
 
     loadAds()
   }, [user])
+
+  // Realtime subscription for admin notifications so new alerts appear
+  // without refreshing the dashboard.
+  useEffect(() => {
+    if (!user?.user_id) {
+      return
+    }
+
+    const channelName = `admin-notifications-${user.user_id}`
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${user.user_id}`,
+        },
+        (payload) => {
+          const newNotification = payload.new
+          if (!newNotification?.id) return
+          setNotifications((current) => {
+            if (current.some((n) => n.id === newNotification.id)) return current
+            return [newNotification, ...current]
+          })
+          if (!newNotification.is_read) {
+            setUnreadNotifications((current) => current + 1)
+          }
+        }
+      )
+      .subscribe((status) => {
+        if (
+          status === 'SUBSCRIBED' ||
+          status === 'CHANNEL_ERROR' ||
+          status === 'TIMED_OUT' ||
+          status === 'CLOSED'
+        ) {
+          console.log('[NaijaFix Realtime] Admin notifications subscription:', status)
+        }
+      })
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [user?.user_id])
 
   const uploadServiceImage = async (serviceId, file) => {
     if (!file || !user?.user_id) return
