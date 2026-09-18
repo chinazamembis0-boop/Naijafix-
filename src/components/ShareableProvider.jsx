@@ -1,23 +1,62 @@
 import { useEffect, useState } from 'react'
 import { supabase, getSignedStorageUrl } from '../supabase.js'
 
+function readProviderIdFromUrl() {
+  try {
+    const params = new URLSearchParams(window.location.search.slice(1))
+    const id = params.get('provider')
+    if (id) return id
+  } catch {
+    // ignore
+  }
+  return null
+}
+
 export default function ShareableProvider({ provider, onBack }) {
   const [samples, setSamples] = useState([])
   const [packages, setPackages] = useState([])
   const [reviews, setReviews] = useState([])
   const [loading, setLoading] = useState(true)
+  const [profile, setProfile] = useState(provider || null)
 
   useEffect(() => {
-    const load = async () => {
-      if (!provider?.user_id) {
-        setLoading(false)
+    let cancelled = false
+
+    const resolveProfile = async () => {
+      // Prefer the prop (in-app navigation), but fall back to the URL so a
+      // cold-loaded shared link can resolve the provider without state.
+      let target = provider
+      if (!target?.user_id) {
+        const urlId = readProviderIdFromUrl()
+        if (urlId) {
+          const { data } = await supabase
+            .from('providers')
+            .select('*')
+            .eq('user_id', urlId)
+            .maybeSingle()
+          if (!cancelled && data) {
+            target = data
+          }
+        }
+      }
+
+      if (!target?.user_id) {
+        if (!cancelled) {
+          setProfile(null)
+          setLoading(false)
+        }
         return
       }
+
+      if (!cancelled) {
+        setProfile(target)
+      }
+
       try {
         const [samplesRes, packagesRes, reviewsRes] = await Promise([
-          supabase.from('provider_work_samples').select('*').eq('provider_user_id', provider.user_id).order('created_at', { ascending: false }),
-          supabase.from('service_packages').select('*').eq('provider_user_id', provider.user_id),
-          supabase.from('reviews').select('*').eq('provider_user_id', provider.user_id).order('created_at', { ascending: false }).limit(10),
+          supabase.from('provider_work_samples').select('*').eq('provider_user_id', target.user_id).order('created_at', { ascending: false }),
+          supabase.from('service_packages').select('*').eq('provider_user_id', target.user_id),
+          supabase.from('reviews').select('*').eq('provider_user_id', target.user_id).order('created_at', { ascending: false }).limit(10),
         ])
 
         const signedSamples = []
@@ -29,23 +68,37 @@ export default function ShareableProvider({ provider, onBack }) {
             signedSamples.push({ ...s, signedUrl: '' })
           }
         }
-        setSamples(signedSamples)
-        setPackages(packagesRes.data || [])
-        setReviews(reviewsRes.data || [])
+
+        if (!cancelled) {
+          setSamples(signedSamples)
+          setPackages(packagesRes.data || [])
+          setReviews(reviewsRes.data || [])
+        }
       } catch (error) {
         console.error('Failed to load shareable profile:', error)
       } finally {
-        setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
     }
-    load()
-  }, [provider?.user_id])
+
+    resolveProfile()
+
+    return () => {
+      cancelled = true
+    }
+  }, [provider, provider?.user_id])
+
+  const activeProfile = profile
 
   const handleShare = async () => {
-    const url = window.location.origin + '/share-provider?provider=' + provider.user_id
+    const target = activeProfile
+    if (!target?.user_id) return
+    const url = window.location.origin + '/share-provider?provider=' + target.user_id
     if (navigator.share) {
       try {
-        await navigator.share({ title: provider.business_name, text: provider.description || '', url })
+        await navigator.share({ title: target.business_name, text: target.description || '', url })
         return
       } catch {
         // fall through to copy
@@ -59,7 +112,7 @@ export default function ShareableProvider({ provider, onBack }) {
     }
   }
 
-  if (loading) {
+  if (loading || !activeProfile) {
     return (
       <div className="inner-page">
         <header className="inner-header">
@@ -83,20 +136,20 @@ export default function ShareableProvider({ provider, onBack }) {
       </header>
       <main className="provider-details">
         <div className="large-avatar">
-          {provider.avatar_url ? (
-            <img src={provider.avatar_url} alt={provider.business_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+          {activeProfile.avatar_url ? (
+            <img src={activeProfile.avatar_url} alt={activeProfile.business_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
           ) : (
-            provider.business_name?.charAt(0)?.toUpperCase() || 'P'
+            activeProfile.business_name?.charAt(0)?.toUpperCase() || 'P'
           )}
         </div>
-        <h2>{provider.business_name}</h2>
-        {provider.verified && <span className="verified-badge">Verified provider</span>}
+        <h2>{activeProfile.business_name}</h2>
+        {activeProfile.verified && <span className="verified-badge">Verified provider</span>}
         {averageRating && <span className="verified-badge" style={{ background: '#fef3c7', color: '#92400e' }}>Star {averageRating} ({reviews.length} reviews)</span>}
-        {provider.emergency_available && <span className="verified-badge" style={{ background: '#fee2e2', color: '#991b1b' }}>Emergency available</span>}
-        <p className="provider-location">Location {provider.location || 'not provided'}</p>
+        {activeProfile.emergency_available && <span className="verified-badge" style={{ background: '#fee2e2', color: '#991b1b' }}>Emergency available</span>}
+        <p className="provider-location">Location {activeProfile.location || 'not provided'}</p>
         <section className="details-card">
           <h3>About this provider</h3>
-          <p>{provider.description || 'This provider has not added a description yet.'}</p>
+          <p>{activeProfile.description || 'This provider has not added a description yet.'}</p>
         </section>
         {packages.length > 0 && (
           <section className="details-card">
