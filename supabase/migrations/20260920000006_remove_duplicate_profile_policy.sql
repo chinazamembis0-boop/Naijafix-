@@ -1,0 +1,1 @@
+drop policy if exists "Users can create their own profile" on public.profiles;

@@ -8880,10 +8880,55 @@ function App() {
           .maybeSingle()
 
       if (profileError) {
+        // Distinguish temporary/network errors from genuine permission errors.
+        const transient =
+          /fetch|network|timeout|connection|connection refused|connection terminated/i
+            .test(profileError.message || '')
+
         console.error(
           'Failed to load user profile during bootstrap:',
           profileError
         )
+
+        if (transient) {
+          // Retry after a short delay instead of dead-ending the user.
+          await new Promise((resolve) => setTimeout(resolve, 800))
+          const retry = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+          if (!retry.error && retry.data) {
+            const appUser = {
+              id: retry.data.id,
+              user_id: user.id,
+              name: retry.data.full_name || '',
+              email: retry.data.email || user.email || '',
+              phone: retry.data.phone || '',
+              role: retry.data.role || 'customer',
+              avatar_url: retry.data.avatar_url || '',
+            }
+
+            setCurrentUser(appUser)
+            localStorage.setItem('naijafixUser', JSON.stringify(appUser))
+
+            if (shouldSetInitialPage) {
+              setPage(
+                appUser.role === 'admin'
+                  ? 'admin-dashboard'
+                  : appUser.role === 'provider'
+                  ? 'provider-dashboard'
+                  : appUser.role === 'rider'
+                  ? 'rider-dashboard'
+                  : appUser.role === 'restaurant'
+                  ? 'restaurant-dashboard'
+                  : 'dashboard'
+              )
+            }
+            return
+          }
+        }
 
         alert(
           'Your account is signed in, but your NaijaFix profile could not be loaded: ' +
@@ -8895,6 +8940,51 @@ function App() {
       }
 
       if (!profile) {
+        // The database trigger should guarantee a profile exists. If we
+        // still see none, retry once before surfacing a permanent error —
+        // this covers the brief window where the trigger has not committed.
+        await new Promise((resolve) => setTimeout(resolve, 800))
+        const retry = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle()
+
+        if (retry.data) {
+          const appUser = {
+            id: retry.data.id,
+            user_id: user.id,
+            name: retry.data.full_name || '',
+            email: retry.data.email || user.email || '',
+            phone: retry.data.phone || '',
+            role: retry.data.role || 'customer',
+            avatar_url: retry.data.avatar_url || '',
+          }
+
+          setCurrentUser(appUser)
+          localStorage.setItem('naijafixUser', JSON.stringify(appUser))
+
+          if (shouldSetInitialPage) {
+            setPage(
+              appUser.role === 'admin'
+                ? 'admin-dashboard'
+                : appUser.role === 'provider'
+                ? 'provider-dashboard'
+                : appUser.role === 'rider'
+                ? 'rider-dashboard'
+                : appUser.role === 'restaurant'
+                ? 'restaurant-dashboard'
+                : 'dashboard'
+            )
+          }
+          return
+        }
+
+        console.error(
+          'No NaijaFix profile found for authenticated user after retry:',
+          user.id
+        )
+
         alert(
           'You are signed in to NaijaFix, but no NaijaFix profile was found for this account. Please contact support.'
         )
