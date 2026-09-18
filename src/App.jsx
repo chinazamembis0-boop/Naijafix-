@@ -34,6 +34,14 @@ import FoodCart from './components/FoodCart.jsx'
 import ViewAllServices from './components/ViewAllServices.jsx'
 import RestaurantDashboard from './components/RestaurantDashboard.jsx'
 import RiderDashboard from './components/RiderDashboard.jsx'
+import {
+  TermsOfService,
+  PrivacyPolicy,
+  CancellationPolicy,
+  AcceptableUsePolicy,
+  DisputePolicy,
+} from './components/PolicyPages.jsx'
+import ShareableProvider from './components/ShareableProvider.jsx'
 import RestaurantSignup from './components/RestaurantSignup.jsx'
 
 delete L.Icon.Default.prototype._getIconUrl
@@ -336,11 +344,35 @@ function MapView({ providers, onProviderSelect }) {
   )
 }
 
-function ReportForm({ user, onComplete }) {
+function ReportForm({ user, onComplete, bookingId: initialBookingId = null }) {
   const [category, setCategory] = useState('Service issue')
   const [subject, setSubject] = useState('')
   const [description, setDescription] = useState('')
+  const [bookingId, setBookingId] = useState(initialBookingId ? String(initialBookingId) : '')
+  const [evidenceFile, setEvidenceFile] = useState(null)
+  const [evidencePreview, setEvidencePreview] = useState('')
   const [loading, setLoading] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+
+  const resetForm = () => {
+    setSubject('')
+    setDescription('')
+    setBookingId(initialBookingId ? String(initialBookingId) : '')
+    setEvidenceFile(null)
+    setEvidencePreview('')
+  }
+
+  const handleEvidenceChange = (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setEvidenceFile(file)
+    if (file.type.startsWith('image/')) {
+      const url = URL.createObjectURL(file)
+      setEvidencePreview(url)
+    } else {
+      setEvidencePreview('')
+    }
+  }
 
   const submitReport = async (event) => {
     event.preventDefault()
@@ -351,6 +383,16 @@ function ReportForm({ user, onComplete }) {
     }
 
     setLoading(true)
+    let evidencePath = null
+    try {
+      if (evidenceFile) {
+        evidencePath = await uploadPrivateFile('booking-photos', user.user_id, evidenceFile)
+      }
+    } catch (uploadError) {
+      console.error('Failed to upload evidence:', uploadError)
+      alert('Could not upload evidence. You can submit the report without it.')
+    }
+
     const { error } = await supabase.from('support_reports').insert({
       reporter_user_id: user.user_id,
       reporter_role: user.role || 'customer',
@@ -358,18 +400,31 @@ function ReportForm({ user, onComplete }) {
       subject: subject.trim(),
       description: description.trim(),
       status: 'open',
+      booking_id: bookingId ? Number(bookingId) : null,
+      evidence_path: evidencePath,
     })
 
     if (error) {
       console.error('Failed to submit report:', error)
       alert('Could not submit report: ' + error.message)
     } else {
-      alert('Report submitted successfully.')
-      setSubject('')
-      setDescription('')
+      setSubmitted(true)
+      resetForm()
       onComplete?.()
     }
     setLoading(false)
+  }
+
+  if (submitted) {
+    return (
+      <div className="empty-box large-empty">
+        <span style={{ fontSize: 32 }}>✅</span>
+        <h4>Report submitted</h4>
+        <p style={{ color: 'var(--nf-text-muted)', fontSize: 13, maxWidth: 320 }}>
+          Thank you for reporting this. Our support team will review it and keep you updated.
+        </p>
+      </div>
+    )
   }
 
   return (
@@ -382,6 +437,7 @@ function ReportForm({ user, onComplete }) {
         <option>Fraud/scam</option>
         <option>Harassment</option>
         <option>Safety concern</option>
+        <option>Dispute</option>
         <option>Other</option>
       </select>
       <input
@@ -393,7 +449,21 @@ function ReportForm({ user, onComplete }) {
         placeholder="Describe the problem..."
         value={description}
         onChange={(event) => setDescription(event.target.value)}
+        rows={4}
       />
+      <input
+        type="text"
+        placeholder="Booking ID (optional)"
+        value={bookingId}
+        onChange={(event) => setBookingId(event.target.value)}
+      />
+      <label className="dash-btn dash-btn-outline dash-btn-full" style={{ cursor: 'pointer', textAlign: 'center' }}>
+        <input type="file" accept="image/*" capture="environment" onChange={handleEvidenceChange} style={{ display: 'none' }} />
+        📎 {evidenceFile ? evidenceFile.name : 'Add evidence photo (optional)'}
+      </label>
+      {evidencePreview && (
+        <img src={evidencePreview} alt="Evidence preview" style={{ maxWidth: '100%', maxHeight: 160, objectFit: 'cover', borderRadius: 8, marginTop: 8 }} />
+      )}
       <button className="primary-full" type="submit" disabled={loading}>
         {loading ? 'Submitting...' : 'Submit report'}
       </button>
@@ -411,6 +481,7 @@ function Home({
   onService,
   onViewAllServices,
   onFood,
+  setPage,
 }) {
   const [search, setSearch] = useState('')
   const searchText = search.trim().toLowerCase()
@@ -643,15 +714,45 @@ function Home({
         </section>
       </main>
 
-      <footer>
-        <Logo />
-        <span>© 2026 NaijaFix. Built for Nigeria.</span>
+      <footer className="site-footer">
+        <div className="site-footer-inner">
+          <div className="site-footer-brand">
+            <Logo />
+            <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--nf-text-muted)', maxWidth: 320 }}>
+              Connecting customers with trusted independent service providers across Nigeria.
+            </p>
+          </div>
+          <div className="site-footer-cols">
+            <div>
+              <h4>Product</h4>
+              <a href="#/" data-route="home" onClick={(e) => { e.preventDefault(); setPage('home') }}>Browse services</a>
+              <a href="#/providers" data-route="providers" onClick={(e) => { e.preventDefault(); setPage('all-services') }}>Providers</a>
+              <a href="#/food" data-route="food" onClick={(e) => { e.preventDefault(); setPage('food') }}>Food delivery</a>
+            </div>
+            <div>
+              <h4>Company</h4>
+              <a href="#/terms" data-route="terms" onClick={(e) => { e.preventDefault(); setPage('terms') }}>Terms of Service</a>
+              <a href="#/privacy" data-route="privacy" onClick={(e) => { e.preventDefault(); setPage('privacy') }}>Privacy Policy</a>
+              <a href="#/cancellation" data-route="cancellation" onClick={(e) => { e.preventDefault(); setPage('cancellation') }}>Cancellation Policy</a>
+            </div>
+            <div>
+              <h4>Support</h4>
+              <a href="#/acceptable-use" data-route="acceptable-use" onClick={(e) => { e.preventDefault(); setPage('acceptable-use') }}>Acceptable use</a>
+              <a href="#/dispute-policy" data-route="dispute-policy" onClick={(e) => { e.preventDefault(); setPage('dispute-policy') }}>Dispute policy</a>
+              <a href="#/support" data-route="support" onClick={(e) => { e.preventDefault(); setPage('dashboard') }}>Help & support</a>
+            </div>
+          </div>
+        </div>
+        <div className="site-footer-bottom">
+          <span>© {new Date().getFullYear()} NaijaFix. All rights reserved.</span>
+          <span>Made in Nigeria 🇳🇬</span>
+        </div>
       </footer>
     </div>
   )
 }
 
-function Login({ onBack, onSignup, onDashboard }) {
+function Login({ onBack, onSignup, onDashboard, setPage }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -952,6 +1053,14 @@ function Login({ onBack, onSignup, onDashboard }) {
             {' '}
             Create account
           </button>
+        </p>
+
+        <p className="auth-links">
+          <button onClick={() => setPage('terms')}>Terms</button>
+          <span>·</span>
+          <button onClick={() => setPage('privacy')}>Privacy</button>
+          <span>·</span>
+          <button onClick={() => setPage('dispute-policy')}>Disputes</button>
         </p>
       </div>
     </div>
@@ -2272,6 +2381,7 @@ function ProviderDetails({
   onBack,
   onRequest,
   onChat,
+  onShare,
   reviewBookingId,
 }) {
   const [samples, setSamples] = useState([])
@@ -2852,6 +2962,16 @@ function ProviderDetails({
             style={{ marginTop: 10 }}
           >
             Message provider
+          </button>
+        )}
+
+        {onShare && (
+          <button
+            className="dash-btn dash-btn-outline dash-btn-full"
+            onClick={onShare}
+            style={{ marginTop: 10 }}
+          >
+            🔗 Share provider
           </button>
         )}
       </main>
@@ -8585,6 +8705,8 @@ function App() {
   const [selectedProvider, setSelectedProvider] =
     useState(null)
 
+  const [shareableProvider, setShareableProvider] = useState(null)
+
   const [reviewBookingId, setReviewBookingId] = useState(null)
 
   const [user, setCurrentUser] =
@@ -8892,6 +9014,7 @@ function App() {
   if (effectivePage === 'login') {
     return (
       <Login
+        setPage={setPage}
         onBack={() => setPage('home')}
         onSignup={() =>
           setPage('signup')
@@ -9166,6 +9289,10 @@ function App() {
         service={selectedService}
         user={user}
         reviewBookingId={reviewBookingId}
+        onShare={() => {
+          setShareableProvider(selectedProvider)
+          setPage('share-provider')
+        }}
         onBack={() => {
           setReviewBookingId(null)
           setPage('services')
@@ -9467,6 +9594,38 @@ function App() {
     )
   }
 
+  if (effectivePage === 'terms') {
+    return <TermsOfService />
+  }
+
+  if (effectivePage === 'privacy') {
+    return <PrivacyPolicy />
+  }
+
+  if (effectivePage === 'cancellation') {
+    return <CancellationPolicy />
+  }
+
+  if (effectivePage === 'acceptable-use') {
+    return <AcceptableUsePolicy />
+  }
+
+  if (effectivePage === 'dispute-policy') {
+    return <DisputePolicy />
+  }
+
+  if (effectivePage === 'share-provider') {
+    return (
+      <ShareableProvider
+        provider={shareableProvider}
+        onBack={() => {
+          setShareableProvider(null)
+          setPage('provider')
+        }}
+      />
+    )
+  }
+
   return (
     <Home
       services={dbServices}
@@ -9491,6 +9650,7 @@ function App() {
         setPage('all-services')
       }}
       onFood={() => setPage('food')}
+      setPage={setPage}
       user={user}
     />
   )
