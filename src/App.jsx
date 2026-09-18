@@ -235,9 +235,29 @@ function MapView({ providers, onProviderSelect }) {
     return R * c
   }
 
+  // Compute the average center of all mappable providers so the map
+  // defaults to the actual provider distribution rather than a single
+  // hardcoded city. Falls back to a Nigeria-centric center only when no
+  // provider coordinates are available.
+  const computeProviderCenter = () => {
+    if (mappableProviders.length === 0) return null
+    let sumLat = 0
+    let sumLng = 0
+    for (const p of mappableProviders) {
+      sumLat += p.latitude
+      sumLng += p.longitude
+    }
+    return { lat: sumLat / mappableProviders.length, lng: sumLng / mappableProviders.length }
+  }
+
+  const providerCenter = computeProviderCenter()
+  // Abuja, Nigeria — used as a national fallback only when no provider
+  // coordinates and no user location are available.
+  const NIGERIA_FALLBACK = { lat: 9.082, lng: 8.675 }
+
   const displayedProviders = searchArea
     ? mappableProviders.filter((p) => {
-        const center = userLocation || { lat: 9.082, lng: 8.675 }
+        const center = userLocation || providerCenter || NIGERIA_FALLBACK
         const distance = getDistanceFromLatLonInKm(center.lat, center.lng, p.latitude, p.longitude)
         return distance <= 50
       })
@@ -245,9 +265,8 @@ function MapView({ providers, onProviderSelect }) {
 
   const center =
     userLocation ||
-    (mappableProviders.length > 0
-      ? { lat: mappableProviders[0].latitude, lng: mappableProviders[0].longitude }
-      : { lat: 9.082, lng: 8.675 })
+    providerCenter ||
+    NIGERIA_FALLBACK
 
   return (
     <div style={{ marginBottom: 16 }}>
@@ -1346,6 +1365,8 @@ function Dashboard({
   const [dashboardAvatarUrl, setDashboardAvatarUrl] = useState('')
   const [recentReviews, setRecentReviews] = useState([])
   const [favoriteProviders, setFavoriteProviders] = useState([])
+  const [customerQuotes, setCustomerQuotes] = useState([])
+  const [actingOnQuoteId, setActingOnQuoteId] = useState(null)
 
   const confirmCompletion = async (booking) => {
     if (!booking?.id) return
@@ -1370,6 +1391,45 @@ function Dashboard({
           : b
       )
     )
+  }
+
+  const respondToQuote = async (quote, newStatus) => {
+    if (!quote?.id) return
+    if (String(quote.status || '').toLowerCase() !== 'pending') {
+      alert('This quote is no longer pending.')
+      return
+    }
+    setActingOnQuoteId(quote.id)
+    const { error } = await supabase
+      .from('quotes')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', quote.id)
+      .eq('status', 'pending')
+
+    if (error) {
+      alert('Could not update quote: ' + error.message)
+      setActingOnQuoteId(null)
+      return
+    }
+
+    setCustomerQuotes((current) =>
+      current.map((q) =>
+        q.id === quote.id ? { ...q, status: newStatus, updated_at: new Date().toISOString() } : q
+      )
+    )
+
+    try {
+      await supabase.rpc('create_notification', {
+        p_user_id: quote.provider_user_id,
+        p_type: 'quote',
+        p_title: newStatus === 'accepted' ? 'Quote accepted' : 'Quote declined',
+        p_message: `Customer ${newStatus === 'accepted' ? 'accepted' : 'declined'} your quote of ₦${Number(quote.amount).toLocaleString()} for booking #${quote.booking_id}.`,
+      })
+    } catch {
+      console.error('Failed to create quote response notification')
+    }
+
+    setActingOnQuoteId(null)
   }
 
   useEffect(() => {
@@ -1521,6 +1581,25 @@ function Dashboard({
           .select('user_id, business_name, category, rating, verified')
           .in('user_id', providerIds)
         setFavoriteProviders(providersData || [])
+      }
+
+      const { data: customerBookingRows } = await supabase
+        .from('bookings')
+        .select('id')
+        .eq('customer_user_id', user.user_id)
+      const customerBookingIds = (customerBookingRows || []).map((b) => b.id)
+
+      if (customerBookingIds.length > 0) {
+        const { data: quotesData, error: quotesError } = await supabase
+          .from('quotes')
+          .select('*')
+          .in('booking_id', customerBookingIds)
+          .order('created_at', { ascending: false })
+        if (!quotesError) {
+          setCustomerQuotes(quotesData || [])
+        }
+      } else {
+        setCustomerQuotes([])
       }
 
       setActivityLoading(false)
@@ -1788,6 +1867,60 @@ function Dashboard({
               </button>
             }
           />
+        )}
+
+        <SectionHeader label="QUOTES" title="Quotes received" />
+        {activityLoading ? (
+          <LoadingState text="Loading quotes..." />
+        ) : customerQuotes.length === 0 ? (
+          <EmptyState icon="💰" title="No quotes yet" description="Quotes sent by providers for your bookings will appear here." />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {customerQuotes.map((quote) => {
+              const booking = recentBookings.find((b) => b.id === quote.booking_id)
+              const provider = providers.find((p) => p.user_id === quote.provider_user_id)
+              const providerName = provider?.business_name || booking?.provider_name || 'Provider'
+              const isPending = String(quote.status || '').toLowerCase() === 'pending'
+              return (
+                <div key={quote.id} style={{ border: '1px solid #e2e8e4', borderRadius: 10, padding: 12, background: 'var(--nf-bg)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
+                    <div>
+                      <strong>{providerName}</strong>
+                      <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--nf-text-muted)' }}>
+                        {booking?.service_name || 'Service'} • Booking #{quote.booking_id}
+                      </p>
+                    </div>
+                    <StatusBadge status={quote.status} />
+                  </div>
+                  <p style={{ margin: '8px 0', fontWeight: 800, color: 'var(--nf-navy)', fontSize: 18 }}>
+                    ₦{Number(quote.amount).toLocaleString()}
+                  </p>
+                  {quote.description && <p style={{ margin: '4px 0', fontSize: 13 }}>{quote.description}</p>}
+                  <small style={{ color: 'var(--nf-text-muted)', fontSize: 12 }}>
+                    Sent {new Date(quote.created_at).toLocaleDateString()}
+                  </small>
+                  {isPending && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                      <button
+                        className="dash-btn dash-btn-primary dash-btn-sm"
+                        disabled={actingOnQuoteId === quote.id}
+                        onClick={() => respondToQuote(quote, 'accepted')}
+                      >
+                        {actingOnQuoteId === quote.id ? '…' : '✓ Accept'}
+                      </button>
+                      <button
+                        className="dash-btn dash-btn-danger dash-btn-sm"
+                        disabled={actingOnQuoteId === quote.id}
+                        onClick={() => respondToQuote(quote, 'declined')}
+                      >
+                        {actingOnQuoteId === quote.id ? '…' : '✗ Decline'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         )}
 
         <SectionHeader label="REVIEWS" title="My reviews" />
@@ -3749,6 +3882,128 @@ function Notifications({ user, onBack, onOpenBooking }) {
   )
 }
 
+function PaymentReturn({ onBack, setPage }) {
+  const [status, setStatus] = useState<'loading' | 'success' | 'failed' | 'verifying'>('loading')
+  const [message, setMessage] = useState('')
+  const [bookingId, setBookingId] = useState('')
+
+  useEffect(() => {
+    const handleReturn = async () => {
+      const hash = window.location.hash
+      if (!hash.startsWith('#/payment-return')) {
+        setStatus('failed')
+        setMessage('Invalid return URL')
+        return
+      }
+
+      const params = new URLSearchParams(hash.split('?')[1] || '')
+      const bookingIdParam = params.get('booking_id')
+      const reference = params.get('reference')
+
+      if (!bookingIdParam || !reference) {
+        setStatus('failed')
+        setMessage('Missing booking ID or reference')
+        return
+      }
+
+      setBookingId(bookingIdParam)
+      setStatus('verifying')
+      setMessage('Verifying payment...')
+
+      try {
+        const { data, error } = await supabase.functions.invoke('paystack-verify', {
+          body: { reference }
+        })
+
+        if (error) throw error
+
+        if (data?.ok && data?.authorized) {
+          setStatus('success')
+          setMessage('Payment successful! Your booking is now confirmed.')
+        } else if (data?.ok && !data?.authorized) {
+          setStatus('failed')
+          setMessage('Payment was not authorized. Please try again.')
+        } else {
+          setStatus('failed')
+          setMessage(data?.error || 'Payment verification failed')
+        }
+      } catch (err) {
+        setStatus('failed')
+        setMessage('Payment verification failed: ' + (err.message || 'Unknown error'))
+      }
+    }
+
+    handleReturn()
+  }, [setStatus])
+
+  return (
+    <div className="inner-page">
+      <header className="inner-header">
+        <button className="back-link" onClick={onBack}>
+          ← Back
+        </button>
+        <Logo />
+      </header>
+
+      <main className="inner-content" style={{ textAlign: 'center', padding: '40px 20px' }}>
+        <div style={{ maxWidth: 400, margin: '0 auto' }}>
+          {status === 'loading' && (
+            <div className="empty-box large-empty">
+              <span>⏳</span>
+              <h4>Processing payment...</h4>
+              <p>Please wait while we verify your payment.</p>
+            </div>
+          )}
+
+          {status === 'verifying' && (
+            <div className="empty-box large-empty">
+              <span>🔄</span>
+              <h4>Verifying payment...</h4>
+              <p>Checking with payment provider.</p>
+            </div>
+          )}
+
+          {status === 'success' && (
+            <div className="empty-box large-empty">
+              <span style={{ fontSize: 48 }}>✅</span>
+              <h4>Payment Successful!</h4>
+              <p style={{ color: 'var(--nf-green)', fontWeight: 600 }}>{message}</p>
+              <p style={{ marginTop: 16, fontSize: 14, color: 'var(--nf-text-muted)' }}>
+                Your booking #{bookingId} is now confirmed. The provider has been notified.
+              </p>
+            </div>
+          )}
+
+          {status === 'failed' && (
+            <div className="empty-box large-empty">
+              <span style={{ fontSize: 48 }}>❌</span>
+              <h4>Payment Failed</h4>
+              <p style={{ color: 'var(--nf-red)', fontWeight: 600 }}>{message}</p>
+              <p style={{ marginTop: 16, fontSize: 14, color: 'var(--nf-text-muted)' }}>
+                You can retry the payment from your bookings page.
+              </p>
+            </div>
+          )}
+
+          <div style={{ marginTop: 24, display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button className="dash-btn dash-btn-primary" onClick={onBack}>
+              Back to Dashboard
+            </button>
+            {bookingId && status !== 'loading' && (
+              <button className="dash-btn dash-btn-outline" onClick={() => {
+                setPage('bookings')
+                onBack()
+              }}>
+                View Bookings
+              </button>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
 function Profile({ user, onBack, onLogout }) {
   const [profile, setProfile] =
     useState(null)
@@ -4391,14 +4646,23 @@ function ProviderDashboard({
   const [editPackageDescription, setEditPackageDescription] = useState('')
   const [editPackagePrice, setEditPackagePrice] = useState('')
   const [editPackageDuration, setEditPackageDuration] = useState('')
+  const [editPackageIncludedServices, setEditPackageIncludedServices] = useState('')
   const [quotes, setQuotes] = useState([])
+  const [quoteForm, setQuoteForm] = useState({
+    bookingId: '',
+    amount: '',
+    description: '',
+  })
+  const [creatingQuote, setCreatingQuote] = useState(false)
   const [providerReviews, setProviderReviews] = useState([])
   const [responseText, setResponseText] = useState({})
   const [respondingTo, setRespondingTo] = useState(null)
+  const [savingResponseId, setSavingResponseId] = useState(null)
   const [newPackageName, setNewPackageName] = useState('')
   const [newPackageDescription, setNewPackageDescription] = useState('')
   const [newPackagePrice, setNewPackagePrice] = useState('')
   const [newPackageDuration, setNewPackageDuration] = useState('')
+  const [newPackageIncludedServices, setNewPackageIncludedServices] = useState('')
   const [proposedTimes, setProposedTimes] = useState({})
   const [portfolio, setPortfolio] = useState([])
   const [portfolioForm, setPortfolioForm] = useState({
@@ -4482,6 +4746,57 @@ function ProviderDashboard({
     // only by confirm_booking_completion (authenticated customer, gated).
     const isProviderCompletion =
       String(newStatus || '').toLowerCase() === 'completed'
+
+    // Accept uses the atomic accept_booking RPC to prevent race conditions
+    // where two providers could accept the same Pending booking simultaneously.
+    // The RPC locks the row and guarantees only one acceptance succeeds.
+    const isAccept = String(newStatus || '').toLowerCase() === 'accepted'
+
+    if (isAccept) {
+      try {
+        const { data, error } = await supabase.rpc('accept_booking', {
+          p_booking_id: bookingId,
+        })
+
+        if (error) {
+          alert('Could not accept booking: ' + error.message)
+          setUpdatingBookingId(null)
+          return
+        }
+
+        if (data?.accepted) {
+          setBookings((currentBookings) =>
+            currentBookings.map((booking) =>
+              booking.id === bookingId
+                ? { ...booking, status: 'Accepted' }
+                : booking
+            )
+          )
+        } else {
+          // Another provider accepted first, or the booking is no longer pending.
+          alert(
+            'Could not accept booking: ' +
+              (data?.message || 'the booking is no longer available')
+          )
+          // Refresh the bookings list from the server so the UI reflects
+          // the current state after a competing accept.
+          const { data: refreshed } = await supabase
+            .from('bookings')
+            .select('*')
+            .eq('provider_user_id', user.user_id)
+            .order('created_at', { ascending: false })
+          if (refreshed) {
+            setBookings(refreshed)
+          }
+        }
+      } catch (error) {
+        alert('Could not accept booking: ' + (error?.message || 'Unknown error'))
+      }
+
+      setUpdatingBookingId(null)
+      return
+    }
+
     const updates = isProviderCompletion
       ? { provider_completed_at: new Date().toISOString() }
       : { status: newStatus }
@@ -4577,6 +4892,50 @@ function ProviderDashboard({
       setProposedTimes((current) => { const next = { ...current }; delete next[booking.id]; return next })
     }
     setUpdatingBookingId(null)
+  }
+
+  const createQuote = async (booking) => {
+    if (!booking?.id) return
+    const amount = Number(quoteForm.amount)
+    if (!Number.isFinite(amount) || amount <= 0) {
+      alert('Please enter a valid quote amount.')
+      return
+    }
+    const description = quoteForm.description.trim()
+    if (!description) {
+      alert('Please add a short description of the work.')
+      return
+    }
+
+    setCreatingQuote(true)
+    const { data, error } = await supabase
+      .from('quotes')
+      .insert({
+        booking_id: booking.id,
+        provider_user_id: user.user_id,
+        amount,
+        description,
+        status: 'pending',
+      })
+      .select('*')
+
+    if (error) {
+      alert('Could not send quote: ' + error.message)
+    } else if (data?.[0]) {
+      setQuotes((current) => [data[0], ...current])
+      setQuoteForm({ bookingId: '', amount: '', description: '' })
+      try {
+        await supabase.rpc('create_notification', {
+          p_user_id: booking.customer_user_id,
+          p_type: 'quote',
+          p_title: 'New quote received',
+          p_message: `${providerProfile?.business_name || 'A provider'} sent a quote of ₦${amount.toLocaleString()} for your service request.`,
+        })
+      } catch {
+        console.error('Failed to create quote notification')
+      }
+    }
+    setCreatingQuote(false)
   }
 
   useEffect(() => {
@@ -5101,15 +5460,28 @@ function ProviderDashboard({
     setFeatureLoading(true)
     try {
       const rows = []
+      let hasError = false
       for (let day = 0; day < 7; day++) {
         const existing = availability.find((a) => a.day_of_week === day)
+        const start = (existing?.start_time || '09:00:00').slice(0, 8)
+        const end = (existing?.end_time || '17:00:00').slice(0, 8)
+        // Validate time range only for available days.
+        if (existing?.is_available && start && end && start >= end) {
+          alert(`Invalid time range for ${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][day]}: start time must be before end time.`)
+          hasError = true
+          break
+        }
         rows.push({
           provider_user_id: user.user_id,
           day_of_week: day,
-          start_time: existing?.start_time || '09:00:00',
-          end_time: existing?.end_time || '17:00:00',
+          start_time: existing?.is_available ? start : null,
+          end_time: existing?.is_available ? end : null,
           is_available: existing ? existing.is_available : true,
         })
+      }
+      if (hasError) {
+        setFeatureLoading(false)
+        return
       }
       const { error } = await supabase.from('provider_availability').upsert(rows, { onConflict: ['provider_user_id', 'day_of_week'] })
       if (error) throw error
@@ -5126,6 +5498,23 @@ function ProviderDashboard({
     setAvailability((current) => current.map((a) => a.day_of_week === day ? { ...a, is_available: !a.is_available } : a))
   }
 
+  const updateAvailabilityTime = (day, field, value) => {
+    setAvailability((current) => current.map((a) => {
+      if (a.day_of_week !== day) return a
+      // Ensure a row exists for this day even if it was never saved.
+      const updated = { ...a }
+      if (!updated.day_of_week && updated.day_of_week !== 0) {
+        updated.day_of_week = day
+        updated.provider_user_id = user?.user_id
+        updated.start_time = '09:00:00'
+        updated.end_time = '17:00:00'
+        updated.is_available = true
+      }
+      updated[field] = value
+      return updated
+    }))
+  }
+
   const addPackage = async () => {
     if (!newPackageName.trim() || !newPackagePrice) {
       alert('Please enter package name and price.')
@@ -5138,6 +5527,7 @@ function ProviderDashboard({
       description: newPackageDescription.trim() || null,
       price: Number(newPackagePrice),
       estimated_duration: newPackageDuration.trim() || null,
+      included_services: newPackageIncludedServices.trim() || null,
     }).select('*').single()
     if (error) {
       alert('Could not add package: ' + error.message)
@@ -5147,6 +5537,7 @@ function ProviderDashboard({
       setNewPackageDescription('')
       setNewPackagePrice('')
       setNewPackageDuration('')
+      setNewPackageIncludedServices('')
     }
     setFeatureLoading(false)
   }
@@ -5168,6 +5559,7 @@ function ProviderDashboard({
     setEditPackageDescription(pkg.description || '')
     setEditPackagePrice(pkg.price != null ? String(pkg.price) : '')
     setEditPackageDuration(pkg.estimated_duration || '')
+    setEditPackageIncludedServices(pkg.included_services || '')
   }
 
   const cancelEditingPackage = () => {
@@ -5176,6 +5568,7 @@ function ProviderDashboard({
     setEditPackageDescription('')
     setEditPackagePrice('')
     setEditPackageDuration('')
+    setEditPackageIncludedServices('')
   }
 
   const updatePackage = async (id) => {
@@ -5189,6 +5582,7 @@ function ProviderDashboard({
       description: editPackageDescription.trim() || null,
       price: Number(editPackagePrice),
       estimated_duration: editPackageDuration.trim() || null,
+      included_services: editPackageIncludedServices.trim() || null,
     }).eq('id', id).select('*').single()
     if (error) {
       alert('Could not update package: ' + error.message)
@@ -5354,29 +5748,36 @@ function ProviderDashboard({
                       <p style={{ margin: 0, fontSize: 13 }}>{review.provider_response}</p>
                     </div>
                   )}
-                  {(!review.provider_response) && review.provider_user_id === user.user_id && (
+                  {review.provider_user_id === user.user_id && (
                     <div style={{ marginTop: 8 }}>
                       {respondingTo === review.id ? (
                         <div>
                           <textarea
                             className="dash-form-textarea"
                             placeholder="Respond to this review..."
-                            value={responseText[review.id] || ''}
+                            value={responseText[review.id] ?? review.provider_response ?? ''}
                             onChange={(e) => setResponseText((current) => ({ ...current, [review.id]: e.target.value }))}
                           />
                           <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                             <button
                               className="dash-btn dash-btn-primary dash-btn-sm"
+                              disabled={savingResponseId === review.id}
                               onClick={async () => {
+                                const body = (responseText[review.id] ?? review.provider_response ?? '').trim()
+                                if (!body) {
+                                  alert('Please write a response before saving.')
+                                  return
+                                }
+                                setSavingResponseId(review.id)
                                 try {
                                   await supabase.rpc('update_review_provider_response', {
                                     p_review_id: review.id,
-                                    p_provider_response: responseText[review.id] || '',
+                                    p_provider_response: body,
                                   })
                                   setProviderReviews((current) =>
                                     current.map((r) =>
                                       r.id === review.id
-                                        ? { ...r, provider_response: responseText[review.id], responded_at: new Date().toISOString() }
+                                        ? { ...r, provider_response: body, responded_at: new Date().toISOString() }
                                         : r
                                     )
                                   )
@@ -5388,13 +5789,16 @@ function ProviderDashboard({
                                   })
                                 } catch (error) {
                                   alert('Could not save response: ' + error.message)
+                                } finally {
+                                  setSavingResponseId(null)
                                 }
                               }}
                             >
-                              Save response
+                              {savingResponseId === review.id ? 'Saving…' : 'Save response'}
                             </button>
                             <button
                               className="dash-btn dash-btn-outline dash-btn-sm"
+                              disabled={savingResponseId === review.id}
                               onClick={() => {
                                 setRespondingTo(null)
                                 setResponseText((current) => {
@@ -5412,9 +5816,13 @@ function ProviderDashboard({
                         <button
                           className="dash-btn dash-btn-outline dash-btn-sm"
                           style={{ marginTop: 6 }}
-                          onClick={() => setRespondingTo(review.id)}
+                          disabled={savingResponseId === review.id}
+                          onClick={() => {
+                            setResponseText((current) => ({ ...current, [review.id]: review.provider_response || '' }))
+                            setRespondingTo(review.id)
+                          }}
                         >
-                          Respond to review
+                          {review.provider_response ? 'Edit response' : 'Respond to review'}
                         </button>
                       )}
                     </div>
@@ -5873,12 +6281,31 @@ function ProviderDashboard({
                   const dayAvailability = availability.find((a) => a.day_of_week === index)
                   const isAvailable = dayAvailability?.is_available ?? true
                   return (
-                    <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--nf-bg)', borderRadius: 8 }}>
+                    <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--nf-bg)', borderRadius: 8, flexWrap: 'wrap', gap: 8 }}>
                       <span style={{ fontWeight: 600, fontSize: 14 }}>{dayName}</span>
                       <label className="dash-btn dash-btn-outline dash-btn-sm" style={{ cursor: 'pointer', margin: 0 }}>
                         <input type="checkbox" checked={isAvailable} onChange={() => toggleDayAvailability(index)} style={{ marginRight: 6 }} />
                         {isAvailable ? 'Available' : 'Unavailable'}
                       </label>
+                      {isAvailable && (
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <input
+                            type="time"
+                            className="dash-form-input"
+                            style={{ width: 130 }}
+                            value={(dayAvailability?.start_time || '09:00:00').slice(0, 5)}
+                            onChange={(e) => updateAvailabilityTime(index, 'start_time', e.target.value + ':00')}
+                          />
+                          <span style={{ color: 'var(--nf-text-muted)' }}>to</span>
+                          <input
+                            type="time"
+                            className="dash-form-input"
+                            style={{ width: 130 }}
+                            value={(dayAvailability?.end_time || '17:00:00').slice(0, 5)}
+                            onChange={(e) => updateAvailabilityTime(index, 'end_time', e.target.value + ':00')}
+                          />
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -5915,6 +6342,10 @@ function ProviderDashboard({
                             <label className="dash-form-label">Duration</label>
                             <input className="dash-form-input" value={editPackageDuration} onChange={(e) => setEditPackageDuration(e.target.value)} placeholder="e.g. 2 hours" />
                           </div>
+                          <div className="dash-form-group">
+                            <label className="dash-form-label">Included services</label>
+                            <input className="dash-form-input" value={editPackageIncludedServices} onChange={(e) => setEditPackageIncludedServices(e.target.value)} placeholder="e.g. Plumbing, Electrical" />
+                          </div>
                           <div className="dash-btn-group">
                             <button className="dash-btn dash-btn-primary" onClick={() => updatePackage(pkg.id)} disabled={featureLoading}>Save</button>
                             <button className="dash-btn dash-btn-outline" onClick={cancelEditingPackage} disabled={featureLoading}>Cancel</button>
@@ -5928,6 +6359,7 @@ function ProviderDashboard({
                               <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', margin: '4px 0' }}>{pkg.description || 'No description'}</p>
                               <p style={{ fontWeight: 800, color: 'var(--nf-navy)' }}>₦{Number(pkg.price).toLocaleString()}</p>
                               {pkg.estimated_duration && <p style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>Duration: {pkg.estimated_duration}</p>}
+                              {pkg.included_services && <p style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>Includes: {pkg.included_services}</p>}
                             </div>
                             <div style={{ display: 'flex', gap: 6 }}>
                               <button className="dash-btn dash-btn-outline dash-btn-sm" onClick={() => startEditingPackage(pkg)} disabled={featureLoading}>Edit</button>
@@ -5947,6 +6379,37 @@ function ProviderDashboard({
                 <button className="dash-btn dash-btn-primary dash-btn-sm" onClick={addPackage} disabled={featureLoading}>Add</button>
               </div>
               <textarea className="dash-form-textarea" value={newPackageDescription} onChange={(e) => setNewPackageDescription(e.target.value)} placeholder="Description (optional)" rows={2} style={{ marginTop: 8 }} />
+              <input className="dash-form-input" value={newPackageIncludedServices} onChange={(e) => setNewPackageIncludedServices(e.target.value)} placeholder="Included services (e.g. Plumbing, Electrical)" style={{ marginTop: 8, width: '100%' }} />
+            </DashboardCard>
+
+            <SectionHeader label="SEND A QUOTE" title="Send a quote to a customer" />
+            <DashboardCard>
+              {bookings.filter((b) => String(b.status || '').toLowerCase() !== 'completed' && String(b.status || '').toLowerCase() !== 'cancelled' && String(b.status || '').toLowerCase() !== 'declined').length === 0 ? (
+                <EmptyState icon="💰" title="No active bookings" description="Quotes can only be sent for bookings that are still in progress." />
+              ) : (
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Booking</label>
+                    <select className="dash-form-input" value={quoteForm.bookingId} onChange={(e) => setQuoteForm((current) => ({ ...current, bookingId: e.target.value }))}>
+                      <option value="">Select a booking…</option>
+                      {bookings.filter((b) => String(b.status || '').toLowerCase() !== 'completed' && String(b.status || '').toLowerCase() !== 'cancelled' && String(b.status || '').toLowerCase() !== 'declined').map((b) => (
+                        <option key={b.id} value={b.id}>#{b.id} — {b.service_name || 'Service'} ({b.status})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Amount (₦)</label>
+                    <input className="dash-form-input" type="number" min="1" value={quoteForm.amount} onChange={(e) => setQuoteForm((current) => ({ ...current, amount: e.target.value }))} placeholder="e.g. 25000" />
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Description</label>
+                    <textarea className="dash-form-textarea" rows={3} value={quoteForm.description} onChange={(e) => setQuoteForm((current) => ({ ...current, description: e.target.value }))} placeholder="Describe the work and what is included…" />
+                  </div>
+                  <button className="dash-btn dash-btn-primary dash-btn-full" onClick={() => { const booking = bookings.find((b) => b.id === Number(quoteForm.bookingId)); if (booking) createQuote(booking) }} disabled={creatingQuote || !quoteForm.bookingId}>
+                    {creatingQuote ? 'Sending…' : 'Send quote'}
+                  </button>
+                </div>
+              )}
             </DashboardCard>
 
             <SectionHeader label="QUOTES" title="Your quotes" />
@@ -6682,6 +7145,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
 
   const tabs = [
     { id: 'overview', icon: '📊', label: 'Overview' },
+    { id: 'analytics', icon: '📈', label: 'Analytics' },
     { id: 'users', icon: '👥', label: 'Users' },
     { id: 'providers', icon: '🛠️', label: 'Providers' },
     { id: 'bookings', icon: '📅', label: 'Bookings' },
@@ -6695,6 +7159,26 @@ function AdminDashboard({ user, onLogout, onHome }) {
     { id: 'quotes', icon: '💰', label: 'Quotes' },
     { id: 'notifications', icon: '🔔', label: 'Alerts' },
   ]
+
+  // Admin analytics computed from existing platform data.
+  const totalUsers = users.length
+  const totalProviders = providers.length
+  const totalBookings = bookings.length
+  const completedBookings = bookings.filter(b => String(b.status || '').toLowerCase() === 'completed').length
+  const pendingBookingsCount = bookings.filter(b => String(b.status || '').toLowerCase() === 'pending').length
+  const acceptedBookingsCount = bookings.filter(b => String(b.status || '').toLowerCase() === 'accepted').length
+  const declinedBookingsCount = bookings.filter(b => String(b.status || '').toLowerCase() === 'declined').length
+  const cancelledBookingsCount = bookings.filter(b => String(b.status || '').toLowerCase() === 'cancelled').length
+  const inProgressBookingsCount = bookings.filter(b => String(b.status || '').toLowerCase() === 'in progress').length
+  const onTheWayBookingsCount = bookings.filter(b => String(b.status || '').toLowerCase() === 'provider on the way').length
+  const emergencyBookingsCount = bookings.filter(b => b.emergency).length
+  const totalServices = services.length
+  const totalReviews = reviews.length
+  const totalQuotes = quotes.length
+  const approvedProviderVerifications = verifications.filter(v => v.status === 'approved').length
+  const approvedCustomerVerifications = customerVerifications.filter(v => v.status === 'approved').length
+  const emergencyProvidersCount = providers.filter(p => p.emergency_available).length
+  const verifiedProvidersCount = providers.filter(p => p.verified).length
 
   const renderVerificationCard = (verification, names, type) => (
     <div className="dash-card dash-verification-card" key={verification.id}>
@@ -6781,12 +7265,32 @@ function AdminDashboard({ user, onLogout, onHome }) {
             ) : (
               verifications.slice(0, 3).map((v) => renderVerificationCard(v, providerNames, 'provider'))
             )}
-            <SectionHeader label="SUPPORT" title="Latest reports" />
-            {reports.length === 0 ? (
-              <EmptyState icon="📋" title="No reports yet" />
-            ) : (
-              reports.slice(0, 3).map((report) => <ReportCard key={report.id} report={report} reporterName={reporterNames[report.reporter_user_id]} />)
-            )}
+          </>
+        )}
+
+        {activeTab === 'analytics' && (
+          <>
+            <SectionHeader label="ANALYTICS" title="Platform analytics" />
+            <StatGrid>
+              <StatCard icon="👥" value={totalUsers} label="Total users" color="blue" />
+              <StatCard icon="🛠️" value={totalProviders} label="Total providers" color="purple" />
+              <StatCard icon="📅" value={totalBookings} label="Total bookings" color="navy" />
+              <StatCard icon="✅" value={completedBookings} label="Completed" color="green" />
+              <StatCard icon="⏳" value={pendingBookingsCount} label="Pending" color="yellow" />
+              <StatCard icon="✅" value={acceptedBookingsCount} label="Accepted" color="green" />
+              <StatCard icon="❌" value={declinedBookingsCount} label="Declined" color="red" />
+              <StatCard icon="🚫" value={cancelledBookingsCount} label="Cancelled" color="red" />
+              <StatCard icon="🔧" value={inProgressBookingsCount} label="In progress" color="blue" />
+              <StatCard icon="🚗" value={onTheWayBookingsCount} label="On the way" color="purple" />
+              <StatCard icon="🚨" value={emergencyBookingsCount} label="Emergency bookings" color="red" />
+              <StatCard icon="🏷️" value={totalServices} label="Services" color="teal" />
+              <StatCard icon="⭐" value={totalReviews} label="Reviews" color="amber" />
+              <StatCard icon="💰" value={totalQuotes} label="Quotes" color="green" />
+              <StatCard icon="🪪" value={approvedProviderVerifications} label="Approved providers" color="green" />
+              <StatCard icon="🆔" value={approvedCustomerVerifications} label="Approved customers" color="green" />
+              <StatCard icon="✓" value={verifiedProvidersCount} label="Verified providers" color="green" />
+              <StatCard icon="🚨" value={emergencyProvidersCount} label="Emergency providers" color="red" />
+            </StatGrid>
           </>
         )}
 
@@ -7170,59 +7674,111 @@ function ConversationList({ user, onBack, onChat }) {
   const [conversations, setConversations] = useState([])
   const [conversationMessages, setConversationMessages] = useState({})
   const [loading, setLoading] = useState(true)
+  const realtimeChannelRef = useRef(null)
 
-  useEffect(() => {
-    const loadConversations = async () => {
-      if (!user?.user_id) {
-        setConversations([])
-        setConversationMessages({})
-        setLoading(false)
-        return
-      }
-
-      setLoading(true)
-
-      const { data: conversationsData, error: conversationsError } = await supabase
-        .from('conversations')
-        .select('*')
-        .or(`customer_user_id.eq.${user.user_id},provider_user_id.eq.${user.user_id}`)
-        .order('updated_at', { ascending: false })
-
-      if (conversationsError) {
-        console.error('Failed to load conversations:', conversationsError)
-        setConversations([])
-        setConversationMessages({})
-        setLoading(false)
-        return
-      }
-
-      setConversations(conversationsData || [])
-
-      if (conversationsData && conversationsData.length > 0) {
-        const conversationIds = conversationsData.map((c) => c.id)
-        const { data: messagesData } = await supabase
-          .from('messages')
-          .select('*')
-          .in('conversation_id', conversationIds)
-          .order('created_at', { ascending: true })
-
-        const messageMap = {}
-        for (const message of messagesData || []) {
-          if (!messageMap[message.conversation_id]) {
-            messageMap[message.conversation_id] = []
-          }
-          messageMap[message.conversation_id].push(message)
-        }
-        setConversationMessages(messageMap)
-      } else {
-        setConversationMessages({})
-      }
-
+  const loadConversations = useCallback(async () => {
+    if (!user?.user_id) {
+      setConversations([])
+      setConversationMessages({})
       setLoading(false)
+      return
     }
 
-    loadConversations()
+    setLoading(true)
+
+    const { data: conversationsData, error: conversationsError } = await supabase
+      .from('conversations')
+      .select('*')
+      .or(`customer_user_id.eq.${user.user_id},provider_user_id.eq.${user.user_id}`)
+      .order('updated_at', { ascending: false })
+
+    if (conversationsError) {
+      console.error('Failed to load conversations:', conversationsError)
+      setConversations([])
+      setConversationMessages({})
+      setLoading(false)
+      return
+    }
+
+    setConversations(conversationsData || [])
+
+    if (conversationsData && conversationsData.length > 0) {
+      const conversationIds = conversationsData.map((c) => c.id)
+      const { data: messagesData } = await supabase
+        .from('messages')
+        .select('*')
+        .in('conversation_id', conversationIds)
+        .order('created_at', { ascending: true })
+
+      const messageMap = {}
+      for (const message of messagesData || []) {
+        if (!messageMap[message.conversation_id]) {
+          messageMap[message.conversation_id] = []
+        }
+        messageMap[message.conversation_id].push(message)
+      }
+      setConversationMessages(messageMap)
+    } else {
+      setConversationMessages({})
+    }
+
+    setLoading(false)
   }, [user])
+
+  // Subscribe to realtime conversation updates so the list refreshes
+  // without manual polling when a new message arrives.
+  useEffect(() => {
+    if (!user?.user_id) {
+      return
+    }
+
+    const channelName = `chat-conversations-${user.user_id}`
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        () => {
+          // Refresh the conversation list so the last-message preview updates.
+          void loadConversations()
+        }
+      )
+      .subscribe((status) => {
+        if (
+          status === 'SUBSCRIBED' ||
+          status === 'CHANNEL_ERROR' ||
+          status === 'TIMED_OUT' ||
+          status === 'CLOSED'
+        ) {
+          console.log('[NaijaFix Realtime] ConversationList messages subscription:', status)
+        }
+      })
+
+    realtimeChannelRef.current = channel
+
+    return () => {
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current)
+        realtimeChannelRef.current = null
+      }
+    }
+  }, [loadConversations, user?.user_id])
+
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      await loadConversations()
+      if (cancelled) return
+    }
+    run()
+    return () => {
+      cancelled = true
+    }
+  }, [loadConversations])
 
   const getPartnerName = (conversation) => {
     if (!user?.user_id) return 'User'
@@ -7333,6 +7889,8 @@ function ChatScreen({ user, conversation, partnerName, partnerAvatar, bookingCon
   const [loadingImageUrls, setLoadingImageUrls] = useState({})
   const messagesEndRef = useRef(null)
   const textInputRef = useRef(null)
+  const realtimeChannelRef = useRef(null)
+  const seenMessageIdsRef = useRef(new Set())
 
   useEffect(() => {
     return () => {
@@ -7341,6 +7899,56 @@ function ChatScreen({ user, conversation, partnerName, partnerAvatar, bookingCon
       }
     }
   }, [photoPreview])
+
+  // Subscribe to realtime message inserts for this conversation.
+  useEffect(() => {
+    if (!conversation?.id || !user?.user_id) {
+      return
+    }
+
+    const channelName = `chat-conversation-${conversation.id}`
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversation.id}`,
+        },
+        (payload) => {
+          const newMessage = payload.new
+          if (!newMessage?.id) return
+          // Guard against duplicate messages from multiple subscriptions.
+          if (seenMessageIdsRef.current.has(newMessage.id)) return
+          seenMessageIdsRef.current.add(newMessage.id)
+          setMessages((current) => {
+            if (current.some((m) => m.id === newMessage.id)) return current
+            return [...current, newMessage]
+          })
+        }
+      )
+      .subscribe((status) => {
+        if (
+          status === 'SUBSCRIBED' ||
+          status === 'CHANNEL_ERROR' ||
+          status === 'TIMED_OUT' ||
+          status === 'CLOSED'
+        ) {
+          console.log('[NaijaFix Realtime] ChatScreen messages subscription (conversation ' + conversation.id + '):', status)
+        }
+      })
+
+    realtimeChannelRef.current = channel
+
+    return () => {
+      if (realtimeChannelRef.current) {
+        supabase.removeChannel(realtimeChannelRef.current)
+        realtimeChannelRef.current = null
+      }
+    }
+  }, [conversation?.id, user?.user_id])
 
   useEffect(() => {
     const loadMessages = async () => {
@@ -7360,7 +7968,9 @@ function ChatScreen({ user, conversation, partnerName, partnerAvatar, bookingCon
       if (error) {
         console.error('Failed to load messages:', error)
       } else {
-        setMessages(data || [])
+        const loaded = data || []
+        loaded.forEach((m) => seenMessageIdsRef.current.add(m.id))
+        setMessages(loaded)
       }
 
       setLoading(false)
@@ -7758,6 +8368,201 @@ function Rewards({ user, onBack }) {
   )
 }
 
+function ProviderOnboarding({ user, onBack, onComplete }) {
+  const [step, setStep] = useState(0)
+  const [providerProfile, setProviderProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  const steps = [
+    { id: 'business', label: 'Business', icon: '🏢' },
+    { id: 'services', label: 'Services', icon: '🛠️' },
+    { id: 'packages', label: 'Packages', icon: '📦' },
+    { id: 'portfolio', label: 'Portfolio', icon: '📸' },
+    { id: 'profile', label: 'Profile', icon: '👤' },
+    { id: 'verification', label: 'Verify', icon: '🪪' },
+    { id: 'availability', label: 'Schedule', icon: '⏰' },
+    { id: 'emergency', label: 'Emergency', icon: '🚨' },
+    { id: 'review', label: 'Review', icon: '✅' },
+  ]
+
+  const progress = Math.round(((step + 1) / steps.length) * 100)
+
+  const isComplete = (stepId) => {
+    if (!providerProfile) return false
+    switch (stepId) {
+      case 'business':
+        return !!(providerProfile.business_name && providerProfile.category)
+      case 'services':
+        return (providerProfile.providerServices || []).length > 0
+      case 'packages':
+        return (providerProfile.packages || []).length > 0
+      case 'portfolio':
+        return (providerProfile.portfolio || []).length > 0
+      case 'profile':
+        return !!(providerProfile.logo_url || providerProfile.avatar_url)
+      case 'verification':
+        return providerProfile.verification?.status === 'approved'
+      case 'availability':
+        return (providerProfile.availability || []).some((a) => a.is_available)
+      case 'emergency':
+        return true
+      case 'review':
+        return true
+      default:
+        return false
+    }
+  }
+
+  useEffect(() => {
+    const load = async () => {
+      if (!user?.user_id) {
+        setLoading(false)
+        return
+      }
+      try {
+        const [providerRes, servicesRes, packagesRes, availabilityRes, portfolioRes, verificationRes] = await Promise.all([
+          supabase.from('providers').select('*').eq('user_id', user.user_id).maybeSingle(),
+          supabase.from('provider_services').select('service_id, services(id, name)').eq('provider_user_id', user.user_id),
+          supabase.from('service_packages').select('*').eq('provider_user_id', user.user_id),
+          supabase.from('provider_availability').select('*').eq('provider_user_id', user.user_id),
+          supabase.from('provider_work_samples').select('*').eq('provider_user_id', user.user_id),
+          supabase.from('provider_verifications').select('*').eq('provider_user_id', user.user_id).maybeSingle(),
+        ])
+        setProviderProfile({
+          ...providerRes.data,
+          providerServices: servicesRes.data || [],
+          packages: packagesRes.data || [],
+          availability: availabilityRes.data || [],
+          portfolio: portfolioRes.data || [],
+          verification: verificationRes.data || null,
+        })
+      } catch (error) {
+        console.error('Failed to load onboarding data:', error)
+      }
+      setLoading(false)
+    }
+    load()
+  }, [user?.user_id])
+
+  const nextStep = () => setStep((s) => Math.min(s + 1, steps.length - 1))
+  const prevStep = () => setStep((s) => Math.max(s - 1, 0))
+
+  if (loading) {
+    return (
+      <div className="inner-page">
+        <header className="inner-header">
+          <button className="back-link" onClick={onBack}>← Back</button>
+          <Logo />
+        </header>
+        <main className="inner-content">
+          <div className="empty-box large-empty">
+            <span>⏳</span>
+            <h4>Loading onboarding...</h4>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  return (
+    <div className="inner-page">
+      <header className="inner-header">
+        <button className="back-link" onClick={onBack}>← Back</button>
+        <Logo />
+      </header>
+      <main className="inner-content">
+        <span className="section-label">ONBOARDING</span>
+        <h2>Provider onboarding</h2>
+        <p style={{ color: 'var(--nf-text-muted)', marginBottom: 16 }}>
+          Complete your setup to start receiving service requests.
+        </p>
+
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ height: 8, background: 'var(--nf-bg)', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${progress}%`, background: 'var(--nf-navy)', transition: 'width 0.3s' }} />
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', marginTop: 6 }}>{progress}% complete</p>
+        </div>
+
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20 }}>
+          {steps.map((s, i) => (
+            <button
+              key={s.id}
+              type="button"
+              className={`dash-btn ${i === step ? 'dash-btn-primary' : 'dash-btn-outline'} dash-btn-sm`}
+              onClick={() => setStep(i)}
+              style={{ opacity: isComplete(s.id) ? 1 : 0.6 }}
+            >
+              {s.icon} {s.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="dash-card" style={{ padding: 20 }}>
+          <h3 style={{ marginBottom: 8 }}>{steps[step].icon} {steps[step].label}</h3>
+          {step === 0 && (
+            <p style={{ color: 'var(--nf-text-muted)', fontSize: 13 }}>
+              Set up your business details. You can edit these later from your provider dashboard.
+            </p>
+          )}
+          {step === 1 && (
+            <p style={{ color: 'var(--nf-text-muted)', fontSize: 13 }}>
+              Select the services you offer so customers can find you.
+            </p>
+          )}
+          {step === 2 && (
+            <p style={{ color: 'var(--nf-text-muted)', fontSize: 13 }}>
+              Create service packages with fixed pricing for customers.
+            </p>
+          )}
+          {step === 3 && (
+            <p style={{ color: 'var(--nf-text-muted)', fontSize: 13 }}>
+              Upload work samples to showcase your quality.
+            </p>
+          )}
+          {step === 4 && (
+            <p style={{ color: 'var(--nf-text-muted)', fontSize: 13 }}>
+              Add a profile photo and cover image.
+            </p>
+          )}
+          {step === 5 && (
+            <p style={{ color: 'var(--nf-text-muted)', fontSize: 13 }}>
+              Submit identity verification to build trust.
+            </p>
+          )}
+          {step === 6 && (
+            <p style={{ color: 'var(--nf-text-muted)', fontSize: 13 }}>
+              Set your weekly availability schedule.
+            </p>
+          )}
+          {step === 7 && (
+            <p style={{ color: 'var(--nf-text-muted)', fontSize: 13 }}>
+              Enable emergency availability if you offer urgent services.
+            </p>
+          )}
+          {step === 8 && (
+            <p style={{ color: 'var(--nf-text-muted)', fontSize: 13 }}>
+              Review your setup and complete onboarding.
+            </p>
+          )}
+
+          <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'space-between' }}>
+            <button className="dash-btn dash-btn-outline" onClick={prevStep} disabled={step === 0}>← Previous</button>
+            {step < steps.length - 1 ? (
+              <button className="dash-btn dash-btn-primary" onClick={nextStep}>Next →</button>
+            ) : (
+              <button className="dash-btn dash-btn-primary" onClick={() => { setSaving(true); setTimeout(() => { setSaving(false); onComplete() }, 400) }}>
+                {saving ? 'Completing...' : 'Complete onboarding'}
+              </button>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
 function App() {
   const [page, setPage] =
     useState('home')
@@ -8148,6 +8953,16 @@ function App() {
     )
   }
 
+  if (effectivePage === 'provider-onboarding') {
+    return (
+      <ProviderOnboarding
+        user={user}
+        onBack={() => setPage('provider-dashboard')}
+        onComplete={() => setPage('provider-dashboard')}
+      />
+    )
+  }
+
   if (effectivePage === 'provider-signup') {
     return (
       <Signup
@@ -8524,6 +9339,15 @@ function App() {
           setPage('dashboard')
         }
         onLogout={handleLogout}
+      />
+    )
+  }
+
+  if (effectivePage === 'payment-return') {
+    return (
+      <PaymentReturn
+        onBack={() => setPage('dashboard')}
+        setPage={setPage}
       />
     )
   }
