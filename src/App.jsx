@@ -7457,7 +7457,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
     { id: 'support-reports', icon: '📋', label: 'Reports', badge: openReports },
     { id: 'reviews', icon: '⭐', label: 'Reviews' },
     { id: 'quotes', icon: '💰', label: 'Quotes' },
-    { id: 'notifications', icon: '🔔', label: 'Alerts' },
+    { id: 'notifications', icon: '🔔', label: 'Alerts', badge: unreadNotifications },
   ]
 
   // Admin analytics computed from existing platform data.
