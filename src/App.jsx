@@ -4836,6 +4836,7 @@ function ProviderDashboard({
   const [editCategory, setEditCategory] = useState('')
   const [editLocation, setEditLocation] = useState('')
   const [editPhone, setEditPhone] = useState('')
+  const [editEmergencyAvailable, setEditEmergencyAvailable] = useState(false)
   const [savingProvider, setSavingProvider] = useState(false)
   const [providerServices, setProviderServices] = useState([])
   const [allAvailableServices, setAllAvailableServices] = useState([])
@@ -4906,7 +4907,13 @@ function ProviderDashboard({
     setEditCategory(providerProfile.category || '')
     setEditLocation(providerProfile.location || '')
     setEditPhone(providerProfile.phone || '')
+    setEditEmergencyAvailable(!!providerProfile.emergency_available)
     setEditingProvider(true)
+    // Scroll the edit form into view so the provider immediately sees it.
+    setTimeout(() => {
+      const el = document.getElementById('provider-edit-form')
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
   }
 
   const saveProviderProfile = async () => {
@@ -4919,7 +4926,7 @@ function ProviderDashboard({
       category: editCategory.trim(),
       location: editLocation.trim(),
       phone: editPhone.trim(),
-      emergency_available: providerProfile?.emergency_available ?? false,
+      emergency_available: editEmergencyAvailable,
     }
 
     const { error } = await supabase
@@ -6128,7 +6135,7 @@ function ProviderDashboard({
                 </div>
               )}
               {editingProvider ? (
-                <div>
+                <div id="provider-edit-form">
                   <div className="dash-form-group">
                     <label className="dash-form-label">Business name</label>
                     <input className="dash-form-input" value={editBusinessName} onChange={(e) => setEditBusinessName(e.target.value)} />
@@ -6148,6 +6155,13 @@ function ProviderDashboard({
                   <div className="dash-form-group">
                     <label className="dash-form-label">Phone</label>
                     <input className="dash-form-input" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Emergency available</label>
+                    <select className="dash-form-select" value={editEmergencyAvailable ? 'true' : 'false'} onChange={(e) => setEditEmergencyAvailable(e.target.value === 'true')}>
+                      <option value="false">No</option>
+                      <option value="true">Yes</option>
+                    </select>
                   </div>
                   <div className="dash-btn-group">
                     <button className="dash-btn dash-btn-primary" onClick={saveProviderProfile} disabled={savingProvider}>
