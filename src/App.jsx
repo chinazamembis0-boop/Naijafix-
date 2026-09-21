@@ -2894,7 +2894,7 @@ function ProviderDetails({
           ) : portfolio.length === 0 ? (
             <div className="empty-box">
               <span>🛠️</span>
-              <h4>No work samples uploaded yet.</h4>
+              <h4>No portfolio items added yet.</h4>
             </div>
           ) : (
             <div className="sample-grid">
