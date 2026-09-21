@@ -5808,6 +5808,39 @@ function ProviderDashboard({
 
   const deletePackage = async (id) => {
     setFeatureLoading(true)
+
+    // Guard: do not delete a package that existing bookings still reference.
+    // bookings.package_id uses ON DELETE RESTRICT, so a hard delete would
+    // fail at the database level. Check first and give a clear message.
+    //
+    // The check is scoped to the provider's own bookings using the exact
+    // same provider_user_id filter that ProviderDashboard already uses to
+    // load its bookings (src/App.jsx:5247). A package belongs to the
+    // provider, so any booking referencing it has provider_user_id = the
+    // package owner. This never exposes another provider's bookings.
+    const { count, error: referenceError } = await supabase
+      .from('bookings')
+      .select('id', { count: 'exact', head: true })
+      .eq('provider_user_id', user.user_id)
+      .eq('package_id', id)
+
+    if (referenceError) {
+      console.error('Could not verify booking references:', referenceError)
+      alert('Could not verify booking references. Please try again.')
+      setFeatureLoading(false)
+      return
+    }
+
+    if (count > 0) {
+      alert(
+        'This package cannot be deleted because it is linked to ' +
+          count +
+          ' existing booking(s).'
+      )
+      setFeatureLoading(false)
+      return
+    }
+
     const { error } = await supabase.from('service_packages').delete().eq('id', id)
     if (error) {
       alert('Could not delete package: ' + error.message)
