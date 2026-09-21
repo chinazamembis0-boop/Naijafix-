@@ -2858,7 +2858,11 @@ function ProviderDetails({
             <div className="sample-grid">
               {samples.map((sample) => (
                 <div key={sample.id}>
-                  <img src={sample.signedUrl} alt={sample.caption || 'Work sample'} />
+                  {sample.signedUrl ? (
+                    <img src={sample.signedUrl} alt={sample.caption || 'Work sample'} loading="lazy" />
+                  ) : (
+                    <div style={{ height: 120, background: 'var(--nf-bg)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nf-text-muted)', fontSize: 12 }}>No image</div>
+                  )}
                   {sample.caption && <p>{sample.caption}</p>}
                 </div>
               ))}
