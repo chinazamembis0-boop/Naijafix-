@@ -2760,6 +2760,11 @@ function ProviderDetails({
           {provider.location ||
             'Location not provided'}
         </p>
+        {provider.latitude != null && provider.longitude != null && (
+          <p style={{ fontSize: 12, color: 'var(--nf-success)', margin: '4px 0 0' }}>
+            ✓ Location available
+          </p>
+        )}
 
         {provider.phone && (
           <p className="provider-location">
@@ -4854,7 +4859,10 @@ function ProviderDashboard({
   const [editLocation, setEditLocation] = useState('')
   const [editPhone, setEditPhone] = useState('')
   const [editEmergencyAvailable, setEditEmergencyAvailable] = useState(false)
+  const [editLatitude, setEditLatitude] = useState(null)
+  const [editLongitude, setEditLongitude] = useState(null)
   const [savingProvider, setSavingProvider] = useState(false)
+  const [locationNotice, setLocationNotice] = useState('')
   const [providerServices, setProviderServices] = useState([])
   const [allAvailableServices, setAllAvailableServices] = useState([])
   const [verificationDocPreview, setVerificationDocPreview] = useState('')
@@ -4925,6 +4933,9 @@ function ProviderDashboard({
     setEditLocation(providerProfile.location || '')
     setEditPhone(providerProfile.phone || '')
     setEditEmergencyAvailable(!!providerProfile.emergency_available)
+    setEditLatitude(providerProfile.latitude || null)
+    setEditLongitude(providerProfile.longitude || null)
+    setLocationNotice('')
     setEditingProvider(true)
     // Scroll the edit form into view so the provider immediately sees it.
     setTimeout(() => {
@@ -4937,6 +4948,29 @@ function ProviderDashboard({
     if (!providerProfile) return
     setSavingProvider(true)
 
+    // Validate optional coordinates before saving. Keep null rather than
+    // inventing coordinates when the provider has not set them.
+    let latitude = null
+    let longitude = null
+    if (editLatitude !== null && String(editLatitude).trim() !== '') {
+      const latNum = Number(editLatitude)
+      if (isNaN(latNum) || latNum < -90 || latNum > 90) {
+        alert('Latitude must be a number between -90 and 90.')
+        setSavingProvider(false)
+        return
+      }
+      latitude = latNum
+    }
+    if (editLongitude !== null && String(editLongitude).trim() !== '') {
+      const lngNum = Number(editLongitude)
+      if (isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
+        alert('Longitude must be a number between -180 and 180.')
+        setSavingProvider(false)
+        return
+      }
+      longitude = lngNum
+    }
+
     const updates = {
       business_name: editBusinessName.trim(),
       description: editDescription.trim(),
@@ -4944,6 +4978,8 @@ function ProviderDashboard({
       location: editLocation.trim(),
       phone: editPhone.trim(),
       emergency_available: editEmergencyAvailable,
+      latitude,
+      longitude,
     }
 
     const { error } = await supabase
@@ -4956,11 +4992,35 @@ function ProviderDashboard({
       alert('Could not update provider profile: ' + error.message)
     } else {
       setProviderProfile((current) => ({ ...current, ...updates }))
+      if (latitude != null && longitude != null) {
+        setLocationNotice('✓ Location coordinates saved')
+      } else {
+        setLocationNotice('')
+      }
       alert('Provider profile updated successfully.')
       setEditingProvider(false)
     }
 
     setSavingProvider(false)
+  }
+
+  const useMyCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationNotice('Geolocation is not supported by your browser.')
+      return
+    }
+    setLocationNotice('')
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setEditLatitude(position.coords.latitude)
+        setEditLongitude(position.coords.longitude)
+        setLocationNotice('✓ Coordinates updated from your current location')
+      },
+      () => {
+        setLocationNotice('Could not get your current location. Please allow location permission or enter coordinates manually.')
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    )
   }
 
   const updateBookingStatus = async (bookingId, newStatus, reason) => {
@@ -6200,7 +6260,23 @@ function ProviderDashboard({
                   </div>
                   <div className="dash-form-group">
                     <label className="dash-form-label">Location</label>
-                    <input className="dash-form-input" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} />
+                    <input className="dash-form-input" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} placeholder="e.g. Rumuola, Port Harcourt" />
+                  </div>
+                  <div className="dash-form-group">
+                    <label className="dash-form-label">Coordinates</label>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" onClick={useMyCurrentLocation} disabled={savingProvider}>
+                        📍 Use my current location
+                      </button>
+                    </div>
+                    {locationNotice && (
+                      <p style={{ fontSize: 12, color: locationNotice.startsWith('✓') ? '#16a34a' : 'var(--nf-text-muted)', margin: '6px 0 0' }}>
+                        {locationNotice}
+                      </p>
+                    )}
+                    <p style={{ fontSize: 11, color: 'var(--nf-text-muted)', margin: '6px 0 0' }}>
+                      Optional. Tapping "Use my current location" records your device's coordinates so your service area can be shown on the map. This is never shown to customers as raw numbers.
+                    </p>
                   </div>
                   <div className="dash-form-group">
                     <label className="dash-form-label">Phone</label>
