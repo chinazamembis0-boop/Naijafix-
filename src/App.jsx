@@ -2631,6 +2631,19 @@ function ProviderDetails({
     loadReputation()
   }, [provider, user])
 
+  // Close the lightbox with the Escape key on desktop.
+  useEffect(() => {
+    if (!lightboxUrl) return
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setLightboxUrl('')
+        setLightboxAlt('')
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [lightboxUrl])
+
   const toggleFavorite = async () => {
     if (!provider?.user_id || !user?.user_id) {
       alert('Please log in to save providers.')
@@ -2859,11 +2872,11 @@ function ProviderDetails({
               {samples.map((sample) => (
                 <div key={sample.id}>
                   {sample.signedUrl ? (
-                    <img src={sample.signedUrl} alt={sample.caption || 'Work sample'} loading="lazy" />
+                    <img src={sample.signedUrl} alt={sample.caption || 'Work sample'} loading="lazy" style={{ cursor: 'pointer', width: '100%', height: 120, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--nf-border)' }} onClick={() => { setLightboxUrl(sample.signedUrl); setLightboxAlt(sample.caption || 'Work sample') }} />
                   ) : (
                     <div style={{ height: 120, background: 'var(--nf-bg)', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--nf-text-muted)', fontSize: 12 }}>No image</div>
                   )}
-                  {sample.caption && <p>{sample.caption}</p>}
+                  {sample.caption && <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', margin: '4px 0 0' }}>{sample.caption}</p>}
                 </div>
               ))}
             </div>
@@ -2919,8 +2932,8 @@ function ProviderDetails({
           <div onClick={() => { setLightboxUrl(''); setLightboxAlt('') }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: 20 }}>
             <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '85vh' }} onClick={(e) => e.stopPropagation()}>
               <img src={lightboxUrl} alt={lightboxAlt} style={{ maxWidth: '90vw', maxHeight: '85vh', objectFit: 'contain', borderRadius: 10 }} />
-              <p style={{ color: '#fff', textAlign: 'center', marginTop: 10 }}>{lightboxAlt}</p>
-              <button onClick={() => { setLightboxUrl(''); setLightboxAlt('') }} style={{ position: 'absolute', top: -12, right: -12, background: '#fff', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', fontSize: 16 }}>✕</button>
+              {lightboxAlt && <p style={{ color: '#fff', textAlign: 'center', marginTop: 10 }}>{lightboxAlt}</p>}
+              <button onClick={() => { setLightboxUrl(''); setLightboxAlt('') }} style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: '50%', width: 36, height: 36, cursor: 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
             </div>
           </div>
         )}
