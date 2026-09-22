@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { supabase, getSignedStorageUrl, uploadPrivateFile } from './supabase.js'
+import { supabase, getSignedStorageUrl, uploadPrivateFile, haversineDistanceKm, formatDistanceKm } from './supabase.js'
 import './App.css'
 import './components/DashboardUI.css'
 import {
@@ -196,10 +196,16 @@ function Logo() {
   )
 }
 
-function MapView({ providers, onProviderSelect }) {
+function MapView({ providers, onProviderSelect, savedCustomerLocation }) {
   const [userLocation, setUserLocation] = useState(null)
   const [locationError, setLocationError] = useState('')
   const [searchArea, setSearchArea] = useState(false)
+
+  // The saved customer profile location takes priority over the temporary
+  // browser location. Opening the map must NOT overwrite the saved location.
+  const effectiveUserLocation = savedCustomerLocation
+    ? { lat: savedCustomerLocation.latitude, lng: savedCustomerLocation.longitude }
+    : userLocation
 
   const requestLocation = () => {
     if (!navigator.geolocation) {
@@ -2151,6 +2157,7 @@ function Services({
   loading,
   onBack,
   onProvider,
+  customerLocation,
 }) {
   const [search, setSearch] = useState('')
   const [showMap, setShowMap] = useState(false)
@@ -2322,7 +2329,7 @@ function Services({
         </div>
 
         {showMap && (
-          <MapView providers={matchingProviders} onProviderSelect={onProvider} />
+          <MapView providers={matchingProviders} onProviderSelect={onProvider} savedCustomerLocation={customerLocation} />
         )}
 
         {loading ? (
@@ -2371,6 +2378,11 @@ function Services({
                     {provider.location ||
                       'Location not provided'}
                   </p>
+                  {customerLocation?.latitude != null && customerLocation?.longitude != null && provider.latitude != null && provider.longitude != null && (
+                    <p style={{ fontSize: 12, color: 'var(--nf-success)', margin: 0 }}>
+                      📏 {formatDistanceKm(haversineDistanceKm(customerLocation.latitude, customerLocation.longitude, provider.latitude, provider.longitude))}
+                    </p>
+                  )}
 
                   <p>
                     ⭐ {provider.rating ?? 'New'} rating
@@ -2763,6 +2775,11 @@ function ProviderDetails({
         {provider.latitude != null && provider.longitude != null && (
           <p style={{ fontSize: 12, color: 'var(--nf-success)', margin: '4px 0 0' }}>
             ✓ Location available
+          </p>
+        )}
+        {customerLocation?.latitude != null && customerLocation?.longitude != null && provider.latitude != null && provider.longitude != null && (
+          <p style={{ fontSize: 12, color: 'var(--nf-success)', margin: '4px 0 0' }}>
+            📏 {formatDistanceKm(haversineDistanceKm(customerLocation.latitude, customerLocation.longitude, provider.latitude, provider.longitude))}
           </p>
         )}
 
@@ -4311,7 +4328,11 @@ function Profile({ user, onBack, onLogout }) {
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState('')
   const [editPhone, setEditPhone] = useState('')
+  const [editLocation, setEditLocation] = useState('')
+  const [editLatitude, setEditLatitude] = useState(null)
+  const [editLongitude, setEditLongitude] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [locationNotice, setLocationNotice] = useState('')
   const [customerVerification, setCustomerVerification] = useState(null)
   const [cvDocPreview, setCvDocPreview] = useState('')
   const [cvDocName, setCvDocName] = useState('')
@@ -4324,7 +4345,30 @@ function Profile({ user, onBack, onLogout }) {
   const startEditing = () => {
     setEditName(profile?.full_name || '')
     setEditPhone(profile?.phone || '')
+    setEditLocation(profile?.location || '')
+    setEditLatitude(profile?.latitude || null)
+    setEditLongitude(profile?.longitude || null)
+    setLocationNotice('')
     setEditing(true)
+  }
+
+  const useMyCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationNotice('Geolocation is not supported by your browser.')
+      return
+    }
+    setLocationNotice('')
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setEditLatitude(position.coords.latitude)
+        setEditLongitude(position.coords.longitude)
+        setLocationNotice('✓ Coordinates updated from your current location')
+      },
+      () => {
+        setLocationNotice('Location permission was denied. You can enter your location manually.')
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    )
   }
 
   const saveProfile = async () => {
@@ -4333,12 +4377,37 @@ function Profile({ user, onBack, onLogout }) {
       return
     }
 
+    // Validate optional customer coordinates before saving. Keep null rather
+    // than inventing coordinates when the customer has not set them.
+    let latitude = null
+    let longitude = null
+    if (editLatitude !== null && String(editLatitude).trim() !== '') {
+      const latNum = Number(editLatitude)
+      if (isNaN(latNum) || latNum < -90 || latNum > 90) {
+        alert('Latitude must be a number between -90 and 90.')
+        return
+      }
+      latitude = latNum
+    }
+    if (editLongitude !== null && String(editLongitude).trim() !== '') {
+      const lngNum = Number(editLongitude)
+      if (isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
+        alert('Longitude must be a number between -180 and 180.')
+        return
+      }
+      longitude = lngNum
+    }
+
     setSaving(true)
     const { error } = await supabase
       .from('profiles')
       .update({
         full_name: editName.trim(),
         phone: editPhone.trim(),
+        location: editLocation.trim(),
+        latitude,
+        longitude,
+        location_updated_at: (latitude != null && longitude != null) ? new Date().toISOString() : null,
       })
       .eq('user_id', user.user_id)
 
@@ -4350,7 +4419,16 @@ function Profile({ user, onBack, onLogout }) {
         ...current,
         full_name: editName.trim(),
         phone: editPhone.trim(),
+        location: editLocation.trim(),
+        latitude,
+        longitude,
+        location_updated_at: (latitude != null && longitude != null) ? new Date().toISOString() : null,
       }))
+      if (latitude != null && longitude != null) {
+        setLocationNotice('✓ Location saved')
+      } else {
+        setLocationNotice('')
+      }
       alert('Profile updated successfully.')
       setEditing(false)
     }
@@ -4601,6 +4679,23 @@ function Profile({ user, onBack, onLogout }) {
               <input className="dash-form-input" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
             </div>
             <div className="dash-form-group">
+              <label className="dash-form-label">My Location</label>
+              <input className="dash-form-input" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} placeholder="e.g. Ikeja, Lagos" />
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" onClick={useMyCurrentLocation} disabled={saving}>
+                  📍 Use my current location
+                </button>
+              </div>
+              {locationNotice && (
+                <p style={{ fontSize: 12, color: locationNotice.startsWith('✓') ? '#16a34a' : 'var(--nf-text-muted)', margin: '6px 0 0' }}>
+                  {locationNotice}
+                </p>
+              )}
+              <p style={{ fontSize: 11, color: 'var(--nf-text-muted)', margin: '6px 0 0' }}>
+                Optional. Your saved location helps you discover nearby providers. It is private and never shown publicly.
+              </p>
+            </div>
+            <div className="dash-form-group">
               <label className="dash-form-label">Email</label>
               <strong style={{ fontSize: 14 }}>{displayEmail}</strong>
             </div>
@@ -4635,6 +4730,26 @@ function Profile({ user, onBack, onLogout }) {
               <span className="dash-profile-field-label">Role</span>
               <span className="dash-profile-field-value" style={{ textTransform: 'capitalize' }}>{displayRole}</span>
             </div>
+            {profile?.location && (
+              <div className="dash-profile-field">
+                <span className="dash-profile-field-label">My Location</span>
+                <span className="dash-profile-field-value">📍 {profile.location}</span>
+              </div>
+            )}
+            {profile?.latitude != null && profile?.longitude != null && (
+              <div className="dash-profile-field">
+                <span className="dash-profile-field-label">Location status</span>
+                <span className="dash-profile-field-value" style={{ color: 'var(--nf-success)' }}>✓ Location saved</span>
+              </div>
+            )}
+            {profile?.location_updated_at && (
+              <div className="dash-profile-field">
+                <span className="dash-profile-field-label">Last updated</span>
+                <span className="dash-profile-field-value" style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>
+                  {new Date(profile.location_updated_at).toLocaleString()}
+                </span>
+              </div>
+            )}
             <button className="dash-btn dash-btn-outline dash-btn-full" onClick={startEditing}>
               Edit profile
             </button>
@@ -9023,6 +9138,7 @@ function App() {
 
   const [selectedConversation, setSelectedConversation] = useState(null)
   const [chatPartner, setChatPartner] = useState(null)
+  const [customerLocation, setCustomerLocation] = useState(null)
 
   const [foodCart, setFoodCart] = useState([])
   const [foodDeliveryFee, setFoodDeliveryFee] = useState(0)
@@ -9206,18 +9322,26 @@ function App() {
             .maybeSingle()
 
           if (!retry.error && retry.data) {
-            const appUser = {
-              id: retry.data.id,
-              user_id: user.id,
-              name: retry.data.full_name || '',
-              email: retry.data.email || user.email || '',
-              phone: retry.data.phone || '',
-              role: retry.data.role || 'customer',
-              avatar_url: retry.data.avatar_url || '',
-            }
+const appUser = {
+        id: retry.data.id,
+        user_id: user.id,
+        name: retry.data.full_name || '',
+        email: retry.data.email || user.email || '',
+        phone: retry.data.phone || '',
+        role: retry.data.role || 'customer',
+        avatar_url: retry.data.avatar_url || '',
+      }
 
-            setCurrentUser(appUser)
-            localStorage.setItem('naijafixUser', JSON.stringify(appUser))
+      setCurrentUser(appUser)
+      localStorage.setItem('naijafixUser', JSON.stringify(appUser))
+
+      if (retry.data.latitude != null && retry.data.longitude != null) {
+        setCustomerLocation({
+          latitude: retry.data.latitude,
+          longitude: retry.data.longitude,
+          location: retry.data.location || '',
+        })
+      }
 
             if (shouldSetInitialPage) {
               setPage(
@@ -9324,6 +9448,14 @@ function App() {
         'naijafixUser',
         JSON.stringify(appUser)
       )
+
+      if (profile.latitude != null && profile.longitude != null) {
+        setCustomerLocation({
+          latitude: profile.latitude,
+          longitude: profile.longitude,
+          location: profile.location || '',
+        })
+      }
 
       if (shouldSetInitialPage) {
         setPage(
@@ -9666,6 +9798,7 @@ function App() {
         service={selectedService}
         providers={dbProviders}
         loading={loadingData}
+        customerLocation={customerLocation}
         onBack={() =>
           setPage('dashboard')
         }
