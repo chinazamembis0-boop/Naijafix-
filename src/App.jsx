@@ -271,14 +271,14 @@ function MapView({ providers, onProviderSelect, savedCustomerLocation }) {
 
   const displayedProviders = searchArea
     ? mappableProviders.filter((p) => {
-        const center = userLocation || providerCenter || NIGERIA_FALLBACK
+        const center = effectiveUserLocation || providerCenter || NIGERIA_FALLBACK
         const distance = getDistanceFromLatLonInKm(center.lat, center.lng, p.latitude, p.longitude)
         return distance <= 50
       })
     : mappableProviders
 
   const center =
-    userLocation ||
+    effectiveUserLocation ||
     providerCenter ||
     NIGERIA_FALLBACK
 
@@ -1460,6 +1460,7 @@ function Dashboard({
   onBookings,
   onNotifications,
   onProfile,
+  onProvider,
   onProviderDashboard,
   onAdminDashboard,
   onRiderDashboard,
@@ -1467,7 +1468,6 @@ function Dashboard({
   onConversations,
   onFavorites,
   onRewards,
-  onProvider,
   onReviewBooking,
   onLogout,
 }) {
@@ -2429,6 +2429,7 @@ function ProviderDetails({
   onChat,
   onShare,
   reviewBookingId,
+  customerLocation,
 }) {
   const [samples, setSamples] = useState([])
   const [loadingSamples, setLoadingSamples] = useState(true)
@@ -9742,6 +9743,11 @@ const appUser = {
         onProfile={() =>
           setPage('profile')
         }
+        onProvider={(provider) => {
+          setReviewBookingId(null)
+          setSelectedProvider(provider)
+          setPage('provider')
+        }}
         onProviderDashboard={() =>
           setPage('provider-dashboard')
         }
@@ -9817,6 +9823,7 @@ const appUser = {
         provider={selectedProvider}
         service={selectedService}
         user={user}
+        customerLocation={customerLocation}
         reviewBookingId={reviewBookingId}
         onShare={() => {
           setShareableProvider(selectedProvider)
