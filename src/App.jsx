@@ -1693,7 +1693,7 @@ function Dashboard({
         const providerIds = favoritesResult.data.map((f) => f.provider_user_id)
         const { data: providersData } = await supabase
           .from('providers')
-          .select('user_id, business_name, category, rating, verified')
+          .select('user_id, business_name, category, rating, verified, location, latitude, longitude')
           .in('user_id', providerIds)
         setFavoriteProviders(providersData || [])
       }
