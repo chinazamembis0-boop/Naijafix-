@@ -4955,6 +4955,7 @@ function ProviderDashboard({
   onBookings,
   onProfile,
   onLogout,
+  onFindService,
 }) {
   const [bookings, setBookings] = useState([])
   const [providerProfile, setProviderProfile] = useState(null)
@@ -6167,6 +6168,17 @@ function ProviderDashboard({
               <StatCard icon="❌" value={declinedBookings.length} label="Declined" color="red" />
               <StatCard icon="⭐" value={providerReviews.length} label="Reviews" color="blue" />
             </StatGrid>
+
+            <DashboardCard>
+              <div style={{ textAlign: 'center', padding: '10px 0' }}>
+                <p style={{ color: 'var(--nf-text-muted)', fontSize: 13, marginBottom: 12 }}>
+                  Need another service? Browse the marketplace as a customer.
+                </p>
+                <button className="dash-btn dash-btn-primary dash-btn-full" onClick={onFindService}>
+                  🔍 Find a Service
+                </button>
+              </div>
+            </DashboardCard>
 
             {reputation && (
               <DashboardCard>
@@ -9146,6 +9158,8 @@ function App() {
   const [foodRestaurantId, setFoodRestaurantId] = useState(null)
   const [selectedFoodCategory, setSelectedFoodCategory] = useState('')
 
+  const [marketplaceBackPage, setMarketplaceBackPage] = useState('home')
+
   const isInitialLoad = useRef(true)
 
   const getOrCreateConversation = async (otherUserId, otherUserName, otherUserAvatar, bookingId) => {
@@ -9722,6 +9736,10 @@ const appUser = {
           el?.scrollIntoView({ behavior: 'smooth' })
         }}
         onLogout={handleLogout}
+        onFindService={() => {
+          setMarketplaceBackPage('provider-dashboard')
+          setPage('all-services')
+        }}
       />
     )
   }
@@ -10060,7 +10078,10 @@ const appUser = {
     return (
       <ViewAllServices
         initialCategory={selectedFoodCategory}
-        onBack={() => setPage('home')}
+        onBack={() => {
+          setPage(marketplaceBackPage)
+          setMarketplaceBackPage('home')
+        }}
         onService={goToService}
       />
     )
