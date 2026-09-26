@@ -107,7 +107,7 @@ button {
 
 .hero {
   padding: 90px 7%;
-  background: linear-gradient(135deg, var(--nf-navy-light), #ffffff);
+  background: #ffffff;
 }
 
 .hero-content {
@@ -119,7 +119,7 @@ button {
 .welcome,
 .section-label,
 .dashboard-small {
-  color: var(--nf-navy);
+  color: var(--nf-purple);
   font-weight: 800;
   letter-spacing: 1px;
   font-size: 12px;
@@ -132,7 +132,7 @@ button {
 }
 
 .hero h2 strong {
-  color: var(--nf-navy);
+  color: var(--nf-purple);
 }
 
 .hero p {
@@ -229,7 +229,7 @@ button {
 
 .service-card:hover {
   transform: translateY(-3px);
-  border-color: var(--nf-navy);
+  border-color: var(--nf-purple);
 }
 
 .service-icon {
@@ -320,16 +320,17 @@ button {
 }
 
 footer {
-  background: var(--nf-text);
-  color: white;
+  background: #ffffff;
+  color: var(--nf-text);
   padding: 28px 7%;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-top: 1px solid var(--nf-border);
 }
 
 footer .brand span {
-  color: #aeb8b2;
+  color: var(--nf-text-muted);
 }
 
 /* ADVERTISING BANNERS */
@@ -397,7 +398,7 @@ footer .brand span {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--nf-navy-light), #ffffff);
+  background: #ffffff;
 }
 
 .nf-ad-fallback-icon {
@@ -407,7 +408,7 @@ footer .brand span {
 .nf-ad-visual {
   width: 100%;
   height: 140px;
-  background: linear-gradient(135deg, var(--nf-navy), var(--nf-navy-dark));
+  background: linear-gradient(135deg, var(--nf-purple), var(--nf-purple-dark));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -511,7 +512,7 @@ footer .brand span {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--nf-navy-light), #ffffff);
+  background: #ffffff;
 }
 
 .nf-ad-video-fallback img {
@@ -547,7 +548,7 @@ footer .brand span {
   font-family: Georgia, 'Times New Roman', serif;
   font-size: 12px;
   font-weight: bold;
-  color: #a7f3d0;
+  color: var(--nf-green);
 }
 
 .nf-ad-video-cta-wrapper {
@@ -713,7 +714,7 @@ footer .brand span {
 .auth-page {
   min-height: 100vh;
   padding: 30px 20px;
-  background: var(--nf-bg);
+  background: #ffffff;
   display: grid;
   place-items: center;
 }
@@ -756,7 +757,7 @@ footer .brand span {
 .auth-card input:focus,
 .request-form input:focus,
 .request-form textarea:focus {
-  border-color: var(--nf-navy);
+  border-color: var(--nf-purple);
 }
 
 .password-field {
@@ -809,14 +810,14 @@ footer .brand span {
 .auth-switch button {
   border: 0;
   background: transparent;
-  color: var(--nf-navy);
+  color: var(--nf-purple);
   font-weight: 800;
 }
 
 /* DASHBOARD */
 
 .dashboard {
-  background: var(--nf-bg);
+  background: #ffffff;
   padding-bottom: 95px;
 }
 
@@ -841,11 +842,11 @@ footer .brand span {
 
 .provider-dashboard-link {
   margin-top: 14px;
-  border: 1px solid var(--nf-navy);
+  border: 1px solid var(--nf-purple);
   border-radius: 8px;
   padding: 9px 14px;
   background: white;
-  color: var(--nf-navy);
+  color: var(--nf-purple);
   font-weight: 800;
 }
 
@@ -855,7 +856,7 @@ footer .brand span {
 .provider-avatar {
   border: 0;
   border-radius: 50%;
-  background: var(--nf-navy);
+  background: var(--nf-purple);
   color: white;
   display: grid;
   place-items: center;
@@ -921,7 +922,7 @@ footer .brand span {
 .dashboard-title button {
   border: 0;
   background: transparent;
-  color: var(--nf-navy);
+  color: var(--nf-purple);
   font-weight: 800;
 }
 
@@ -1110,7 +1111,7 @@ select:focus-visible {
 
 .verified,
 .verified-badge {
-  color: var(--nf-navy);
+  color: var(--nf-purple);
   font-size: 12px;
   font-weight: 800;
 }
@@ -1120,7 +1121,7 @@ select:focus-visible {
 }
 
 .arrow {
-  color: var(--nf-navy);
+  color: var(--nf-purple);
   font-size: 22px;
 }
 
@@ -1244,8 +1245,8 @@ select:focus-visible {
 }
 
 .notification-card.unread {
-  border-left: 4px solid var(--nf-navy);
-  background: var(--nf-navy-light);
+  border-left: 4px solid var(--nf-purple);
+  background: var(--nf-purple-light);
 }
 
 .notification-card.read {
@@ -1552,9 +1553,9 @@ select:focus-visible {
   display: inline-block;
   margin-top: 10px;
   padding: 10px 16px;
-  border: 1px solid var(--nf-navy);
+  border: 1px solid var(--nf-purple);
   border-radius: 8px;
-  color: var(--nf-navy);
+  color: var(--nf-purple);
   font-weight: 800;
   text-decoration: none;
 }
@@ -1562,7 +1563,7 @@ select:focus-visible {
 .doc-submitted {
   margin-top: 10px;
   font-size: 13px;
-  color: var(--nf-navy);
+  color: var(--nf-purple);
 }
 
 .rejection-reason {
@@ -1665,7 +1666,7 @@ select:focus-visible {
 }
 
 .section-label {
-  color: var(--nf-navy);
+  color: var(--nf-purple);
   font-weight: 800;
   letter-spacing: 1px;
   font-size: 12px;
@@ -1935,7 +1936,7 @@ select:focus-visible {
   padding: 10px 16px;
   border: 0;
   border-radius: 8px;
-  background: var(--nf-navy);
+  background: var(--nf-purple);
   color: white;
   font-weight: 800;
   cursor: pointer;
@@ -1980,8 +1981,8 @@ select:focus-visible {
 .rejection-details,
 .pending-details,
 .approved-details {
-  background: #f8faf9;
-  border: 1px solid #e2e8e4;
+  background: #ffffff;
+  border: 1px solid var(--nf-border);
   border-radius: 10px;
   padding: 14px;
   margin-top: 10px;
@@ -2000,8 +2001,8 @@ select:focus-visible {
   align-items: center;
   gap: 10px;
   padding: 12px;
-  background: #f8faf9;
-  border: 1px solid #e2e8e4;
+  background: #ffffff;
+  border: 1px solid var(--nf-border);
   border-radius: 8px;
   margin-top: 8px;
 }
@@ -2197,7 +2198,7 @@ select:focus-visible {
 .chat-screen,
 .conversation-list {
   min-height: 100vh;
-  background: var(--nf-bg);
+  background: #ffffff;
 }
 
 .chat-header {
@@ -2212,7 +2213,7 @@ select:focus-visible {
 .chat-header .back-link {
   background: 0;
   border: 0;
-  color: var(--nf-navy);
+  color: var(--nf-purple);
   font-weight: 800;
   cursor: pointer;
   padding: 0;
@@ -2230,7 +2231,7 @@ select:focus-visible {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--nf-navy);
+  background: var(--nf-purple);
   color: white;
   display: grid;
   place-items: center;
@@ -2282,7 +2283,7 @@ select:focus-visible {
 
 .chat-message.sent {
   align-self: flex-end;
-  background: var(--nf-navy);
+  background: var(--nf-purple);
   color: white;
   border-bottom-right-radius: 4px;
 }
@@ -2329,7 +2330,7 @@ select:focus-visible {
 }
 
 .chat-composer input:focus {
-  border-color: var(--nf-navy);
+  border-color: var(--nf-purple);
 }
 
 .chat-composer button {
@@ -2337,7 +2338,7 @@ select:focus-visible {
   padding: 10px 14px;
   border-radius: 20px;
   border: 0;
-  background: var(--nf-navy);
+  background: var(--nf-purple);
   color: white;
   font-weight: 800;
   cursor: pointer;
@@ -2345,7 +2346,7 @@ select:focus-visible {
 
 .chat-composer .photo-button {
   background: white;
-  color: var(--nf-navy);
+  color: var(--nf-purple);
   border: 1px solid var(--nf-border);
 }
 
@@ -2395,7 +2396,7 @@ select:focus-visible {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: var(--nf-navy);
+  background: var(--nf-purple);
   color: white;
   display: grid;
   place-items: center;
@@ -2448,7 +2449,7 @@ select:focus-visible {
   margin-top: 4px;
   padding: 2px 8px;
   border-radius: 10px;
-  background: var(--nf-navy);
+  background: var(--nf-purple);
   color: white;
   font-size: 11px;
   font-weight: 800;
@@ -2487,7 +2488,7 @@ select:focus-visible {
   object-fit: contain;
   border-radius: 12px;
   cursor: pointer;
-  background: var(--nf-bg);
+  background: #ffffff;
 }
 
 .chat-image-loading {
@@ -2565,7 +2566,7 @@ select:focus-visible {
 
 .nf-category-card:hover {
   transform: translateY(-3px);
-  border-color: var(--nf-navy);
+  border-color: var(--nf-purple);
 }
 
 .nf-category-card-icon {
@@ -2588,7 +2589,7 @@ select:focus-visible {
   height: 140px;
   overflow: hidden;
   position: relative;
-  background: #f8fafc;
+  background: #ffffff;
   border-radius: 12px;
   margin-bottom: 4px;
 }
@@ -2695,7 +2696,7 @@ select:focus-visible {
 }
 
 .nf-service-list-item:hover {
-  border-color: var(--nf-navy);
+  border-color: var(--nf-purple);
 }
 
 .nf-service-list-icon {
@@ -2705,7 +2706,7 @@ select:focus-visible {
   flex-shrink: 0;
   border-radius: 10px;
   overflow: hidden;
-  background: var(--nf-bg);
+  background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2726,7 +2727,7 @@ select:focus-visible {
   align-items: center;
   justify-content: center;
   font-size: 28px;
-  background: var(--nf-bg);
+  background: #ffffff;
 }
 
 .nf-service-list-info {
@@ -2749,7 +2750,7 @@ select:focus-visible {
 }
 
 .nf-service-list-arrow {
-  color: var(--nf-navy);
+  color: var(--nf-purple);
   font-weight: 800;
   flex-shrink: 0;
 }
@@ -2780,7 +2781,7 @@ select:focus-visible {
 .nf-home-food-banner {
   display: block;
   width: 100%;
-  background: linear-gradient(135deg, var(--nf-navy), var(--nf-navy-dark));
+  background: linear-gradient(135deg, var(--nf-purple), var(--nf-purple-dark));
   border: 0;
   border-radius: 15px;
   padding: 20px;
@@ -2791,7 +2792,7 @@ select:focus-visible {
 
 .nf-home-food-banner:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(18, 48, 74, 0.25);
+  box-shadow: 0 8px 24px rgba(86, 48, 240, 0.25);
 }
 
 .nf-home-food-banner-content {
@@ -2877,7 +2878,7 @@ select:focus-visible {
 
 .nf-restaurant-card:hover {
   transform: translateY(-3px);
-  border-color: var(--nf-navy);
+  border-color: var(--nf-purple);
 }
 
 .nf-restaurant-card--closed {
@@ -2890,7 +2891,7 @@ select:focus-visible {
   height: 140px;
   overflow: hidden;
   position: relative;
-  background: var(--nf-bg);
+  background: #ffffff;
 }
 
 .nf-restaurant-card-image {
@@ -2907,7 +2908,7 @@ select:focus-visible {
   align-items: center;
   justify-content: center;
   font-size: 36px;
-  background: var(--nf-bg);
+  background: #ffffff;
 }
 
 .nf-restaurant-card-closed-overlay {
@@ -3692,10 +3693,11 @@ select:focus-visible {
    --------------------------------------------------------------------------- */
 
 .site-footer {
-  background: var(--nf-navy);
-  color: #e6edf3;
+  background: #ffffff;
+  color: var(--nf-text);
   padding: 32px 7% 20px;
   font-size: 13px;
+  border-top: 1px solid var(--nf-border);
 }
 
 .site-footer-inner {
@@ -3715,32 +3717,32 @@ select:focus-visible {
   font-size: 13px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #fff;
+  color: var(--nf-text);
 }
 
 .site-footer-cols a {
   display: block;
-  color: #c8d6e5;
+  color: var(--nf-text-muted);
   text-decoration: none;
   margin-bottom: 6px;
   font-size: 13px;
 }
 
 .site-footer-cols a:hover {
-  color: #fff;
+  color: var(--nf-purple);
 }
 
 .site-footer-bottom {
   max-width: 1100px;
   margin: 20px auto 0;
   padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid var(--nf-border);
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
   font-size: 12px;
-  color: #9fb3c8;
+  color: var(--nf-text-muted);
 }
 
 .auth-links {
