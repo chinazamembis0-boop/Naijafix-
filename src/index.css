@@ -13,8 +13,8 @@
   --nf-text: #0F172A;
   --nf-text-muted: #64748B;
   --nf-text-light: #94a3b8;
-  --nf-bg: #FFFFFF;
-  --nf-surface: #FFFFFF;
+  --nf-bg: #F8FAF9;
+  --nf-surface: #F8FAFC;
   --nf-white: var(--nf-surface);
   --nf-border: #E2E8F0;
   --nf-border-light: #e8ecf0;

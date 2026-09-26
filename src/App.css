@@ -107,7 +107,7 @@ button {
 
 .hero {
   padding: 90px 7%;
-  background: #ffffff;
+  background: var(--nf-bg);
 }
 
 .hero-content {
@@ -320,7 +320,7 @@ button {
 }
 
 footer {
-  background: #ffffff;
+  background: var(--nf-bg);
   color: var(--nf-text);
   padding: 28px 7%;
   display: flex;
@@ -714,7 +714,7 @@ footer .brand span {
 .auth-page {
   min-height: 100vh;
   padding: 30px 20px;
-  background: #ffffff;
+  background: var(--nf-bg);
   display: grid;
   place-items: center;
 }
@@ -817,7 +817,7 @@ footer .brand span {
 /* DASHBOARD */
 
 .dashboard {
-  background: #ffffff;
+  background: var(--nf-bg);
   padding-bottom: 95px;
 }
 
@@ -1981,8 +1981,8 @@ select:focus-visible {
 .rejection-details,
 .pending-details,
 .approved-details {
-  background: #ffffff;
-  border: 1px solid var(--nf-border);
+  background: #f8faf9;
+  border: 1px solid #e2e8e4;
   border-radius: 10px;
   padding: 14px;
   margin-top: 10px;
@@ -2001,8 +2001,8 @@ select:focus-visible {
   align-items: center;
   gap: 10px;
   padding: 12px;
-  background: #ffffff;
-  border: 1px solid var(--nf-border);
+  background: #f8faf9;
+  border: 1px solid #e2e8e4;
   border-radius: 8px;
   margin-top: 8px;
 }
@@ -2198,7 +2198,7 @@ select:focus-visible {
 .chat-screen,
 .conversation-list {
   min-height: 100vh;
-  background: #ffffff;
+  background: var(--nf-bg);
 }
 
 .chat-header {
@@ -2488,7 +2488,7 @@ select:focus-visible {
   object-fit: contain;
   border-radius: 12px;
   cursor: pointer;
-  background: #ffffff;
+  background: #f8fafc;
 }
 
 .chat-image-loading {
@@ -2589,7 +2589,7 @@ select:focus-visible {
   height: 140px;
   overflow: hidden;
   position: relative;
-  background: #ffffff;
+  background: #f8fafc;
   border-radius: 12px;
   margin-bottom: 4px;
 }
@@ -2706,7 +2706,7 @@ select:focus-visible {
   flex-shrink: 0;
   border-radius: 10px;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--nf-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2727,7 +2727,7 @@ select:focus-visible {
   align-items: center;
   justify-content: center;
   font-size: 28px;
-  background: #ffffff;
+  background: var(--nf-bg);
 }
 
 .nf-service-list-info {
@@ -2891,7 +2891,7 @@ select:focus-visible {
   height: 140px;
   overflow: hidden;
   position: relative;
-  background: #ffffff;
+  background: var(--nf-bg);
 }
 
 .nf-restaurant-card-image {
@@ -2908,7 +2908,7 @@ select:focus-visible {
   align-items: center;
   justify-content: center;
   font-size: 36px;
-  background: #ffffff;
+  background: var(--nf-bg);
 }
 
 .nf-restaurant-card-closed-overlay {
@@ -3693,7 +3693,7 @@ select:focus-visible {
    --------------------------------------------------------------------------- */
 
 .site-footer {
-  background: #ffffff;
+  background: var(--nf-bg);
   color: var(--nf-text);
   padding: 32px 7% 20px;
   font-size: 13px;
