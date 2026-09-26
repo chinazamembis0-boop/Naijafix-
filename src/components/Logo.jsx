@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 
 export function Logo({ size = 'default', showTagline = true, className = '' }) {
-  const logoSrc = '/images/ewizzy-logo.png.jpeg'
+  const logoSrc = '/images/ewizzy-logo.png'
 
   const styles = useMemo(() => {
     const base = {
@@ -58,7 +58,7 @@ export function Logo({ size = 'default', showTagline = true, className = '' }) {
 export function LogoIcon({ size = 44, className = '' }) {
   return (
     <img
-      src="/images/ewizzy-logo.png.jpeg"
+      src="/images/ewizzy-logo.png"
       alt="EWIZZY"
       className={className}
       style={{
