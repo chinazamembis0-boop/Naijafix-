@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase, getSignedStorageUrl, uploadPrivateFile } from '../supabase.js'
 import { fetchRestaurantOrders, updateFoodOrderStatus } from './FoodData.js'
+import { Logo } from './Logo.jsx'
 
 const RESTAURANT_IMAGE_BUCKET = 'restaurant-images'
 
@@ -210,15 +211,7 @@ function RestaurantDashboard({ user, onBack, onRegister }) {
       <div className="inner-page">
         <header className="inner-header">
           <button className="back-link" onClick={onBack}>← Back</button>
-          <div className="brand">
-            <div className="brand-icon">
-              <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
-            </div>
-            <div>
-              <h1>NaijaFix</h1>
-              <span>Restaurant Dashboard</span>
-            </div>
-          </div>
+          <Logo size="small" showTagline={false} />
         </header>
         <main className="inner-content">
           <div className="empty-box">
@@ -235,22 +228,14 @@ function RestaurantDashboard({ user, onBack, onRegister }) {
       <div className="inner-page">
         <header className="inner-header">
           <button className="back-link" onClick={onBack}>← Back</button>
-          <div className="brand">
-            <div className="brand-icon">
-              <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
-            </div>
-            <div>
-              <h1>NaijaFix</h1>
-              <span>Restaurant Dashboard</span>
-            </div>
-          </div>
+          <Logo size="small" showTagline={false} />
         </header>
         <main className="inner-content">
           <span className="section-label">RESTAURANT</span>
           {!user ? (
             <>
               <h2>No Restaurant Found</h2>
-              <p>Please log in to manage your restaurant on NaijaFix.</p>
+              <p>Please log in to manage your restaurant on EWIZZY.</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
                 <button className="primary-full" onClick={onBack}>Go to Home</button>
               </div>
@@ -273,15 +258,7 @@ function RestaurantDashboard({ user, onBack, onRegister }) {
     <div className="inner-page">
       <header className="inner-header">
         <button className="back-link" onClick={onBack}>← Back</button>
-        <div className="brand">
-          <div className="brand-icon">
-            <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
-          </div>
-          <div>
-            <h1>NaijaFix</h1>
-            <span>Restaurant Dashboard</span>
-          </div>
-        </div>
+        <Logo size="small" showTagline={false} />
       </header>
 
       <main className="inner-content">

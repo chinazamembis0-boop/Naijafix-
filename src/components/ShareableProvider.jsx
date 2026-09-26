@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase, getSignedStorageUrl } from '../supabase.js'
+import { Logo } from './Logo.jsx'
 
 function readProviderIdFromUrl() {
   try {
@@ -117,7 +118,7 @@ export default function ShareableProvider({ provider, onBack }) {
       <div className="inner-page">
         <header className="inner-header">
           <button className="back-link" onClick={onBack}>Back</button>
-          <div className="brand"><div className="brand-icon">🇳🇬</div><div><div style={{ fontWeight: 800, fontSize: 18 }}>NaijaFix</div></div></div>
+          <Logo size="small" showTagline={false} />
         </header>
         <main className="inner-content"><div className="empty-box large-empty"><span>⏳</span><h4>Loading provider...</h4></div></main>
       </div>
@@ -132,7 +133,7 @@ export default function ShareableProvider({ provider, onBack }) {
     <div className="inner-page">
       <header className="inner-header">
         <button className="back-link" onClick={onBack}>Back</button>
-        <div className="brand"><div className="brand-icon">🇳🇬</div><div><div style={{ fontWeight: 800, fontSize: 18 }}>NaijaFix</div></div></div>
+        <Logo size="small" showTagline={false} />
       </header>
       <main className="provider-details">
         <div className="large-avatar">

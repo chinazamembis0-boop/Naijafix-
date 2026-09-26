@@ -1,5 +1,7 @@
 // Reusable inner-page chrome (header + back link + logo) used by every
 // standalone page that is not the main app shell.
+import { Logo } from './Logo.jsx'
+
 export function InnerHeader({ onBack, title }) {
   return (
     <header className="inner-header">
@@ -13,20 +15,6 @@ export function InnerHeader({ onBack, title }) {
       <Logo />
       {title ? <span style={{ fontWeight: 700, color: 'var(--nf-navy)' }}>{title}</span> : <span />}
     </header>
-  )
-}
-
-export function Logo() {
-  return (
-    <div className="brand">
-      <div className="brand-icon">🇳🇬</div>
-      <div>
-        <div style={{ fontWeight: 800, fontSize: 18, lineHeight: 1.1 }}>NaijaFix</div>
-        <div style={{ fontSize: 10, color: 'var(--nf-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Local services
-        </div>
-      </div>
-    </div>
   )
 }
 
@@ -47,17 +35,9 @@ export function Footer() {
     <footer className="site-footer">
       <div className="site-footer-inner">
         <div className="site-footer-brand">
-          <div className="brand">
-            <div className="brand-icon">🇳🇬</div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: 16 }}>NaijaFix</div>
-              <div style={{ fontSize: 10, color: 'var(--nf-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Built for Nigeria
-              </div>
-            </div>
-          </div>
+          <Logo size="small" showTagline={false} />
           <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--nf-text-muted)', maxWidth: 320 }}>
-            Connecting customers with trusted independent service providers across Nigeria.
+            Connecting customers with skilled service providers across Nigeria.
           </p>
         </div>
         <div className="site-footer-cols">
@@ -82,7 +62,7 @@ export function Footer() {
         </div>
       </div>
       <div className="site-footer-bottom">
-        <span>© {new Date().getFullYear()} NaijaFix. All rights reserved.</span>
+        <span>© {new Date().getFullYear()} EWIZZY. All rights reserved.</span>
         <span>Made in Nigeria 🇳🇬</span>
       </div>
     </footer>
@@ -167,9 +147,9 @@ export function PolicySection({ title, children }) {
 export function TermsOfService() {
   return (
     <PolicyPage title="Terms of Service">
-      <PolicySection title="1. About NaijaFix">
+      <PolicySection title="1. About EWIZZY">
         <p>
-          NaijaFix is a marketplace platform that connects customers with independent
+          EWIZZY is a marketplace platform that connects customers with independent
           service providers across Nigeria. We do not employ, own, or operate the
           businesses listed on this platform. Each provider is an independent
           contractor responsible for the quality of their own work.
@@ -177,22 +157,22 @@ export function TermsOfService() {
       </PolicySection>
       <PolicySection title="2. Using the platform">
         <p>
-          By using NaijaFix you agree to use the platform only for lawful purposes
+          By using EWIZZY you agree to use the platform only for lawful purposes
           and in a way that does not infringe the rights of others. You must provide
           accurate information when creating an account.
         </p>
       </PolicySection>
       <PolicySection title="3. Bookings and provider work">
         <p>
-          When you book a service through NaijaFix, you enter into an agreement
-          directly with the provider. NaijaFix is not responsible for the quality,
+          When you book a service through EWIZZY, you enter into an agreement
+          directly with the provider. EWIZZY is not responsible for the quality,
           timing, or completion of any service. Providers set their own prices,
           availability, and terms.
         </p>
       </PolicySection>
       <PolicySection title="4. Changes to these terms">
         <p>
-          We may update these terms from time to time. Continued use of NaijaFix
+          We may update these terms from time to time. Continued use of EWIZZY
           after changes means you accept the updated terms.
         </p>
       </PolicySection>
@@ -212,7 +192,7 @@ export function PrivacyPolicy() {
       </PolicySection>
       <PolicySection title="2. How we use your information">
         <p>
-          We use your information to provide and improve NaijaFix, to show you
+          We use your information to provide and improve EWIZZY, to show you
           relevant providers and services, to process bookings, and to keep you
           informed about your account and platform updates.
         </p>
@@ -266,7 +246,7 @@ export function AcceptableUsePolicy() {
     <PolicyPage title="Acceptable Use Policy">
       <PolicySection title="1. Acceptable use">
         <p>
-          You must use NaijaFix to connect with providers for lawful services only.
+          You must use EWIZZY to connect with providers for lawful services only.
           You must not use the platform to harass, scam, or harm other users.
         </p>
       </PolicySection>

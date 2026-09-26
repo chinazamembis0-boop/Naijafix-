@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { fetchRestaurantMenu } from './FoodData.js'
+import { Logo } from './Logo.jsx'
 
 function formatNaira(amount) {
   return `₦${Number(amount).toLocaleString()}`
@@ -93,15 +94,7 @@ function FoodMenu({ restaurant, onBack, onViewCart, cart = [], onUpdateCart, onD
         <button className="back-link" onClick={onBack}>
           ← Back
         </button>
-        <div className="brand">
-          <div className="brand-icon">
-            <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
-          </div>
-          <div>
-            <h1>NaijaFix</h1>
-            <span>Food & Restaurants</span>
-          </div>
-        </div>
+        <Logo size="small" showTagline={false} />
         {cartItemCount > 0 && (
           <button className="nf-cart-icon-btn" onClick={onViewCart} aria-label="View cart">
             🛒

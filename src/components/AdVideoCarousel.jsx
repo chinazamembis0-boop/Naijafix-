@@ -2,25 +2,25 @@ import { useState, useEffect, useRef, useCallback, useId } from 'react'
 
 const VIDEO_ADS = [
   {
-    id: 'naijafix-ad-1',
+    id: 'ewizzy-ad-1',
     video: '/videos/ads/naijafix-ad-1.mp4',
     poster: '/images/ad-promo.jpg',
     label: 'Sponsored',
     title: 'Trusted Services, Right at Your Door',
-    description: 'Find reliable local professionals with NaijaFix.',
+    description: 'Find reliable local professionals with EWIZZY.',
     ctaText: 'Explore Services',
   },
   {
-    id: 'naijafix-ad-2',
+    id: 'ewizzy-ad-2',
     video: '/videos/ads/naijafix-ad-2.mp4',
     poster: '/images/ad-promo.jpg',
-    label: 'NaijaFix Promotion',
+    label: 'EWIZZY Promotion',
     title: 'Get Your Home Looking New',
     description: 'Professional cleaning and renovation services nearby.',
     ctaText: 'Learn More',
   },
   {
-    id: 'naijafix-ad-3',
+    id: 'ewizzy-ad-3',
     video: '/videos/ads/naijafix-ad-3.mp4',
     poster: '/images/ad-promo.jpg',
     label: 'Sponsored',
@@ -29,7 +29,7 @@ const VIDEO_ADS = [
     ctaText: 'Find Help Now',
   },
   {
-    id: 'naijafix-ad-4',
+    id: 'ewizzy-ad-4',
     video: '/videos/ads/naijafix-ad-4.mp4',
     poster: '/images/ad-promo.jpg',
     label: 'Sponsored',
@@ -38,10 +38,10 @@ const VIDEO_ADS = [
     ctaText: 'Book a Service',
   },
   {
-    id: 'naijafix-ad-5',
+    id: 'ewizzy-ad-5',
     video: '/videos/ads/naijafix-ad-5.mp4',
     poster: '/images/ad-promo.jpg',
-    label: 'NaijaFix',
+    label: 'EWIZZY',
     title: 'Get Help Near You',
     description: 'Connect with top-rated experts in your area.',
     ctaText: 'Get Started',
@@ -200,10 +200,10 @@ export function AdVideoCarousel({ ads = VIDEO_ADS, poster = '/images/ad-promo.jp
     >
       <div className="nf-ad-video-wrapper">
         {showFallback ? (
-          <div className="nf-ad-video-fallback" role="img" aria-label={currentAd?.title || 'NaijaFix advertisement'}>
+          <div className="nf-ad-video-fallback" role="img" aria-label={currentAd?.title || 'EWIZZY advertisement'}>
             <img
               src={currentAd?.poster || poster}
-              alt={currentAd?.title || 'NaijaFix advertisement'}
+              alt={currentAd?.title || 'EWIZZY advertisement'}
               loading="lazy"
             />
           </div>
@@ -231,7 +231,7 @@ export function AdVideoCarousel({ ads = VIDEO_ADS, poster = '/images/ad-promo.jp
 
         <div className="nf-ad-video-overlay">
           <span className="nf-ad-video-label">{currentAd?.label || 'Sponsored'}</span>
-          <span className="nf-ad-video-brand">NaijaFix</span>
+          <span className="nf-ad-video-brand">EWIZZY</span>
         </div>
 
         {showFallback && currentAd?.ctaText && (

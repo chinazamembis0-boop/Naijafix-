@@ -1,3 +1,5 @@
+import { Logo } from './Logo.jsx'
+
 export function SectionHeader({ label, title, action }) {
   return (
     <div className="dash-section-header">
@@ -224,15 +226,7 @@ export function AdminSidebar({ active, onChange, stats }) {
   return (
     <aside className="dash-admin-sidebar">
       <div className="dash-admin-sidebar-header">
-        <div className="dash-brand">
-          <div className="dash-brand-icon">
-            <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
-          </div>
-          <div>
-            <h1>NaijaFix</h1>
-            <span>Admin Panel</span>
-          </div>
-        </div>
+        <Logo size="small" showTagline={false} />
       </div>
       <nav className="dash-admin-nav">
         <button className={`dash-admin-nav-btn ${active === 'overview' ? 'dash-admin-nav-active' : ''}`} onClick={() => onChange('overview')}>

@@ -4,25 +4,25 @@ import { AdVideoCarousel } from './AdVideoCarousel.jsx'
 
 const demoAds = [
   {
-    id: 'naijafix-ad-1',
+    id: 'ewizzy-ad-1',
     video: '/videos/ads/naijafix-ad-1.mp4',
     image: '/images/ad-promo.jpg',
     title: 'Trusted Services, Right at Your Door',
-    description: 'Find reliable local professionals with NaijaFix.',
+    description: 'Find reliable local professionals with EWIZZY.',
     label: 'Sponsored',
     ctaText: 'Explore Services',
   },
   {
-    id: 'naijafix-ad-2',
+    id: 'ewizzy-ad-2',
     video: '/videos/ads/naijafix-ad-2.mp4',
     image: '/images/ad-promo.jpg',
     title: 'Get Your Home Looking New',
     description: 'Professional cleaning and renovation services nearby.',
-    label: 'NaijaFix Promotion',
+    label: 'EWIZZY Promotion',
     ctaText: 'Learn More',
   },
   {
-    id: 'naijafix-ad-3',
+    id: 'ewizzy-ad-3',
     video: '/videos/ads/naijafix-ad-3.mp4',
     image: '/images/ad-promo.jpg',
     title: 'Emergency Repairs? We\'ve Got You',
@@ -31,7 +31,7 @@ const demoAds = [
     ctaText: 'Find Help Now',
   },
   {
-    id: 'naijafix-ad-4',
+    id: 'ewizzy-ad-4',
     video: '/videos/ads/naijafix-ad-4.mp4',
     image: '/images/ad-promo.jpg',
     title: 'Find a Trusted Professional',
@@ -40,12 +40,12 @@ const demoAds = [
     ctaText: 'Book a Service',
   },
   {
-    id: 'naijafix-ad-5',
+    id: 'ewizzy-ad-5',
     video: '/videos/ads/naijafix-ad-5.mp4',
     image: '/images/ad-promo.jpg',
     title: 'Get Help Near You',
     description: 'Connect with top-rated experts in your area.',
-    label: 'NaijaFix',
+    label: 'EWIZZY',
     ctaText: 'Get Started',
   },
 ]
@@ -185,7 +185,7 @@ export function AdBanner({ ad, onDismiss, onAction, allAds = null }) {
             <div className="nf-ad-visual">
               <div className="nf-ad-visual-inner">
                 <span className="nf-ad-visual-icon">🏠</span>
-                <span className="nf-ad-visual-text">NaijaFix</span>
+                <span className="nf-ad-visual-text">EWIZZY</span>
               </div>
             </div>
           )}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../supabase.js'
+import { Logo } from './Logo.jsx'
 
 function RestaurantSignup({ user, onBack, onSuccess }) {
   const [form, setForm] = useState({
@@ -102,21 +103,13 @@ function RestaurantSignup({ user, onBack, onSuccess }) {
     <div className="inner-page">
       <header className="inner-header">
         <button className="back-link" onClick={onBack}>← Back</button>
-        <div className="brand">
-          <div className="brand-icon">
-            <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
-          </div>
-          <div>
-            <h1>NaijaFix</h1>
-            <span>Restaurant Registration</span>
-          </div>
-        </div>
+        <Logo size="small" showTagline={false} />
       </header>
 
       <main className="inner-content">
         <span className="section-label">RESTAURANT</span>
         <h2>Register Your Restaurant</h2>
-        <p>Create your restaurant profile and start receiving orders on NaijaFix.</p>
+        <p>Create your restaurant profile and start receiving orders on EWIZZY.</p>
 
         {error && (
           <div className="empty-box" style={{ marginBottom: 16 }}>

@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { supabase, getSignedStorageUrl, uploadPrivateFile, haversineDistanceKm, formatDistanceKm } from './supabase.js'
 import './App.css'
 import './components/DashboardUI.css'
+import { Logo } from './components/Logo.jsx'
 import {
   SectionHeader,
   StatusBadge,
@@ -179,21 +180,6 @@ function dedupeServices(services) {
     seen.add(key)
     return true
   })
-}
-
-function Logo() {
-  return (
-    <div className="brand">
-      <div className="brand-icon">
-        <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
-      </div>
-
-      <div>
-        <h1>NaijaFix</h1>
-        <span>Local people. Trusted services.</span>
-      </div>
-    </div>
-  )
 }
 
 function MapView({ providers, onProviderSelect, savedCustomerLocation }) {
@@ -590,7 +576,7 @@ function Home({
                   <span className="nf-home-food-icon">🏪</span>
                   <div>
                     <h3>Register Your Restaurant</h3>
-                    <p>List your business on NaijaFix and start receiving orders</p>
+                    <p>List your business on EWIZZY and start receiving orders</p>
                   </div>
                   <span className="nf-home-food-arrow">→</span>
                 </div>
@@ -750,7 +736,7 @@ function Home({
           </div>
         </div>
         <div className="site-footer-bottom">
-          <span>© {new Date().getFullYear()} NaijaFix. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} EWIZZY. All rights reserved.</span>
           <span>Made in Nigeria 🇳🇬</span>
         </div>
       </footer>
@@ -815,7 +801,7 @@ function Login({ onBack, onSignup, onDashboard, setPage }) {
         )
 
         alert(
-          'Login successful, but your NaijaFix profile could not be loaded: ' +
+          'Login successful, but your EWIZZY profile could not be loaded: ' +
             profileError.message
         )
 
@@ -825,7 +811,7 @@ function Login({ onBack, onSignup, onDashboard, setPage }) {
 
       if (!profile) {
         alert(
-          'Login successful, but no NaijaFix profile was found for this account.'
+          'Login successful, but no EWIZZY profile was found for this account.'
         )
 
         setLoading(false)
@@ -1154,7 +1140,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
         )
 
         if (ok) {
-          alert('Welcome to NaijaFix!')
+          alert('Welcome to EWIZZY!')
           onLogin()
         }
     } catch (error) {
@@ -1184,7 +1170,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
       )
 
       alert(
-        'Account was created, but the NaijaFix profile could not be loaded: ' +
+        'Account was created, but the EWIZZY profile could not be loaded: ' +
           existingProfileError.message
       )
 
@@ -1215,7 +1201,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
       )
 
       alert(
-        'Account was created, but the NaijaFix profile could not be saved: ' +
+        'Account was created, but the EWIZZY profile could not be saved: ' +
           profileError.message
       )
 
@@ -1318,7 +1304,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
         <h2>Create your account</h2>
 
         <p>
-          Join NaijaFix and find trusted services around you.
+          Join EWIZZY and find trusted services around you.
         </p>
 
         <form onSubmit={handleSignup}>
@@ -1820,7 +1806,7 @@ function Dashboard({
   return (
     <div className="dash-shell-main" style={{ minHeight: '100vh', background: 'var(--nf-bg)' }}>
       <TopBar
-        greeting="NAIJAFIX"
+        greeting="EWIZZY"
         name={`Welcome back, ${user?.name?.split(' ')[0] || 'there'} 👋`}
         subtitle="What service do you need today?"
         avatarUrl={dashboardAvatarUrl}
@@ -4626,7 +4612,7 @@ function Profile({ user, onBack, onLogout }) {
     profile?.full_name ||
     user?.full_name ||
     user?.name ||
-    'NaijaFix Customer'
+    'EWIZZY Customer'
 
   const displayEmail =
     profile?.email ||
@@ -4793,7 +4779,7 @@ function Profile({ user, onBack, onLogout }) {
           )}
           {!customerVerification && (
             <div style={{ marginTop: 12 }}>
-              <p style={{ fontSize: 13, color: 'var(--nf-text-muted)', marginBottom: 10 }}>Verify your identity to build trust and confidence on NaijaFix.</p>
+              <p style={{ fontSize: 13, color: 'var(--nf-text-muted)', marginBottom: 10 }}>Verify your identity to build trust and confidence on EWIZZY.</p>
               <label className="dash-btn dash-btn-outline dash-btn-full">
                 Verify identity
                 <input type="file" accept="image/*,.pdf" hidden disabled={cvLoading} onChange={handleCvDocSelect} />
@@ -6106,7 +6092,7 @@ function ProviderDashboard({
   return (
     <div className="dash-shell-main" style={{ minHeight: '100vh', background: 'var(--nf-bg)' }}>
       <TopBar
-        greeting="NAIJAFIX"
+        greeting="EWIZZY"
         name={`Welcome back, ${user?.name?.split(' ')[0] || 'provider'} 👋`}
         subtitle={providerProfile?.business_name || 'Manage your service business'}
         avatarUrl={photoUrl}
@@ -6207,7 +6193,7 @@ function ProviderDashboard({
                   </p>
                 )}
                 <p style={{ marginTop: 8, fontSize: 11, color: 'var(--nf-text-muted)' }}>
-                  Metrics are calculated from real platform activity. NaijaFix is not yet processing marketplace payments, so this is booking value, not earnings.
+                  Metrics are calculated from real platform activity. EWIZZY is not yet processing marketplace payments, so this is booking value, not earnings.
                 </p>
               </DashboardCard>
             )}
@@ -7535,7 +7521,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
     if (verification?.customer_user_id) {
       const title = newStatus === 'approved' ? 'Identity verification approved' : 'Identity verification rejected'
       const message = newStatus === 'approved'
-        ? 'Your NaijaFix identity verification has been approved.'
+        ? 'Your EWIZZY identity verification has been approved.'
         : `Your identity verification was rejected. Reason: ${updates.rejection_reason || 'Not provided'}`
 
       const { error: notificationError } = await supabase.rpc('create_notification', {
@@ -8210,7 +8196,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
             )}
             <div style={{ marginTop: 20 }}>
               <button className="dash-btn dash-btn-outline" onClick={onHome}>
-                ← Back to NaijaFix
+                ← Back to EWIZZY
               </button>
             </div>
           </>
@@ -8885,7 +8871,7 @@ function Rewards({ user, onBack }) {
                 Lifetime points: {rewards?.lifetime_points ?? 0}
               </div>
               <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', marginTop: 12, maxWidth: 320, marginInline: 'auto' }}>
-                NaijaFix rewards are a loyalty foundation. Points are not yet redeemable for cash and no marketplace payments are active.
+                EWIZZY rewards are a loyalty foundation. Points are not yet redeemable for cash and no marketplace payments are active.
               </p>
             </div>
 
@@ -9166,7 +9152,7 @@ function App() {
     if (!user?.user_id) return null
 
     if (!otherUserId) {
-      alert('Unable to start conversation: this provider profile is incomplete. Please contact NaijaFix support.')
+      alert('Unable to start conversation: this provider profile is incomplete. Please contact EWIZZY support.')
       return null
     }
 
@@ -9376,7 +9362,7 @@ const appUser = {
         }
 
         alert(
-          'Your account is signed in, but your NaijaFix profile could not be loaded: ' +
+          'Your account is signed in, but your EWIZZY profile could not be loaded: ' +
             profileError.message
         )
 
@@ -9431,7 +9417,7 @@ const appUser = {
         )
 
         alert(
-          'You are signed in to NaijaFix, but no NaijaFix profile was found for this account. Please contact support.'
+          'You are signed in to EWIZZY, but no EWIZZY profile was found for this account. Please contact support.'
         )
 
         setCurrentUser(null)
@@ -10123,7 +10109,7 @@ const appUser = {
           setFoodCart([])
           setFoodDeliveryFee(0)
           setFoodRestaurantId(null)
-          alert(`Order #${order.order?.id || ''} placed successfully!\n\nTotal: ₦${Number(order.total).toLocaleString()}\nDelivery to: ${order.deliveryAddress}\n\nThank you for ordering with NaijaFix!`)
+          alert(`Order #${order.order?.id || ''} placed successfully!\n\nTotal: ₦${Number(order.total).toLocaleString()}\nDelivery to: ${order.deliveryAddress}\n\nThank you for ordering with EWIZZY!`)
           setPage('food')
         }}
       />

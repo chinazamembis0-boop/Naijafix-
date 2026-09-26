@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { fetchRestaurants, foodCategories, searchRestaurants } from './FoodData.js'
 import RestaurantCard from './RestaurantCard.jsx'
 import FoodMenu from './FoodMenu.jsx'
+import { Logo } from './Logo.jsx'
 
 function FoodMarketplace({ onBack, cartItemCount = 0, onViewCart, cart = [], onUpdateCart, onDeliveryFeeChange, onRestaurantSelect, onRestaurantDashboard, onRiderDashboard }) {
   const [search, setSearch] = useState('')
@@ -50,15 +51,7 @@ function FoodMarketplace({ onBack, cartItemCount = 0, onViewCart, cart = [], onU
         <button className="back-link" onClick={onBack}>
           ← Back
         </button>
-        <div className="brand">
-          <div className="brand-icon">
-            <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
-          </div>
-          <div>
-            <h1>NaijaFix</h1>
-            <span>Food & Restaurants</span>
-          </div>
-        </div>
+        <Logo size="small" showTagline={false} />
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {onRestaurantDashboard && (
             <button className="dash-btn dash-btn-outline dash-btn-sm" onClick={onRestaurantDashboard}>

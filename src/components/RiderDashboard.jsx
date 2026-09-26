@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase.js'
+import { Logo } from './Logo.jsx'
 
 function formatNaira(amount) {
   return `₦${Number(amount).toLocaleString()}`
@@ -108,18 +109,13 @@ function RiderDashboard({ user, onBack, onLogin, onSignup }) {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="inner-page">
-        <header className="inner-header">
-          <button className="back-link" onClick={onBack}>← Back</button>
-          <div className="brand">
-            <div className="brand-icon">
-              <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
-            </div>
-            <div><h1>NaijaFix</h1><span>Rider Dashboard</span></div>
-          </div>
-        </header>
+if (loading) {
+  return (
+    <div className="inner-page">
+      <header className="inner-header">
+        <button className="back-link" onClick={onBack}>← Back</button>
+        <Logo size="small" showTagline={false} />
+      </header>
         <main className="inner-content">
           <div className="empty-box"><span>⏳</span><h4>Loading...</h4></div>
         </main>
@@ -132,12 +128,7 @@ function RiderDashboard({ user, onBack, onLogin, onSignup }) {
       <div className="inner-page">
         <header className="inner-header">
           <button className="back-link" onClick={onBack}>← Back</button>
-          <div className="brand">
-            <div className="brand-icon">
-              <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
-            </div>
-            <div><h1>NaijaFix</h1><span>Rider Dashboard</span></div>
-          </div>
+          <Logo size="small" showTagline={false} />
         </header>
         <main className="inner-content">
           <span className="section-label">RIDER</span>
@@ -171,12 +162,7 @@ function RiderDashboard({ user, onBack, onLogin, onSignup }) {
     <div className="inner-page">
       <header className="inner-header">
         <button className="back-link" onClick={onBack}>← Back</button>
-        <div className="brand">
-          <div className="brand-icon">
-            <img src="/images/naijafix-logo.jpeg" alt="NaijaFix" />
-          </div>
-          <div><h1>NaijaFix</h1><span>Rider Dashboard</span></div>
-        </div>
+        <Logo size="small" showTagline={false} />
       </header>
 
       <main className="inner-content">
