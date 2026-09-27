@@ -365,6 +365,42 @@ function ReportForm({ user, onComplete, bookingId: initialBookingId = null }) {
   const [evidencePreview, setEvidencePreview] = useState('')
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [reportedUserId, setReportedUserId] = useState('')
+  const [reportableUsers, setReportableUsers] = useState([])
+  const [loadingUsers, setLoadingUsers] = useState(false)
+
+  useEffect(() => {
+    if (!user?.user_id) return
+    let cancelled = false
+    if (category === 'Provider issue' || category === 'Customer issue') {
+      const fetchUsers = async () => {
+        setLoadingUsers(true)
+        try {
+          if (category === 'Provider issue') {
+            const { data } = await supabase
+              .from('providers')
+              .select('user_id, business_name')
+              .order('business_name')
+            if (!cancelled) setReportableUsers((data || []).map(p => ({ id: p.user_id, name: p.business_name, type: 'provider' })))
+          } else {
+            const { data } = await supabase
+              .from('profiles')
+              .select('user_id, full_name')
+              .neq('user_id', user.user_id)
+              .order('full_name')
+            if (!cancelled) setReportableUsers((data || []).map(p => ({ id: p.user_id, name: p.full_name || 'Unknown', type: 'customer' })))
+          }
+        } catch (err) {
+          console.error('Failed to load reportable users:', err)
+          if (!cancelled) setReportableUsers([])
+        } finally {
+          if (!cancelled) setLoadingUsers(false)
+        }
+      }
+      fetchUsers()
+    }
+    return () => { cancelled = true }
+  }, [category, user?.user_id])
 
   const resetForm = () => {
     setSubject('')
@@ -372,6 +408,7 @@ function ReportForm({ user, onComplete, bookingId: initialBookingId = null }) {
     setBookingId(initialBookingId ? String(initialBookingId) : '')
     setEvidenceFile(null)
     setEvidencePreview('')
+    setReportedUserId('')
   }
 
   const handleEvidenceChange = (event) => {
@@ -414,6 +451,7 @@ function ReportForm({ user, onComplete, bookingId: initialBookingId = null }) {
       status: 'open',
       booking_id: bookingId ? Number(bookingId) : null,
       evidence_path: evidencePath,
+      reported_user_id: reportedUserId || null,
     })
 
     if (error) {
@@ -452,6 +490,31 @@ function ReportForm({ user, onComplete, bookingId: initialBookingId = null }) {
         <option>Dispute</option>
         <option>Other</option>
       </select>
+      {(category === 'Provider issue' || category === 'Customer issue') && (
+        <div style={{ marginBottom: 8 }}>
+          <label style={{ display: 'block', fontSize: 13, marginBottom: 4, fontWeight: 500 }}>
+            {category === 'Provider issue' ? 'Provider being reported' : 'Customer being reported'}
+          </label>
+          {loadingUsers ? (
+            <div style={{ padding: 8, color: 'var(--nf-text-muted)', fontSize: 13 }}>Loading...</div>
+          ) : reportableUsers.length === 0 ? (
+            <div style={{ padding: 8, color: 'var(--nf-text-muted)', fontSize: 13 }}>
+              No {category === 'Provider issue' ? 'providers' : 'customers'} found
+            </div>
+          ) : (
+            <select
+              value={reportedUserId}
+              onChange={(event) => setReportedUserId(event.target.value)}
+              style={{ width: '100%', padding: '10px 12px', fontSize: 14, borderRadius: 8, border: '1px solid var(--nf-border)', background: 'var(--nf-bg)' }}
+            >
+              <option value="">Select {category === 'Provider issue' ? 'provider' : 'customer'}</option>
+              {reportableUsers.map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
       <input
         placeholder="Subject"
         value={subject}
@@ -7033,10 +7096,12 @@ function AdminDashboard({ user, onLogout, onHome }) {
     return 'Unknown'
   }
   const [reporterNames, setReporterNames] = useState({})
+  const [reportedNames, setReportedNames] = useState({})
   const [reportStatus, setReportStatus] = useState({})
   const [reportResponse, setReportResponse] = useState({})
   const [reportEvidenceUrls, setReportEvidenceUrls] = useState({})
   const [viewingDocUrl, setViewingDocUrl] = useState('')
+  const [viewingEvidenceUrl, setViewingEvidenceUrl] = useState('')
   const [loadingDoc, setLoadingDoc] = useState(false)
   const [serviceImageUploading, setServiceImageUploading] = useState({})
   const [adImageUploading, setAdImageUploading] = useState(false)
@@ -7153,6 +7218,31 @@ function AdminDashboard({ user, onLogout, onHome }) {
               names[p.user_id] = p.full_name
             })
             setReporterNames(names)
+          }
+        }
+        // Fetch reported user names (for Provider/Customer issue reports)
+        const reportedUserIds = [...new Set((reportsResult.data || []).map((r) => r.reported_user_id).filter(Boolean))]
+        if (reportedUserIds.length > 0) {
+          const { data: reportedProfiles } = await supabase
+            .from('profiles')
+            .select('user_id, full_name')
+            .in('user_id', reportedUserIds)
+          if (reportedProfiles) {
+            const reportedNamesMap = {}
+            reportedProfiles.forEach((p) => {
+              reportedNamesMap[p.user_id] = p.full_name
+            })
+            // Also check providers table for business names
+            const { data: reportedProviders } = await supabase
+              .from('providers')
+              .select('user_id, business_name')
+              .in('user_id', reportedUserIds)
+            if (reportedProviders) {
+              reportedProviders.forEach((p) => {
+                if (p.business_name) reportedNamesMap[p.user_id] = p.business_name
+              })
+            }
+            setReportedNames(reportedNamesMap)
           }
         }
         // Load evidence image URLs for reports that have evidence_path
@@ -8014,6 +8104,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
             ) : (
               reports.map((report) => {
                 const evidenceUrl = reportEvidenceUrls[report.id]
+                const reportedName = reportedNames[report.reported_user_id]
                 return (
                   <div className={`dash-card dash-report-card ${report.viewed_by_admin ? 'dash-report-viewed' : 'dash-report-unviewed'}`} key={report.id}>
                     <div className="dash-report-header">
@@ -8026,6 +8117,9 @@ function AdminDashboard({ user, onLogout, onHome }) {
                     <div className="dash-report-body">
                       <p><strong>Category:</strong> {report.category}</p>
                       <p><strong>Reporter:</strong> {reporterNames[report.reporter_user_id] || 'Unknown user'}</p>
+                      {reportedName && (
+                        <p><strong>Reported:</strong> {reportedName}</p>
+                      )}
                       <p className="dash-report-desc">{report.description}</p>
                       <p><strong>Created:</strong> {new Date(report.created_at).toLocaleString()}</p>
                       {report.admin_response && (
@@ -8051,6 +8145,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
                             cursor: 'zoom-in',
                           }}
                           onError={(e) => { e.currentTarget.style.display = 'none' }}
+                          onClick={() => setViewingEvidenceUrl(evidenceUrl)}
                         />
                       </div>
                     )}
@@ -8262,6 +8357,9 @@ function AdminDashboard({ user, onLogout, onHome }) {
 
       {viewingDocUrl && (
         <ImageModal url={viewingDocUrl} onClose={closeVerificationDocument} />
+      )}
+      {viewingEvidenceUrl && (
+        <ImageModal url={viewingEvidenceUrl} onClose={() => setViewingEvidenceUrl('')} />
       )}
     </>
   )
