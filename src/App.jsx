@@ -7035,6 +7035,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
   const [reporterNames, setReporterNames] = useState({})
   const [reportStatus, setReportStatus] = useState({})
   const [reportResponse, setReportResponse] = useState({})
+  const [reportEvidenceUrls, setReportEvidenceUrls] = useState({})
   const [viewingDocUrl, setViewingDocUrl] = useState('')
   const [loadingDoc, setLoadingDoc] = useState(false)
   const [serviceImageUploading, setServiceImageUploading] = useState({})
@@ -7153,6 +7154,20 @@ function AdminDashboard({ user, onLogout, onHome }) {
             })
             setReporterNames(names)
           }
+        }
+        // Load evidence image URLs for reports that have evidence_path
+        const reportsWithEvidence = (reportsResult.data || []).filter((r) => r.evidence_path)
+        if (reportsWithEvidence.length > 0) {
+          const evidenceUrls = {}
+          for (const report of reportsWithEvidence) {
+            try {
+              const signedUrl = await getSignedStorageUrl('booking-photos', report.evidence_path)
+              evidenceUrls[report.id] = signedUrl
+            } catch (error) {
+              console.error(`Failed to load evidence for report ${report.id}:`, error)
+            }
+          }
+          setReportEvidenceUrls(evidenceUrls)
         }
       }
 
@@ -7997,55 +8012,77 @@ function AdminDashboard({ user, onLogout, onHome }) {
             ) : reports.length === 0 ? (
               <EmptyState icon="📋" title="No reports yet" />
             ) : (
-              reports.map((report) => (
-                <div className={`dash-card dash-report-card ${report.viewed_by_admin ? 'dash-report-viewed' : 'dash-report-unviewed'}`} key={report.id}>
-                  <div className="dash-report-header">
-                    <h4>{report.subject}</h4>
-                    <div className="dash-verification-badges">
-                      <StatusBadge status={report.status} />
-                      {!report.viewed_by_admin && <span className="dash-unread-badge">New</span>}
+              reports.map((report) => {
+                const evidenceUrl = reportEvidenceUrls[report.id]
+                return (
+                  <div className={`dash-card dash-report-card ${report.viewed_by_admin ? 'dash-report-viewed' : 'dash-report-unviewed'}`} key={report.id}>
+                    <div className="dash-report-header">
+                      <h4>{report.subject}</h4>
+                      <div className="dash-verification-badges">
+                        <StatusBadge status={report.status} />
+                        {!report.viewed_by_admin && <span className="dash-unread-badge">New</span>}
+                      </div>
                     </div>
-                  </div>
-                  <div className="dash-report-body">
-                    <p><strong>Category:</strong> {report.category}</p>
-                    <p><strong>Reporter:</strong> {reporterNames[report.reporter_user_id] || 'Unknown user'}</p>
-                    <p className="dash-report-desc">{report.description}</p>
-                    <p><strong>Created:</strong> {new Date(report.created_at).toLocaleString()}</p>
-                    {report.admin_response && (
-                      <div className="dash-admin-response">
-                        <strong>Admin response:</strong>
-                        <p>{report.admin_response}</p>
+                    <div className="dash-report-body">
+                      <p><strong>Category:</strong> {report.category}</p>
+                      <p><strong>Reporter:</strong> {reporterNames[report.reporter_user_id] || 'Unknown user'}</p>
+                      <p className="dash-report-desc">{report.description}</p>
+                      <p><strong>Created:</strong> {new Date(report.created_at).toLocaleString()}</p>
+                      {report.admin_response && (
+                        <div className="dash-admin-response">
+                          <strong>Admin response:</strong>
+                          <p>{report.admin_response}</p>
+                        </div>
+                      )}
+                    </div>
+                    {evidenceUrl && (
+                      <div className="dash-report-evidence" style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--nf-border)' }}>
+                        <p style={{ fontWeight: 600, marginBottom: 8, fontSize: 13, color: 'var(--nf-text-muted)' }}>Evidence photo</p>
+                        <img
+                          src={evidenceUrl}
+                          alt="Report evidence"
+                          style={{
+                            maxWidth: '100%',
+                            maxHeight: 300,
+                            objectFit: 'contain',
+                            borderRadius: 8,
+                            border: '1px solid var(--nf-border)',
+                            background: 'var(--nf-bg)',
+                            cursor: 'zoom-in',
+                          }}
+                          onError={(e) => { e.currentTarget.style.display = 'none' }}
+                        />
                       </div>
                     )}
+                    <div className="dash-report-actions">
+                      <select
+                        className="dash-form-select"
+                        value={reportStatus[report.id] || report.status}
+                        onChange={(e) => setReportStatus((current) => ({ ...current, [report.id]: e.target.value }))}
+                      >
+                        <option value="open">Open</option>
+                        <option value="in_review">In review</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="closed">Closed</option>
+                      </select>
+                      <textarea
+                        className="dash-form-textarea"
+                        placeholder="Admin response"
+                        value={reportResponse[report.id] ?? report.admin_response ?? ''}
+                        onChange={(e) => setReportResponse((current) => ({ ...current, [report.id]: e.target.value }))}
+                      />
+                      <button
+                        type="button"
+                        className="dash-btn dash-btn-primary dash-btn-full"
+                        onClick={() => updateReport(report.id)}
+                        disabled={reportLoading}
+                      >
+                        {reportLoading ? 'Updating...' : 'Update Report'}
+                      </button>
+                    </div>
                   </div>
-                  <div className="dash-report-actions">
-                    <select
-                      className="dash-form-select"
-                      value={reportStatus[report.id] || report.status}
-                      onChange={(e) => setReportStatus((current) => ({ ...current, [report.id]: e.target.value }))}
-                    >
-                      <option value="open">Open</option>
-                      <option value="in_review">In review</option>
-                      <option value="resolved">Resolved</option>
-                      <option value="closed">Closed</option>
-                    </select>
-                    <textarea
-                      className="dash-form-textarea"
-                      placeholder="Admin response"
-                      value={reportResponse[report.id] ?? report.admin_response ?? ''}
-                      onChange={(e) => setReportResponse((current) => ({ ...current, [report.id]: e.target.value }))}
-                    />
-                    <button
-                      type="button"
-                      className="dash-btn dash-btn-primary dash-btn-full"
-                      onClick={() => updateReport(report.id)}
-                      disabled={reportLoading}
-                    >
-                      {reportLoading ? 'Updating...' : 'Update Report'}
-                    </button>
-                  </div>
-                </div>
-              ))
+                )
+              })
             )}
           </>
         )}
