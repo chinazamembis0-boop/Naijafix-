@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef, useCallback, Suspense, lazy } from 'react'
 import { supabase, getSignedStorageUrl, uploadPrivateFile, haversineDistanceKm, formatDistanceKm } from './supabase.js'
 import './App.css'
 import './components/DashboardUI.css'
@@ -23,34 +23,23 @@ import {
   TopBar,
   BottomNav,
 } from './components/DashboardUI.jsx'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
 import { getServiceImage } from './components/ServiceImages.js'
 import { getCategoryIllustration } from './components/CategoryImages.js'
 import { AdPlacement } from './components/AdBanner.jsx'
 import { allServices, serviceCategories } from './components/ServicesData.js'
-import FoodMarketplace from './components/FoodMarketplace.jsx'
-import FoodCart from './components/FoodCart.jsx'
-import ViewAllServices from './components/ViewAllServices.jsx'
-import RestaurantDashboard from './components/RestaurantDashboard.jsx'
-import RiderDashboard from './components/RiderDashboard.jsx'
-import {
-  TermsOfService,
-  PrivacyPolicy,
-  CancellationPolicy,
-  AcceptableUsePolicy,
-  DisputePolicy,
-} from './components/PolicyPages.jsx'
-import ShareableProvider from './components/ShareableProvider.jsx'
-import RestaurantSignup from './components/RestaurantSignup.jsx'
 
-delete L.Icon.Default.prototype._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-})
+const FoodMarketplace = lazy(() => import('./components/FoodMarketplace.jsx'))
+const FoodCart = lazy(() => import('./components/FoodCart.jsx'))
+const ViewAllServices = lazy(() => import('./components/ViewAllServices.jsx'))
+const RestaurantDashboard = lazy(() => import('./components/RestaurantDashboard.jsx'))
+const RiderDashboard = lazy(() => import('./components/RiderDashboard.jsx'))
+const ShareableProvider = lazy(() => import('./components/ShareableProvider.jsx'))
+const RestaurantSignup = lazy(() => import('./components/RestaurantSignup.jsx'))
+const TermsOfService = lazy(() => import('./components/PolicyPages.jsx').then(m => ({ default: m.TermsOfService })))
+const PrivacyPolicy = lazy(() => import('./components/PolicyPages.jsx').then(m => ({ default: m.PrivacyPolicy })))
+const CancellationPolicy = lazy(() => import('./components/PolicyPages.jsx').then(m => ({ default: m.CancellationPolicy })))
+const AcceptableUsePolicy = lazy(() => import('./components/PolicyPages.jsx').then(m => ({ default: m.AcceptableUsePolicy })))
+const DisputePolicy = lazy(() => import('./components/PolicyPages.jsx').then(m => ({ default: m.DisputePolicy })))
 
 const defaultServices = allServices
 
@@ -186,9 +175,40 @@ function MapView({ providers, onProviderSelect, savedCustomerLocation }) {
   const [userLocation, setUserLocation] = useState(null)
   const [locationError, setLocationError] = useState('')
   const [searchArea, setSearchArea] = useState(false)
+  const [MapContainer, setMapContainer] = useState(null)
+  const [TileLayer, setTileLayer] = useState(null)
+  const [Marker, setMarker] = useState(null)
+  const [Popup, setPopup] = useState(null)
 
-  // The saved customer profile location takes priority over the temporary
-  // browser location. Opening the map must NOT overwrite the saved location.
+  useEffect(() => {
+    import('react-leaflet').then(({ MapContainer: MC, TileLayer: TL, Marker: MK, Popup: PP }) => {
+      setMapContainer(MC)
+      setTileLayer(TL)
+      setMarker(MK)
+      setPopup(PP)
+    })
+    import('leaflet').then((leaflet) => {
+      const L = leaflet.default
+      if (!L.Icon.Default.prototype._getIconUrl) {
+        L.Icon.Default.mergeOptions({
+          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+        })
+      }
+    })
+  }, [])
+
+  if (!MapContainer) {
+    return (
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ height: 360, borderRadius: 12, overflow: 'hidden', border: '1px solid #e2e8e4', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--nf-bg)' }}>
+          <LoadingState text="Loading map..." />
+        </div>
+      </div>
+    )
+  }
+
   const effectiveUserLocation = savedCustomerLocation
     ? { lat: savedCustomerLocation.latitude, lng: savedCustomerLocation.longitude }
     : userLocation
@@ -9683,11 +9703,13 @@ const appUser = {
 
   if (effectivePage === 'restaurant-signup') {
     return (
-      <RestaurantSignup
-        user={user}
-        onBack={() => setPage('home')}
-        onSuccess={() => setPage('restaurant-dashboard')}
-      />
+      <Suspense fallback={<LoadingState text="Loading restaurant signup..." />}>
+        <RestaurantSignup
+          user={user}
+          onBack={() => setPage('home')}
+          onSuccess={() => setPage('restaurant-dashboard')}
+        />
+      </Suspense>
     )
   }
 
@@ -9747,11 +9769,6 @@ const appUser = {
         onProfile={() =>
           setPage('profile')
         }
-        onProvider={(provider) => {
-          setReviewBookingId(null)
-          setSelectedProvider(provider)
-          setPage('provider')
-        }}
         onProviderDashboard={() =>
           setPage('provider-dashboard')
         }
@@ -10062,110 +10079,142 @@ const appUser = {
 
   if (effectivePage === 'all-services') {
     return (
-      <ViewAllServices
-        initialCategory={selectedFoodCategory}
-        onBack={() => {
-          setPage(marketplaceBackPage)
-          setMarketplaceBackPage('home')
-        }}
-        onService={goToService}
-      />
+      <Suspense fallback={<LoadingState text="Loading services..." />}>
+        <ViewAllServices
+          initialCategory={selectedFoodCategory}
+          onBack={() => {
+            setPage(marketplaceBackPage)
+            setMarketplaceBackPage('home')
+          }}
+          onService={goToService}
+        />
+      </Suspense>
     )
   }
 
   if (effectivePage === 'food') {
     return (
-      <FoodMarketplace
-        onBack={() => setPage('home')}
-        cartItemCount={foodCart.reduce((sum, item) => sum + item.quantity, 0)}
-        onViewCart={() => setPage('food-cart')}
-        cart={foodCart}
-        onUpdateCart={setFoodCart}
-        onDeliveryFeeChange={(fee) => {
-          setFoodDeliveryFee(fee)
-        }}
-        onRestaurantSelect={(id) => setFoodRestaurantId(id)}
-        onRestaurantDashboard={() => setPage('restaurant-dashboard')}
-        onRiderDashboard={() => setPage('rider-dashboard')}
-      />
+      <Suspense fallback={<LoadingState text="Loading food marketplace..." />}>
+        <FoodMarketplace
+          onBack={() => setPage('home')}
+          cartItemCount={foodCart.reduce((sum, item) => sum + item.quantity, 0)}
+          onViewCart={() => setPage('food-cart')}
+          cart={foodCart}
+          onUpdateCart={setFoodCart}
+          onDeliveryFeeChange={(fee) => {
+            setFoodDeliveryFee(fee)
+          }}
+          onRestaurantSelect={(id) => setFoodRestaurantId(id)}
+          onRestaurantDashboard={() => setPage('restaurant-dashboard')}
+          onRiderDashboard={() => setPage('rider-dashboard')}
+        />
+      </Suspense>
     )
   }
 
   if (effectivePage === 'food-cart') {
     return (
-      <FoodCart
-        cart={foodCart}
-        deliveryFee={foodDeliveryFee}
-        restaurantId={foodRestaurantId}
-        user={user}
-        onUpdateCart={(cart) => {
-          setFoodCart(cart)
-          if (cart.length === 0) {
+      <Suspense fallback={<LoadingState text="Loading cart..." />}>
+        <FoodCart
+          cart={foodCart}
+          deliveryFee={foodDeliveryFee}
+          restaurantId={foodRestaurantId}
+          user={user}
+          onUpdateCart={(cart) => {
+            setFoodCart(cart)
+            if (cart.length === 0) {
+              setFoodDeliveryFee(0)
+            }
+          }}
+          onBack={() => setPage('food')}
+          onPlaceOrder={(order) => {
+            setFoodCart([])
             setFoodDeliveryFee(0)
-          }
-        }}
-        onBack={() => setPage('food')}
-        onPlaceOrder={(order) => {
-          setFoodCart([])
-          setFoodDeliveryFee(0)
-          setFoodRestaurantId(null)
-          alert(`Order #${order.order?.id || ''} placed successfully!\n\nTotal: ₦${Number(order.total).toLocaleString()}\nDelivery to: ${order.deliveryAddress}\n\nThank you for ordering with Ewizzy!`)
-          setPage('food')
-        }}
-      />
+            setFoodRestaurantId(null)
+            alert(`Order #${order.order?.id || ''} placed successfully!\n\nTotal: ₦${Number(order.total).toLocaleString()}\nDelivery to: ${order.deliveryAddress}\n\nThank you for ordering with Ewizzy!`)
+            setPage('food')
+          }}
+        />
+      </Suspense>
     )
   }
 
   if (effectivePage === 'restaurant-dashboard') {
     return (
-      <RestaurantDashboard
-        user={user}
-        onBack={() => setPage('home')}
-        onRegister={() => setPage('restaurant-signup')}
-      />
+      <Suspense fallback={<LoadingState text="Loading restaurant dashboard..." />}>
+        <RestaurantDashboard
+          user={user}
+          onBack={() => setPage('home')}
+          onRegister={() => setPage('restaurant-signup')}
+        />
+      </Suspense>
     )
   }
 
   if (effectivePage === 'rider-dashboard') {
     return (
-      <RiderDashboard
-        user={user}
-        onBack={() => setPage('home')}
-        onLogin={() => setPage('login')}
-        onSignup={() => setPage('rider-signup')}
-      />
+      <Suspense fallback={<LoadingState text="Loading rider dashboard..." />}>
+        <RiderDashboard
+          user={user}
+          onBack={() => setPage('home')}
+          onLogin={() => setPage('login')}
+          onSignup={() => setPage('rider-signup')}
+        />
+      </Suspense>
     )
   }
 
   if (effectivePage === 'terms') {
-    return <TermsOfService />
+    return (
+      <Suspense fallback={<LoadingState text="Loading terms..." />}>
+        <TermsOfService />
+      </Suspense>
+    )
   }
 
   if (effectivePage === 'privacy') {
-    return <PrivacyPolicy />
+    return (
+      <Suspense fallback={<LoadingState text="Loading privacy policy..." />}>
+        <PrivacyPolicy />
+      </Suspense>
+    )
   }
 
   if (effectivePage === 'cancellation') {
-    return <CancellationPolicy />
+    return (
+      <Suspense fallback={<LoadingState text="Loading cancellation policy..." />}>
+        <CancellationPolicy />
+      </Suspense>
+    )
   }
 
   if (effectivePage === 'acceptable-use') {
-    return <AcceptableUsePolicy />
+    return (
+      <Suspense fallback={<LoadingState text="Loading acceptable use policy..." />}>
+        <AcceptableUsePolicy />
+      </Suspense>
+    )
   }
 
   if (effectivePage === 'dispute-policy') {
-    return <DisputePolicy />
+    return (
+      <Suspense fallback={<LoadingState text="Loading dispute policy..." />}>
+        <DisputePolicy />
+      </Suspense>
+    )
   }
 
   if (effectivePage === 'share-provider') {
     return (
-      <ShareableProvider
-        provider={shareableProvider}
-        onBack={() => {
-          setShareableProvider(null)
-          setPage('provider')
-        }}
-      />
+      <Suspense fallback={<LoadingState text="Loading provider profile..." />}>
+        <ShareableProvider
+          provider={shareableProvider}
+          onBack={() => {
+            setShareableProvider(null)
+            setPage('provider')
+          }}
+        />
+      </Suspense>
     )
   }
 

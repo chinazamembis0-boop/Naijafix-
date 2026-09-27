@@ -1,0 +1,21 @@
+{
+  "name": "Ewizzy",
+  "short_name": "Ewizzy",
+  "description": "Ewizzy connects customers with skilled service providers. Find the right service, book with confidence, and get things done.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#12304A",
+  "theme_color": "#12304A",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/images/ewizzy-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "lifestyle", "productivity"],
+  "lang": "en-NG",
+  "dir": "ltr"
+}
