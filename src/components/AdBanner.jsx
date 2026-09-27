@@ -8,7 +8,7 @@ const demoAds = [
     video: '/videos/ads/naijafix-ad-1.mp4',
     image: '/images/ad-promo.jpg',
     title: 'Trusted Services, Right at Your Door',
-    description: 'Find reliable local professionals with EWIZZY.',
+    description: 'Find reliable local professionals with Ewizzy.',
     label: 'Sponsored',
     ctaText: 'Explore Services',
   },
@@ -18,7 +18,7 @@ const demoAds = [
     image: '/images/ad-promo.jpg',
     title: 'Get Your Home Looking New',
     description: 'Professional cleaning and renovation services nearby.',
-    label: 'EWIZZY Promotion',
+    label: 'Ewizzy Promotion',
     ctaText: 'Learn More',
   },
   {
@@ -45,7 +45,7 @@ const demoAds = [
     image: '/images/ad-promo.jpg',
     title: 'Get Help Near You',
     description: 'Connect with top-rated experts in your area.',
-    label: 'EWIZZY',
+    label: 'Ewizzy',
     ctaText: 'Get Started',
   },
 ]
@@ -185,7 +185,7 @@ export function AdBanner({ ad, onDismiss, onAction, allAds = null }) {
             <div className="nf-ad-visual">
               <div className="nf-ad-visual-inner">
                 <span className="nf-ad-visual-icon">🏠</span>
-                <span className="nf-ad-visual-text">EWIZZY</span>
+                <span className="nf-ad-visual-text">Ewizzy</span>
               </div>
             </div>
           )}

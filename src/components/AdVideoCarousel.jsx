@@ -7,14 +7,14 @@ const VIDEO_ADS = [
     poster: '/images/ad-promo.jpg',
     label: 'Sponsored',
     title: 'Trusted Services, Right at Your Door',
-    description: 'Find reliable local professionals with EWIZZY.',
+    description: 'Find reliable local professionals with Ewizzy.',
     ctaText: 'Explore Services',
   },
   {
     id: 'ewizzy-ad-2',
     video: '/videos/ads/naijafix-ad-2.mp4',
     poster: '/images/ad-promo.jpg',
-    label: 'EWIZZY Promotion',
+    label: 'Ewizzy Promotion',
     title: 'Get Your Home Looking New',
     description: 'Professional cleaning and renovation services nearby.',
     ctaText: 'Learn More',
@@ -41,7 +41,7 @@ const VIDEO_ADS = [
     id: 'ewizzy-ad-5',
     video: '/videos/ads/naijafix-ad-5.mp4',
     poster: '/images/ad-promo.jpg',
-    label: 'EWIZZY',
+    label: 'Ewizzy',
     title: 'Get Help Near You',
     description: 'Connect with top-rated experts in your area.',
     ctaText: 'Get Started',
@@ -200,10 +200,10 @@ export function AdVideoCarousel({ ads = VIDEO_ADS, poster = '/images/ad-promo.jp
     >
       <div className="nf-ad-video-wrapper">
         {showFallback ? (
-          <div className="nf-ad-video-fallback" role="img" aria-label={currentAd?.title || 'EWIZZY advertisement'}>
+          <div className="nf-ad-video-fallback" role="img" aria-label={currentAd?.title || 'Ewizzy advertisement'}>
             <img
               src={currentAd?.poster || poster}
-              alt={currentAd?.title || 'EWIZZY advertisement'}
+              alt={currentAd?.title || 'Ewizzy advertisement'}
               loading="lazy"
             />
           </div>
@@ -231,7 +231,7 @@ export function AdVideoCarousel({ ads = VIDEO_ADS, poster = '/images/ad-promo.jp
 
         <div className="nf-ad-video-overlay">
           <span className="nf-ad-video-label">{currentAd?.label || 'Sponsored'}</span>
-          <span className="nf-ad-video-brand">EWIZZY</span>
+          <span className="nf-ad-video-brand">Ewizzy</span>
         </div>
 
         {showFallback && currentAd?.ctaText && (

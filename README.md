@@ -1,6 +1,6 @@
-# EWIZZY
+# Ewizzy
 
-EWIZZY is a simple marketplace that connects customers with skilled service providers, making it easier to find the right service, book with confidence, and get things done.
+Ewizzy is a simple marketplace that connects customers with skilled service providers, making it easier to find the right service, book with confidence, and get things done.
 
 ## Tech Stack
 

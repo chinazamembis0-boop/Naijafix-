@@ -1121,7 +1121,6 @@
 .dash-topbar-greeting {
   font-size: 11px;
   color: var(--nf-text-muted);
-  text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 700;
 }

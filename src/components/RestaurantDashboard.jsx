@@ -235,7 +235,7 @@ function RestaurantDashboard({ user, onBack, onRegister }) {
           {!user ? (
             <>
               <h2>No Restaurant Found</h2>
-              <p>Please log in to manage your restaurant on EWIZZY.</p>
+              <p>Please log in to manage your restaurant on Ewizzy.</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>
                 <button className="primary-full" onClick={onBack}>Go to Home</button>
               </div>

@@ -109,7 +109,7 @@ function RestaurantSignup({ user, onBack, onSuccess }) {
       <main className="inner-content">
         <span className="section-label">RESTAURANT</span>
         <h2>Register Your Restaurant</h2>
-        <p>Create your restaurant profile and start receiving orders on EWIZZY.</p>
+        <p>Create your restaurant profile and start receiving orders on Ewizzy.</p>
 
         {error && (
           <div className="empty-box" style={{ marginBottom: 16 }}>

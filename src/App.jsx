@@ -487,7 +487,7 @@ function Home({
   return (
     <div className="page">
       <header className="navbar">
-        <Logo />
+        <Logo withText />
 
         <button className="login-button" onClick={onLogin}>
           Log in
@@ -497,14 +497,14 @@ function Home({
       <main>
         <section className="hero">
           <div className="hero-content">
-            <span className="welcome">BUILT FOR NIGERIA 🇳🇬</span>
+            <span className="welcome">BUILT FOR EVERYONE 🌍</span>
 
             <h2>
-              Find trusted local services <strong>near you.</strong>
+              Find trusted services <strong>wherever you are.</strong>
             </h2>
 
             <p>
-              Connect with reliable service providers around you
+              Connect with reliable service providers wherever you are
               and get the help you need, when you need it.
             </p>
 
@@ -576,7 +576,7 @@ function Home({
                   <span className="nf-home-food-icon">🏪</span>
                   <div>
                     <h3>Register Your Restaurant</h3>
-                    <p>List your business on EWIZZY and start receiving orders</p>
+                    <p>List your business on Ewizzy and start receiving orders</p>
                   </div>
                   <span className="nf-home-food-arrow">→</span>
                 </div>
@@ -711,7 +711,7 @@ function Home({
           <div className="site-footer-brand">
             <Logo />
             <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--nf-text-muted)', maxWidth: 320 }}>
-              Connecting customers with trusted independent service providers across Nigeria.
+              Connecting customers with trusted independent service providers across the world.
             </p>
           </div>
           <div className="site-footer-cols">
@@ -736,7 +736,7 @@ function Home({
           </div>
         </div>
         <div className="site-footer-bottom">
-          <span>© {new Date().getFullYear()} EWIZZY. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} Ewizzy. All rights reserved.</span>
           <span>Made in Nigeria 🇳🇬</span>
         </div>
       </footer>
@@ -801,7 +801,7 @@ function Login({ onBack, onSignup, onDashboard, setPage }) {
         )
 
         alert(
-          'Login successful, but your EWIZZY profile could not be loaded: ' +
+          'Login successful, but your Ewizzy profile could not be loaded: ' +
             profileError.message
         )
 
@@ -811,7 +811,7 @@ function Login({ onBack, onSignup, onDashboard, setPage }) {
 
       if (!profile) {
         alert(
-          'Login successful, but no EWIZZY profile was found for this account.'
+          'Login successful, but no Ewizzy profile was found for this account.'
         )
 
         setLoading(false)
@@ -1140,7 +1140,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
         )
 
         if (ok) {
-          alert('Welcome to EWIZZY!')
+          alert('Welcome to Ewizzy!')
           onLogin()
         }
     } catch (error) {
@@ -1170,7 +1170,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
       )
 
       alert(
-        'Account was created, but the EWIZZY profile could not be loaded: ' +
+        'Account was created, but the Ewizzy profile could not be loaded: ' +
           existingProfileError.message
       )
 
@@ -1201,7 +1201,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
       )
 
       alert(
-        'Account was created, but the EWIZZY profile could not be saved: ' +
+        'Account was created, but the Ewizzy profile could not be saved: ' +
           profileError.message
       )
 
@@ -1304,7 +1304,7 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
         <h2>Create your account</h2>
 
         <p>
-          Join EWIZZY and find trusted services around you.
+          Join Ewizzy and find trusted services around you.
         </p>
 
         <form onSubmit={handleSignup}>
@@ -1806,7 +1806,7 @@ function Dashboard({
   return (
     <div className="dash-shell-main" style={{ minHeight: '100vh', background: 'var(--nf-bg)' }}>
       <TopBar
-        greeting="EWIZZY"
+        greeting="Ewizzy"
         name={`Welcome back, ${user?.name?.split(' ')[0] || 'there'} 👋`}
         subtitle="What service do you need today?"
         avatarUrl={dashboardAvatarUrl}
@@ -4612,7 +4612,7 @@ function Profile({ user, onBack, onLogout }) {
     profile?.full_name ||
     user?.full_name ||
     user?.name ||
-    'EWIZZY Customer'
+    'Ewizzy Customer'
 
   const displayEmail =
     profile?.email ||
@@ -4779,7 +4779,7 @@ function Profile({ user, onBack, onLogout }) {
           )}
           {!customerVerification && (
             <div style={{ marginTop: 12 }}>
-              <p style={{ fontSize: 13, color: 'var(--nf-text-muted)', marginBottom: 10 }}>Verify your identity to build trust and confidence on EWIZZY.</p>
+              <p style={{ fontSize: 13, color: 'var(--nf-text-muted)', marginBottom: 10 }}>Verify your identity to build trust and confidence on Ewizzy.</p>
               <label className="dash-btn dash-btn-outline dash-btn-full">
                 Verify identity
                 <input type="file" accept="image/*,.pdf" hidden disabled={cvLoading} onChange={handleCvDocSelect} />
@@ -6092,7 +6092,7 @@ function ProviderDashboard({
   return (
     <div className="dash-shell-main" style={{ minHeight: '100vh', background: 'var(--nf-bg)' }}>
       <TopBar
-        greeting="EWIZZY"
+        greeting="Ewizzy"
         name={`Welcome back, ${user?.name?.split(' ')[0] || 'provider'} 👋`}
         subtitle={providerProfile?.business_name || 'Manage your service business'}
         avatarUrl={photoUrl}
@@ -6193,7 +6193,7 @@ function ProviderDashboard({
                   </p>
                 )}
                 <p style={{ marginTop: 8, fontSize: 11, color: 'var(--nf-text-muted)' }}>
-                  Metrics are calculated from real platform activity. EWIZZY is not yet processing marketplace payments, so this is booking value, not earnings.
+                  Metrics are calculated from real platform activity. Ewizzy is not yet processing marketplace payments, so this is booking value, not earnings.
                 </p>
               </DashboardCard>
             )}
@@ -7521,7 +7521,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
     if (verification?.customer_user_id) {
       const title = newStatus === 'approved' ? 'Identity verification approved' : 'Identity verification rejected'
       const message = newStatus === 'approved'
-        ? 'Your EWIZZY identity verification has been approved.'
+        ? 'Your Ewizzy identity verification has been approved.'
         : `Your identity verification was rejected. Reason: ${updates.rejection_reason || 'Not provided'}`
 
       const { error: notificationError } = await supabase.rpc('create_notification', {
@@ -8196,7 +8196,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
             )}
             <div style={{ marginTop: 20 }}>
               <button className="dash-btn dash-btn-outline" onClick={onHome}>
-                ← Back to EWIZZY
+                ← Back to Ewizzy
               </button>
             </div>
           </>
@@ -8871,7 +8871,7 @@ function Rewards({ user, onBack }) {
                 Lifetime points: {rewards?.lifetime_points ?? 0}
               </div>
               <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', marginTop: 12, maxWidth: 320, marginInline: 'auto' }}>
-                EWIZZY rewards are a loyalty foundation. Points are not yet redeemable for cash and no marketplace payments are active.
+                Ewizzy rewards are a loyalty foundation. Points are not yet redeemable for cash and no marketplace payments are active.
               </p>
             </div>
 
@@ -9152,7 +9152,7 @@ function App() {
     if (!user?.user_id) return null
 
     if (!otherUserId) {
-      alert('Unable to start conversation: this provider profile is incomplete. Please contact EWIZZY support.')
+      alert('Unable to start conversation: this provider profile is incomplete. Please contact Ewizzy support.')
       return null
     }
 
@@ -9362,7 +9362,7 @@ const appUser = {
         }
 
         alert(
-          'Your account is signed in, but your EWIZZY profile could not be loaded: ' +
+          'Your account is signed in, but your Ewizzy profile could not be loaded: ' +
             profileError.message
         )
 
@@ -9417,7 +9417,7 @@ const appUser = {
         )
 
         alert(
-          'You are signed in to EWIZZY, but no EWIZZY profile was found for this account. Please contact support.'
+          'You are signed in to Ewizzy, but no Ewizzy profile was found for this account. Please contact support.'
         )
 
         setCurrentUser(null)
@@ -10109,7 +10109,7 @@ const appUser = {
           setFoodCart([])
           setFoodDeliveryFee(0)
           setFoodRestaurantId(null)
-          alert(`Order #${order.order?.id || ''} placed successfully!\n\nTotal: ₦${Number(order.total).toLocaleString()}\nDelivery to: ${order.deliveryAddress}\n\nThank you for ordering with EWIZZY!`)
+          alert(`Order #${order.order?.id || ''} placed successfully!\n\nTotal: ₦${Number(order.total).toLocaleString()}\nDelivery to: ${order.deliveryAddress}\n\nThank you for ordering with Ewizzy!`)
           setPage('food')
         }}
       />

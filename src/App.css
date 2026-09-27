@@ -85,6 +85,40 @@ button {
   font-size: 11px;
 }
 
+/* Header navbar lockup: the complete logo image, with the brand name and
+   tagline stacked to its right. The logo file itself is never cropped. */
+.brand-lockup .brand-text {
+  display: block;
+  text-align: left;
+  line-height: 1.1;
+}
+
+.brand-lockup .brand-name {
+  display: block;
+  font-family: var(--font-serif);
+  font-weight: 800;
+  font-size: 21px;
+  color: var(--nf-text);
+}
+
+.brand-lockup .brand-tagline {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  color: var(--nf-text-muted);
+}
+
+@media (max-width: 480px) {
+  .brand-lockup .brand-name {
+    font-size: 17px;
+  }
+
+  .brand-lockup .brand-tagline {
+    font-size: 10px;
+  }
+}
+
 .login-button,
 .primary-button,
 .primary-full {
@@ -359,7 +393,6 @@ footer .brand span {
   font-weight: 800;
   letter-spacing: 1px;
   color: var(--nf-navy);
-  text-transform: uppercase;
 }
 
 .nf-ad-dismiss {
@@ -541,7 +574,6 @@ footer .brand span {
   font-weight: 800;
   letter-spacing: 0.8px;
   color: #fff;
-  text-transform: uppercase;
 }
 
 .nf-ad-video-brand {

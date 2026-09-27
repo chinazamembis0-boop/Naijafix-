@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 
-export function Logo({ size = 'default', showTagline = true, className = '' }) {
+export function Logo({ size = 'default', withText = false, className = '' }) {
   const logoSrc = '/images/ewizzy-logo.png'
 
   const styles = useMemo(() => {
@@ -10,13 +10,11 @@ export function Logo({ size = 'default', showTagline = true, className = '' }) {
       gap: size === 'small' ? 8 : size === 'large' ? 14 : 11,
     }
     const iconSize = size === 'small' ? 32 : size === 'large' ? 56 : 44
-    const fontSize = size === 'small' ? 16 : size === 'large' ? 28 : 21
-    const taglineSize = size === 'small' ? 10 : size === 'large' ? 13 : 11
-    return { base, iconSize, fontSize, taglineSize }
+    return { base, iconSize }
   }, [size])
 
   return (
-    <div className={`brand ${className}`} style={styles.base}>
+    <div className={`brand ${withText ? 'brand-lockup' : ''} ${className}`} style={styles.base}>
       <div
         className="brand-icon"
         style={{
@@ -30,7 +28,7 @@ export function Logo({ size = 'default', showTagline = true, className = '' }) {
       >
         <img
           src={logoSrc}
-          alt="EWIZZY"
+          alt="Ewizzy"
           style={{
             width: '100%',
             height: '100%',
@@ -41,16 +39,12 @@ export function Logo({ size = 'default', showTagline = true, className = '' }) {
           }}
         />
       </div>
-      <div>
-        <h1 style={{ margin: 0, fontSize: styles.fontSize, fontFamily: 'var(--font-serif)', fontWeight: 800 }}>
-          EWIZZY
-        </h1>
-        {showTagline && (
-          <span style={{ color: 'var(--nf-text-muted)', fontSize: styles.taglineSize, letterSpacing: '0.3px' }}>
-            Find. Book. Get It Done.
-          </span>
-        )}
-      </div>
+      {withText && (
+        <div className="brand-text">
+          <span className="brand-name">Ewizzy</span>
+          <span className="brand-tagline">Find. Book. Get It Done.</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -59,7 +53,7 @@ export function LogoIcon({ size = 44, className = '' }) {
   return (
     <img
       src="/images/ewizzy-logo.png"
-      alt="EWIZZY"
+      alt="Ewizzy"
       className={className}
       style={{
         width: size,

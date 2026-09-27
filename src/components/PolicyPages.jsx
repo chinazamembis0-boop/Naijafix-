@@ -37,7 +37,7 @@ export function Footer() {
         <div className="site-footer-brand">
           <Logo size="small" showTagline={false} />
           <p style={{ margin: '10px 0 0', fontSize: 12, color: 'var(--nf-text-muted)', maxWidth: 320 }}>
-            Connecting customers with skilled service providers across Nigeria.
+            Connecting customers with skilled service providers across the world.
           </p>
         </div>
         <div className="site-footer-cols">
@@ -62,7 +62,7 @@ export function Footer() {
         </div>
       </div>
       <div className="site-footer-bottom">
-        <span>© {new Date().getFullYear()} EWIZZY. All rights reserved.</span>
+        <span>© {new Date().getFullYear()} Ewizzy. All rights reserved.</span>
         <span>Made in Nigeria 🇳🇬</span>
       </div>
     </footer>
@@ -147,32 +147,32 @@ export function PolicySection({ title, children }) {
 export function TermsOfService() {
   return (
     <PolicyPage title="Terms of Service">
-      <PolicySection title="1. About EWIZZY">
+      <PolicySection title="1. About Ewizzy">
         <p>
-          EWIZZY is a marketplace platform that connects customers with independent
-          service providers across Nigeria. We do not employ, own, or operate the
+          Ewizzy is a marketplace platform that connects customers with independent
+          service providers across the world. We do not employ, own, or operate the
           businesses listed on this platform. Each provider is an independent
           contractor responsible for the quality of their own work.
         </p>
       </PolicySection>
       <PolicySection title="2. Using the platform">
         <p>
-          By using EWIZZY you agree to use the platform only for lawful purposes
+          By using Ewizzy you agree to use the platform only for lawful purposes
           and in a way that does not infringe the rights of others. You must provide
           accurate information when creating an account.
         </p>
       </PolicySection>
       <PolicySection title="3. Bookings and provider work">
         <p>
-          When you book a service through EWIZZY, you enter into an agreement
-          directly with the provider. EWIZZY is not responsible for the quality,
+          When you book a service through Ewizzy, you enter into an agreement
+          directly with the provider. Ewizzy is not responsible for the quality,
           timing, or completion of any service. Providers set their own prices,
           availability, and terms.
         </p>
       </PolicySection>
       <PolicySection title="4. Changes to these terms">
         <p>
-          We may update these terms from time to time. Continued use of EWIZZY
+          We may update these terms from time to time. Continued use of Ewizzy
           after changes means you accept the updated terms.
         </p>
       </PolicySection>
@@ -192,7 +192,7 @@ export function PrivacyPolicy() {
       </PolicySection>
       <PolicySection title="2. How we use your information">
         <p>
-          We use your information to provide and improve EWIZZY, to show you
+          We use your information to provide and improve Ewizzy, to show you
           relevant providers and services, to process bookings, and to keep you
           informed about your account and platform updates.
         </p>
@@ -246,7 +246,7 @@ export function AcceptableUsePolicy() {
     <PolicyPage title="Acceptable Use Policy">
       <PolicySection title="1. Acceptable use">
         <p>
-          You must use EWIZZY to connect with providers for lawful services only.
+          You must use Ewizzy to connect with providers for lawful services only.
           You must not use the platform to harass, scam, or harm other users.
         </p>
       </PolicySection>
