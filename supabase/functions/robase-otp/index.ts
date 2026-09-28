@@ -112,13 +112,27 @@ async function callRobaseVerify(otpId: string, code: string): Promise<void> {
 }
 
 async function getOrCreateUserByPhone(supabaseAdmin: any, phone: string, shouldCreateUser: boolean) {
-  const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers()
-  if (listError) {
-    throw new Error(`Failed to list users: ${listError.message}`)
+  // Fetch ALL users by paginating through listUsers()
+  let allUsers: any[] = []
+  let page = 1
+  const perPage = 1000
+
+  while (true) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+      page,
+      perPage,
+    })
+    if (error) {
+      throw new Error(`Failed to list users: ${error.message}`)
+    }
+    if (!data?.users?.length) break
+    allUsers.push(...data.users)
+    if (data.users.length < perPage) break
+    page++
   }
 
   const normalizedPhone = phone.startsWith('+') ? phone : '+' + phone.replace(/^\+/, '')
-  const existingUser = users.users.find((u: any) => u.phone === normalizedPhone)
+  const existingUser = allUsers.find((u: any) => u.phone === normalizedPhone)
 
   if (existingUser) {
     if (!existingUser.phone_confirmed_at && shouldCreateUser) {
@@ -144,6 +158,18 @@ async function getOrCreateUserByPhone(supabaseAdmin: any, phone: string, shouldC
     user_metadata: { phone: normalizedPhone },
   })
   if (createError) {
+    // If Supabase says phone already registered, the user exists but wasn't found
+    // (e.g., pagination edge case or race condition). Look up and return the existing user.
+    if (createError.message?.includes('already registered') || createError.message?.includes('already exists')) {
+      const { data: usersRetry, error: retryError } = await supabaseAdmin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1000,
+      })
+      if (!retryError && usersRetry?.users) {
+        const retryUser = usersRetry.users.find((u: any) => u.phone === normalizedPhone)
+        if (retryUser) return retryUser
+      }
+    }
     throw new Error(`Failed to create user: ${createError.message}`)
   }
   return created.user
