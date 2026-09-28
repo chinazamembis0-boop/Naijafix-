@@ -3854,6 +3854,143 @@ select:focus-visible {
   border-color: var(--nf-purple);
 }
 
+.phone-country-wrapper {
+  position: relative;
+  flex: 0 0 46%;
+  width: 46%;
+}
+
+.phone-country-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 12px;
+  border: 1px solid var(--nf-border-input);
+  border-radius: 9px;
+  background: white;
+  color: var(--nf-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  text-align: left;
+}
+
+.phone-country-select:focus,
+.phone-country-select[aria-expanded="true"] {
+  border-color: var(--nf-purple);
+}
+
+.country-flag {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.country-code {
+  color: var(--nf-text-muted);
+  font-weight: 500;
+}
+
+.dropdown-arrow {
+  font-size: 10px;
+  color: var(--nf-text-muted);
+  transition: transform 0.2s ease;
+}
+
+.phone-country-select[aria-expanded="true"] .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+.phone-country-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: white;
+  border: 1px solid var(--nf-border-input);
+  border-radius: 9px;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+  max-height: 320px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.country-search-wrap {
+  padding: 8px;
+  border-bottom: 1px solid var(--nf-border-input);
+}
+
+.country-search-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--nf-border-input);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  background: white;
+  color: var(--nf-text);
+}
+
+.country-search-input:focus {
+  border-color: var(--nf-purple);
+}
+
+.country-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  max-height: 260px;
+}
+
+.country-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--nf-text);
+  transition: background 0.15s ease;
+}
+
+.country-item:hover,
+.country-item:focus {
+  background: var(--nf-bg);
+  outline: none;
+}
+
+.country-item.selected {
+  background: #f3f0ff;
+  color: var(--nf-purple);
+}
+
+.country-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.country-not-found {
+  padding: 16px 12px;
+  text-align: center;
+  color: var(--nf-text-muted);
+  font-size: 13px;
+}
+
+@media (max-width: 480px) {
+  .phone-country-wrapper {
+    flex: 0 0 42%;
+    width: 42%;
+  }
+}
+
 .phone-number-wrap {
   position: relative;
   flex: 1;

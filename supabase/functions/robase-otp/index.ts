@@ -149,7 +149,10 @@ async function getOrCreateUserByPhone(supabaseAdmin: any, phone: string, shouldC
   return created.user
 }
 
-async function generateSession(supabaseAdmin: any, userId: string) {
+async function generateSession(supabaseAdmin: any, userId: string, userEmail?: string | null) {
+  if (!userEmail) {
+    return null
+  }
   const { data, error } = await supabaseAdmin.auth.admin.generateLink({
     type: 'magiclink',
     user_id: userId,
@@ -158,6 +161,24 @@ async function generateSession(supabaseAdmin: any, userId: string) {
     throw new Error('Failed to generate session link')
   }
   return data.properties.action_link
+}
+
+async function createSession(supabaseUrl: string, serviceRoleKey: string, userId: string) {
+  const response = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}/session`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${serviceRoleKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({}),
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error(`Failed to create session: ${errorData.message || response.status}`)
+  }
+
+  return response.json()
 }
 
 Deno.serve(async (req) => {
@@ -223,10 +244,9 @@ Deno.serve(async (req) => {
 
       await callRobaseVerify(otpId, code)
 
-      const supabaseAdmin = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        getServiceRoleKey()
-      )
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+      const serviceRoleKey = getServiceRoleKey()
+      const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey)
 
       const phoneForUser = body?.phone
       if (!phoneForUser) {
@@ -239,7 +259,8 @@ Deno.serve(async (req) => {
       const normalizedPhone = normalizePhoneNumber(phoneForUser)
       const user = await getOrCreateUserByPhone(supabaseAdmin, normalizedPhone, shouldCreateUser)
 
-      const sessionLink = await generateSession(supabaseAdmin, user.id)
+      const session = await createSession(supabaseUrl, serviceRoleKey, user.id)
+      const sessionLink = await generateSession(supabaseAdmin, user.id, user.email ?? null)
 
       return new Response(JSON.stringify({
         ok: true,
@@ -249,6 +270,12 @@ Deno.serve(async (req) => {
           email: user.email,
           created_at: user.created_at,
           user_metadata: user.user_metadata,
+        },
+        session: {
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+          expires_in: session.expires_in,
+          token_type: session.token_type,
         },
         session_link: sessionLink,
         is_new_account: body?.isNewAccount === true || !user.phone_confirmed_at,

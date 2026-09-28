@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { supabase } from '../supabase.js'
 import {
   PHONE_COUNTRIES,
   formatPhoneInput,
@@ -109,6 +110,38 @@ export default function PhoneAuth({
   const isInternationalEntry = number.trim().startsWith('+')
   const callingCode = getCallingCode(country)
   const countryOption = getCountryOption(country)
+  const [countryDropdownOpen, setCountryDropdownOpen] = useState(false)
+  const [countrySearch, setCountrySearch] = useState('')
+  const countryDropdownRef = useRef(null)
+
+  const filteredCountries = PHONE_COUNTRIES.filter((c) => {
+    const search = countrySearch.toLowerCase()
+    return (
+      c.name.toLowerCase().includes(search) ||
+      c.callingCode.toString().includes(search) ||
+      `+${c.callingCode}`.includes(search) ||
+      c.iso.toLowerCase().includes(search)
+    )
+  })
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (countryDropdownRef.current && !countryDropdownRef.current.contains(event.target)) {
+        setCountryDropdownOpen(false)
+        setCountrySearch('')
+      }
+    }
+    if (countryDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [countryDropdownOpen])
+
+  const handleCountrySelect = (iso) => {
+    setCountry(iso)
+    setCountryDropdownOpen(false)
+    setCountrySearch('')
+  }
 
   const sendOtp = async (event) => {
     if (event) event.preventDefault()
@@ -261,6 +294,16 @@ export default function PhoneAuth({
         return
       }
 
+      if (data.session?.access_token && data.session?.refresh_token) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        })
+        if (sessionError) {
+          console.error('Failed to set Supabase session:', sessionError)
+        }
+      }
+
       setStatus('verified')
 
       const createdAt = authUser.created_at
@@ -369,21 +412,66 @@ export default function PhoneAuth({
       <form onSubmit={sendOtp}>
         <label>Phone number</label>
 
-        <div className="phone-field">
-          <select
-            className="phone-country-select"
-            value={country}
-            onChange={(event) => setCountry(event.target.value)}
-            aria-label="Country"
-          >
-            {PHONE_COUNTRIES.map((option) => (
-              <option key={option.iso} value={option.iso}>
-                {option.name} (+{option.callingCode})
-              </option>
-            ))}
-          </select>
+<div className="phone-field">
+            <div className="phone-country-wrapper" ref={countryDropdownRef}>
+              <button
+                type="button"
+                className="phone-country-select"
+                onClick={() => setCountryDropdownOpen(!countryDropdownOpen)}
+                aria-haspopup="listbox"
+                aria-expanded={countryDropdownOpen}
+                aria-label="Country"
+              >
+                {countryOption && (
+                  <>
+                    <span className="country-flag" aria-hidden="true">🏳️</span>
+                    <span>{countryOption.name}</span>
+                    <span className="country-code">+{countryOption.callingCode}</span>
+                  </>
+                )}
+                <span className="dropdown-arrow" aria-hidden="true">▼</span>
+              </button>
 
-          <div className="phone-number-wrap">
+              {countryDropdownOpen && (
+                <div className="phone-country-dropdown" role="listbox" aria-label="Select country">
+                  <div className="country-search-wrap">
+                    <input
+                      type="search"
+                      className="country-search-input"
+                      placeholder="Search country"
+                      value={countrySearch}
+                      onChange={(e) => setCountrySearch(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      autoComplete="off"
+                      aria-label="Search country"
+                    />
+                  </div>
+                  <ul className="country-list" role="listbox">
+                    {filteredCountries.length > 0 ? (
+                      filteredCountries.map((option) => (
+                        <li
+                          key={option.iso}
+                          role="option"
+                          aria-selected={option.iso === country}
+                          className={`country-item ${option.iso === country ? 'selected' : ''}`}
+                          onClick={() => handleCountrySelect(option.iso)}
+                        >
+                          <span className="country-flag" aria-hidden="true">🏳️</span>
+                          <span className="country-name">{option.name}</span>
+                          <span className="country-code">+{option.callingCode}</span>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="country-not-found" role="option" aria-disabled="true">
+                        No countries found
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <div className="phone-number-wrap">
             {!isInternationalEntry && callingCode && (
               <span className="phone-calling-code" aria-hidden="true">
                 +{callingCode}
