@@ -3795,6 +3795,163 @@ select:focus-visible {
   font-size: 13px;
 }
 
+/* AUTH METHOD TABS + PHONE OTP */
+
+.auth-method-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 22px 0 4px;
+  padding: 4px;
+  background: var(--nf-bg);
+  border: 1px solid var(--nf-border-light);
+  border-radius: 12px;
+}
+
+.auth-method-tabs button {
+  flex: 1;
+  padding: 10px 8px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--nf-text-muted);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.auth-method-tabs button.active {
+  background: white;
+  color: var(--nf-purple);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .1);
+}
+
+.phone-auth > p {
+  color: var(--nf-text-muted);
+  line-height: 1.5;
+}
+
+.phone-field {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.phone-country-select {
+  flex: 0 0 46%;
+  width: 46%;
+  padding: 12px 8px;
+  border: 1px solid var(--nf-border-input);
+  border-radius: 9px;
+  background: white;
+  color: var(--nf-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+}
+
+.phone-country-select:focus {
+  border-color: var(--nf-purple);
+}
+
+.phone-number-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.phone-number-wrap input {
+  padding-left: 48px;
+}
+
+.phone-calling-code {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--nf-text-muted);
+  font-size: 15px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.auth-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--nf-text-muted);
+}
+
+.auth-otp-input {
+  text-align: center;
+  letter-spacing: 8px;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.auth-otp-status {
+  margin: 10px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--nf-purple);
+}
+
+.auth-error {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.auth-otp-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.auth-otp-actions button {
+  border: 0;
+  background: transparent;
+  color: var(--nf-purple);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 6px 0;
+}
+
+.auth-otp-actions button:disabled {
+  color: var(--nf-text-muted);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 24px 20px;
+  }
+
+  .phone-field {
+    flex-direction: column;
+  }
+
+  .phone-country-select {
+    flex: none;
+    width: 100%;
+  }
+
+  .phone-otp-actions {
+    flex-direction: column;
+  }
+}
+
 @media (max-width: 760px) {
   .site-footer-inner {
     grid-template-columns: 1fr 1fr;

@@ -3,6 +3,8 @@ import { supabase, getSignedStorageUrl, uploadPrivateFile, haversineDistanceKm, 
 import './App.css'
 import './components/DashboardUI.css'
 import { Logo } from './components/Logo.jsx'
+import PhoneAuth from './components/PhoneAuth.jsx'
+import { isPhoneAuthHandoffActive } from './phoneAuthHandoff.js'
 import {
   SectionHeader,
   StatusBadge,
@@ -169,6 +171,37 @@ function dedupeServices(services) {
     seen.add(key)
     return true
   })
+}
+
+// Shared by every sign-in path (email password, phone OTP) so a session always
+// resolves to the same Ewizzy app user shape. Phone-only accounts legitimately
+// have no email, so every field falls back safely instead of assuming one.
+async function loadEwizzyProfile(authUser) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('user_id', authUser.id)
+    .maybeSingle()
+
+  return { profile: data || null, error: error || null }
+}
+
+function buildAppUser(profile, authUser, fallbacks = {}) {
+  const userId = authUser?.id || fallbacks.userId
+
+  return {
+    id: profile.id,
+    user_id: userId,
+    name: profile.full_name || fallbacks.name || '',
+    email: profile.email || authUser?.email || fallbacks.email || '',
+    phone: profile.phone || fallbacks.phone || authUser?.phone || '',
+    role: profile.role || 'customer',
+    avatar_url: profile.avatar_url || '',
+  }
+}
+
+function saveLocalAppUser(appUser) {
+  localStorage.setItem('naijafixUser', JSON.stringify(appUser))
 }
 
 function MapView({ providers, onProviderSelect, savedCustomerLocation }) {
@@ -834,6 +867,40 @@ function Login({ onBack, onSignup, onDashboard, setPage }) {
   const [loading, setLoading] = useState(false)
   const [forgotMode, setForgotMode] = useState(false)
   const [resetSent, setResetSent] = useState(false)
+  const [authMethod, setAuthMethod] = useState('email')
+
+  // Phone login never writes to profiles: the Supabase auth trigger already
+  // created the profile at sign-up, so we only load it and route by its role.
+  const handlePhoneVerified = async (authUser, { phone }) => {
+    const { profile, error: profileError } = await loadEwizzyProfile(authUser)
+
+    if (profileError) {
+      console.error('Profile loading failed:', profileError)
+
+      alert(
+        'Login successful, but your Ewizzy profile could not be loaded: ' +
+          profileError.message
+      )
+
+      return
+    }
+
+    if (!profile) {
+      alert(
+        'Login successful, but no Ewizzy profile was found for this account.'
+      )
+
+      return
+    }
+
+    const appUser = buildAppUser(profile, authUser, { phone })
+
+    saveLocalAppUser(appUser)
+
+    alert('Login successful!')
+
+    onDashboard()
+  }
 
   const handleLogin = async (event) => {
     event.preventDefault()
@@ -870,12 +937,8 @@ function Login({ onBack, onSignup, onDashboard, setPage }) {
         return
       }
 
-      const { data: profile, error: profileError } =
-        await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', authenticatedUser.id)
-          .maybeSingle()
+      const { profile, error: profileError } =
+        await loadEwizzyProfile(authenticatedUser)
 
       if (profileError) {
         console.error(
@@ -901,23 +964,11 @@ function Login({ onBack, onSignup, onDashboard, setPage }) {
         return
       }
 
-      const appUser = {
-        id: profile.id,
-        user_id: authenticatedUser.id,
-        name: profile.full_name || '',
-        email:
-          profile.email ||
-          authenticatedUser.email ||
-          emailTrimmed,
-        phone: profile.phone || '',
-        role: profile.role || 'customer',
-        avatar_url: profile.avatar_url || '',
-      }
+      const appUser = buildAppUser(profile, authenticatedUser, {
+        email: emailTrimmed,
+      })
 
-      localStorage.setItem(
-        'naijafixUser',
-        JSON.stringify(appUser)
-      )
+      saveLocalAppUser(appUser)
 
       alert('Login successful!')
 
@@ -1061,6 +1112,32 @@ function Login({ onBack, onSignup, onDashboard, setPage }) {
           Log in to find trusted local service providers.
         </p>
 
+        <div className="auth-method-tabs" role="tablist" aria-label="Login method">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={authMethod === 'email'}
+            className={authMethod === 'email' ? 'active' : ''}
+            onClick={() => setAuthMethod('email')}
+          >
+            Email
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={authMethod === 'phone'}
+            className={authMethod === 'phone' ? 'active' : ''}
+            onClick={() => setAuthMethod('phone')}
+          >
+            Phone
+          </button>
+        </div>
+
+        {authMethod === 'phone' ? (
+          <PhoneAuth mode="login" onVerified={handlePhoneVerified} />
+        ) : (
+          <>
         <form onSubmit={handleLogin}>
           <label>Email address</label>
 
@@ -1120,6 +1197,8 @@ function Login({ onBack, onSignup, onDashboard, setPage }) {
             Forgot password?
           </button>
         </p>
+          </>
+        )}
 
         <p className="auth-switch">
           Don't have an account?
@@ -1154,12 +1233,22 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
 
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [authMethod, setAuthMethod] = useState('email')
 
   const updateForm = (field, value) => {
     setForm((current) => ({
       ...current,
       [field]: value,
     }))
+  }
+
+  // Shared by both sign-up methods so the provider/rider fields stay mandatory.
+  const validatePhoneSignup = () => {
+    if (!form.name.trim()) {
+      return 'Please enter your full name before requesting a code.'
+    }
+
+    return null
   }
 
   const handleSignup = async (event) => {
@@ -1238,7 +1327,22 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
     setLoading(false)
   }
 
-  const finishSignup = async (userId, name, email, phone, role, category = 'General') => {
+  const finishSignup = async (
+    userId,
+    name,
+    email,
+    phone,
+    role,
+    category = 'General',
+    options = {}
+  ) => {
+    // freshAccount is only set by the phone sign-up path, where Supabase has
+    // just created the auth user. The auth trigger seeds a placeholder profile
+    // ('customer' role, placeholder name) before the OTP is verified, so for a
+    // genuinely new account the values collected on the form must win.
+    // Existing accounts keep everything the profile already had.
+    const freshAccount = options.freshAccount === true
+
     const { data: existingProfile, error: existingProfileError } =
       await supabase
         .from('profiles')
@@ -1260,16 +1364,29 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
       return false
     }
 
+    const resolvedName = freshAccount
+      ? name || existingProfile?.full_name
+      : existingProfile?.full_name || name
+    const resolvedEmail = freshAccount
+      ? email || existingProfile?.email
+      : existingProfile?.email || email
+    const resolvedPhone = freshAccount
+      ? phone || existingProfile?.phone
+      : existingProfile?.phone || phone
+    const resolvedRole = freshAccount
+      ? role || existingProfile?.role
+      : existingProfile?.role || role
+
     const { data: profile, error: profileError } =
       await supabase
         .from('profiles')
         .upsert(
           {
             user_id: userId,
-            full_name: existingProfile?.full_name || name,
-            email: existingProfile?.email || email,
-            phone: existingProfile?.phone || phone,
-            role: existingProfile?.role || role,
+            full_name: resolvedName,
+            email: resolvedEmail ?? null,
+            phone: resolvedPhone ?? null,
+            role: resolvedRole,
             avatar_url: existingProfile?.avatar_url ?? null,
           },
           { onConflict: 'user_id' }
@@ -1300,7 +1417,10 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
               user_id: userId,
               business_name: name,
               category: category || 'General',
-              location: phone || 'Nigeria',
+              // A phone sign-up has no location field, so it falls back to the
+              // same placeholder the email flow uses instead of storing the
+              // phone number as a location.
+              location: (freshAccount ? '' : phone) || 'Nigeria',
               phone,
               description: '',
               verified: false,
@@ -1357,22 +1477,67 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
       }
     }
 
-    const appUser = {
-      id: profile.id,
-      user_id: userId,
-      name: profile.full_name || name,
-      email: profile.email || email,
-      phone: profile.phone || phone,
-      role: profile.role || 'customer',
-      avatar_url: profile.avatar_url || '',
-    }
+    const appUser = buildAppUser(profile, null, {
+      userId,
+      name,
+      email: email || '',
+      phone: phone || '',
+    })
 
-    localStorage.setItem(
-      'naijafixUser',
-      JSON.stringify(appUser)
-    )
+    saveLocalAppUser(appUser)
 
     return true
+  }
+
+  // Phone sign-up. A brand new account runs through the exact same
+  // finishSignup/profile creation path as email sign-up; an account that
+  // already exists is simply loaded, so no duplicate profile is created and
+  // the existing role is never changed.
+  const handlePhoneVerified = async (authUser, { phone, isNewAccount }) => {
+    if (!isNewAccount) {
+      const { profile, error: profileError } = await loadEwizzyProfile(authUser)
+
+      if (profileError) {
+        console.error('Profile loading failed:', profileError)
+
+        alert(
+          'You are signed in, but your Ewizzy profile could not be loaded: ' +
+            profileError.message
+        )
+
+        return
+      }
+
+      if (!profile) {
+        alert(
+          'You are signed in, but no Ewizzy profile was found for this account.'
+        )
+
+        return
+      }
+
+      saveLocalAppUser(buildAppUser(profile, authUser, { phone }))
+
+      onLogin()
+      return
+    }
+
+    const name = form.name.trim()
+
+    const ok = await finishSignup(
+      authUser.id,
+      name,
+      null,
+      phone,
+      form.role,
+      form.category,
+      { freshAccount: true }
+    )
+
+    if (ok) {
+      alert('Welcome to Ewizzy!')
+      onLogin()
+    }
   }
 
   return (
@@ -1390,123 +1555,153 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
           Join Ewizzy and find trusted services around you.
         </p>
 
-        <form onSubmit={handleSignup}>
-          <label>Full name</label>
-
-          <input
-            type="text"
-            placeholder="Your full name"
-            value={form.name}
-            onChange={(event) =>
-              updateForm('name', event.target.value)
-            }
-            autoComplete="name"
-          />
-
-          <label>Email address</label>
-
-          <input
-            type="email"
-            placeholder="you@example.com"
-            value={form.email}
-            onChange={(event) =>
-              updateForm('email', event.target.value)
-            }
-            autoComplete="email"
-          />
-
-          <label>Phone number (optional)</label>
-
-          <input
-            type="tel"
-            placeholder="08012345678"
-            value={form.phone}
-            onChange={(event) =>
-              updateForm('phone', event.target.value)
-            }
-            autoComplete="tel"
-          />
-
-          <label>Account type</label>
-
-          <select
-            value={form.role}
-            onChange={(event) =>
-              updateForm('role', event.target.value)
-            }
+        <div className="auth-method-tabs" role="tablist" aria-label="Sign up method">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={authMethod === 'email'}
+            className={authMethod === 'email' ? 'active' : ''}
+            onClick={() => setAuthMethod('email')}
           >
-            <option value="customer">Customer</option>
-            <option value="provider">Service Provider</option>
-            <option value="rider">Delivery Rider</option>
-          </select>
-
-          {form.role === 'provider' && (
-            <>
-              <label>Service category</label>
-
-              <select
-                value={form.category}
-                onChange={(event) =>
-                  updateForm('category', event.target.value)
-                }
-              >
-                <option value="General">General</option>
-                {serviceCategories.map((categoryGroup) => (
-                  <option key={categoryGroup.id} value={categoryGroup.name}>
-                    {categoryGroup.name}
-                  </option>
-                ))}
-                {allServices.map((service) => (
-                  <option key={service.id} value={service.name}>
-                    {service.name}
-                  </option>
-                ))}
-              </select>
-            </>
-          )}
-
-          <label>Password</label>
-
-          <div className="password-field">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Create a password"
-              value={form.password}
-              onChange={(event) =>
-                updateForm('password', event.target.value)
-              }
-              autoComplete="new-password"
-            />
-            <button
-              type="button"
-              className="password-toggle"
-              onClick={() => setShowPassword(!showPassword)}
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-            >
-              {showPassword ? (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                  <line x1="1" y1="1" x2="23" y2="23"></line>
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-              )}
-            </button>
-          </div>
+            Email
+          </button>
 
           <button
-            className="primary-full"
-            type="submit"
-            disabled={loading}
+            type="button"
+            role="tab"
+            aria-selected={authMethod === 'phone'}
+            className={authMethod === 'phone' ? 'active' : ''}
+            onClick={() => setAuthMethod('phone')}
           >
-            {loading
-              ? 'Creating account...'
-              : 'Create account'}
+            Phone
           </button>
-        </form>
+        </div>
+
+        <label>Full name</label>
+
+        <input
+          type="text"
+          placeholder="Your full name"
+          value={form.name}
+          onChange={(event) =>
+            updateForm('name', event.target.value)
+          }
+          autoComplete="name"
+        />
+
+        <label>Account type</label>
+
+        <select
+          value={form.role}
+          onChange={(event) =>
+            updateForm('role', event.target.value)
+          }
+        >
+          <option value="customer">Customer</option>
+          <option value="provider">Service Provider</option>
+          <option value="rider">Delivery Rider</option>
+        </select>
+
+        {form.role === 'provider' && (
+          <>
+            <label>Service category</label>
+
+            <select
+              value={form.category}
+              onChange={(event) =>
+                updateForm('category', event.target.value)
+              }
+            >
+              <option value="General">General</option>
+              {serviceCategories.map((categoryGroup) => (
+                <option key={categoryGroup.id} value={categoryGroup.name}>
+                  {categoryGroup.name}
+                </option>
+              ))}
+              {allServices.map((service) => (
+                <option key={service.id} value={service.name}>
+                  {service.name}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+
+        {authMethod === 'phone' ? (
+          <PhoneAuth
+            mode="signup"
+            validateBeforeSend={validatePhoneSignup}
+            onVerified={handlePhoneVerified}
+          />
+        ) : (
+          <form onSubmit={handleSignup}>
+            <label>Email address</label>
+
+            <input
+              type="email"
+              placeholder="you@example.com"
+              value={form.email}
+              onChange={(event) =>
+                updateForm('email', event.target.value)
+              }
+              autoComplete="email"
+            />
+
+            <label>Phone number (optional)</label>
+
+            <input
+              type="tel"
+              placeholder="08012345678"
+              value={form.phone}
+              onChange={(event) =>
+                updateForm('phone', event.target.value)
+              }
+              autoComplete="tel"
+            />
+
+            <label>Password</label>
+
+            <div className="password-field">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Create a password"
+                value={form.password}
+                onChange={(event) =>
+                  updateForm('password', event.target.value)
+                }
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                )}
+              </button>
+            </div>
+
+            <button
+              className="primary-full"
+              type="submit"
+              disabled={loading}
+            >
+              {loading
+                ? 'Creating account...'
+                : 'Create account'}
+            </button>
+          </form>
+        )}
 
         <p className="auth-switch">
           Already have an account?
@@ -9632,6 +9827,10 @@ const appUser = {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // A phone OTP flow publishes its own finished profile, so skip the
+        // generic bootstrap for that window rather than racing it.
+        if (isPhoneAuthHandoffActive()) return
+
         loadCurrentUser()
       } else if (event === 'SIGNED_OUT') {
         setCurrentUser(null)

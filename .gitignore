@@ -17,6 +17,10 @@ dist-ssr
 .env.*
 !.env.example
 
+# Supabase Edge Function local secrets
+supabase/functions/*/.env
+supabase/.env
+
 # Local tooling
 .kilo/
 
