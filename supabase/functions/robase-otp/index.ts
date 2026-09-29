@@ -112,6 +112,12 @@ async function callRobaseVerify(otpId: string, code: string): Promise<void> {
 }
 
 async function getOrCreateUserByPhone(supabaseAdmin: any, phone: string, shouldCreateUser: boolean) {
+  // Normalize incoming phone to E.164 format
+  const normalizedPhone = phone.startsWith('+') ? phone : '+' + phone.replace(/^\+/, '')
+
+  // Also create a version without + for comparison with identity_data.phone
+  const normalizedPhoneNoPlus = normalizedPhone.startsWith('+') ? normalizedPhone.slice(1) : normalizedPhone
+
   // Fetch ALL users by paginating through listUsers()
   let allUsers: any[] = []
   let page = 1
@@ -131,8 +137,43 @@ async function getOrCreateUserByPhone(supabaseAdmin: any, phone: string, shouldC
     page++
   }
 
-  const normalizedPhone = phone.startsWith('+') ? phone : '+' + phone.replace(/^\+/, '')
-  const existingUser = allUsers.find((u: any) => u.phone === normalizedPhone)
+  // First pass: match against auth.users.phone
+  let existingUser = allUsers.find((u: any) => u.phone === normalizedPhone)
+
+  // Second pass: if not found, match against auth.identities identity_data.phone
+  if (!existingUser) {
+    for (const user of allUsers) {
+      if (user.identities && Array.isArray(user.identities)) {
+        for (const identity of user.identities) {
+          if (identity.provider === 'phone') {
+            const identityPhone = identity.identity_data?.phone
+            if (identityPhone) {
+              const normalizedIdentityPhone = identityPhone.startsWith('+') ? identityPhone : '+' + identityPhone.replace(/^\+/, '')
+              if (normalizedIdentityPhone === normalizedPhone || normalizedIdentityPhone === normalizedPhoneNoPlus) {
+                existingUser = user
+                break
+              }
+            }
+          }
+        }
+      }
+      if (existingUser) break
+    }
+  }
+
+  // If found via identity but auth.users.phone is inconsistent, repair it
+  if (existingUser && existingUser.phone !== normalizedPhone) {
+    const { data: updated, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      existingUser.id,
+      { phone: normalizedPhone, phone_confirm: true }
+    )
+    if (updateError) {
+      console.error('Failed to repair user phone:', updateError.message)
+      // Don't throw, continue with the user we found
+    } else {
+      existingUser = updated.user
+    }
+  }
 
   if (existingUser) {
     if (!existingUser.phone_confirmed_at && shouldCreateUser) {
