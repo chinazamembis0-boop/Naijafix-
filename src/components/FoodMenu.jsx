@@ -1,91 +1,81 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { fetchRestaurantMenu } from './FoodData.js'
+import {
+  FOOD_CATEGORIES,
+  cartTotals,
+  categoryLabel,
+  formatNaira,
+} from './foodUtils.js'
 import { Logo } from './Logo.jsx'
 
-function formatNaira(amount) {
-  return `₦${Number(amount).toLocaleString()}`
-}
-
-function FoodMenu({ restaurant, onBack, onViewCart, cart = [], onUpdateCart, onDeliveryFeeChange }) {
-  const { name, image, rating, reviewCount, cuisine, deliveryTime, deliveryFee, description, address, id: restaurantId } = restaurant
+function FoodMenu({ restaurant, onBack, onViewCart, cart = [], onUpdateCart, onAddToCart, onSwitchRestaurant }) {
+  const { name, image, rating, reviewCount, cuisine, deliveryTime, deliveryFee, description, address, id: restaurantId, isDemo } =
+    restaurant
   const [menu, setMenu] = useState([])
   const [loading, setLoading] = useState(true)
+  const [activeCategory, setActiveCategory] = useState('all')
+  const [notice, setNotice] = useState('')
 
   useEffect(() => {
+    let cancelled = false
+
     const loadMenu = async () => {
       setLoading(true)
       try {
         const items = await fetchRestaurantMenu(restaurantId)
-        setMenu(items || [])
+        if (!cancelled) setMenu(items || [])
       } catch (error) {
         console.error('Failed to load menu:', error)
+        if (!cancelled) setMenu([])
       }
-      setLoading(false)
+      if (!cancelled) setLoading(false)
     }
+
     loadMenu()
+    return () => {
+      cancelled = true
+    }
   }, [restaurantId])
 
-  const addToCart = (item) => {
-    const existing = cart.find((i) => i.id === item.id)
-    let updated
-    if (existing) {
-      updated = cart.map((i) => (i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i))
+  // Only show categories that actually contain available food items.
+  const availableCategories = useMemo(() => {
+    const present = new Set(menu.map((item) => item.category))
+    return FOOD_CATEGORIES.filter((category) => category.id === 'all' || present.has(category.id))
+  }, [menu])
+
+  const visibleMenu = useMemo(
+    () => (activeCategory === 'all' ? menu : menu.filter((item) => item.category === activeCategory)),
+    [menu, activeCategory]
+  )
+
+  const cartForRestaurant = cart.filter((item) => String(item.restaurantId) === String(restaurantId))
+  const cartItemCount = cartForRestaurant.reduce((sum, item) => sum + item.quantity, 0)
+  const { subtotal, total } = cartTotals(cartForRestaurant, cartItemCount > 0 ? deliveryFee : 0)
+
+  const quantityInCart = (menuItemId) =>
+    cartForRestaurant.find((item) => String(item.menuItemId) === String(menuItemId))?.quantity || 0
+
+  const handleAdd = (item) => {
+    const result = onAddToCart?.(item, restaurant, deliveryFee)
+    if (result?.switched) {
+      setNotice('Your cart was cleared because you started an order from a different restaurant.')
+    } else if (result?.rejected) {
+      setNotice(result.reason || 'This item cannot be added to your cart.')
     } else {
-      updated = [...cart, { ...item, quantity: 1 }]
+      setNotice('')
     }
-    onUpdateCart?.(updated)
-    onDeliveryFeeChange?.(deliveryFee)
   }
 
-  const removeFromCart = (itemId) => {
-    const existing = cart.find((i) => i.id === itemId)
-    let updated
-    if (existing && existing.quantity > 1) {
-      updated = cart.map((i) => (i.id === itemId ? { ...i, quantity: i.quantity - 1 } : i))
-    } else {
-      updated = cart.filter((i) => i.id !== itemId)
+  const handleDecrement = (item) => {
+    const existing = cartForRestaurant.find((i) => String(i.menuItemId) === String(item.menuItemId))
+    if (!existing) return
+    if (existing.quantity <= 1) {
+      onUpdateCart?.(cart.filter((i) => String(i.menuItemId) !== String(item.menuItemId)))
+      return
     }
-    onUpdateCart?.(updated)
-    if (updated.length === 0) {
-      onDeliveryFeeChange?.(0)
-    }
-  }
-
-  const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const total = subtotal + deliveryFee
-
-  const menuCategories = []
-  menu.forEach((item) => {
-    if (!menuCategories.includes(item.category)) {
-      menuCategories.push(item.category)
-    }
-  })
-
-  const getCategoryName = (catId) => {
-    const map = {
-      'nigerian-food': 'Nigerian Food',
-      'jollof-rice': 'Jollof Rice',
-      'fried-rice': 'Fried Rice',
-      swallow: 'Swallow',
-      'soups-stews': 'Soups & Stews',
-      'suya-grills': 'Suya & Grills',
-      chicken: 'Chicken',
-      'fish-seafood': 'Fish & Seafood',
-      shawarma: 'Shawarma',
-      pizza: 'Pizza',
-      burgers: 'Burgers',
-      'fast-food': 'Fast Food',
-      'small-chops': 'Small Chops',
-      pastries: 'Pastries',
-      cakes: 'Cakes',
-      desserts: 'Desserts',
-      drinks: 'Drinks',
-      breakfast: 'Breakfast',
-      'healthy-meals': 'Healthy Meals',
-      main: 'Menu',
-    }
-    return map[catId] || catId
+    onUpdateCart?.(
+      cart.map((i) => (String(i.menuItemId) === String(item.menuItemId) ? { ...i, quantity: i.quantity - 1 } : i))
+    )
   }
 
   return (
@@ -95,10 +85,10 @@ function FoodMenu({ restaurant, onBack, onViewCart, cart = [], onUpdateCart, onD
           ← Back
         </button>
         <Logo size="small" showTagline={false} />
-        {cartItemCount > 0 && (
+        {onViewCart && (
           <button className="nf-cart-icon-btn" onClick={onViewCart} aria-label="View cart">
             🛒
-            <span className="nf-cart-badge">{cartItemCount}</span>
+            {cartItemCount > 0 && <span className="nf-cart-badge">{cartItemCount}</span>}
           </button>
         )}
       </header>
@@ -124,18 +114,46 @@ function FoodMenu({ restaurant, onBack, onViewCart, cart = [], onUpdateCart, onD
           <p className="nf-menu-cuisine">{cuisine}</p>
           {description && <p className="nf-menu-desc">{description}</p>}
           <div className="nf-menu-meta">
-            <span className="nf-menu-rating">⭐ {rating} ({reviewCount} reviews)</span>
+            <span className="nf-menu-rating">
+              ⭐ {Number(rating || 0).toFixed(1)}{' '}
+              <span className="nf-menu-reviews">
+                ({Number(reviewCount) > 0 ? `${reviewCount} reviews` : 'No reviews yet'})
+              </span>
+            </span>
             <span className="nf-menu-delivery-time">🕐 {deliveryTime}</span>
             <span className="nf-menu-delivery-fee">{formatNaira(deliveryFee)} delivery</span>
           </div>
           {address && <p className="nf-menu-address">📍 {address}</p>}
+          {isDemo && (
+            <p className="nf-demo-note">
+              Demo listing — this restaurant has no database record, so orders cannot be saved.
+            </p>
+          )}
         </div>
 
         {cartItemCount > 0 && (
           <div className="nf-menu-cart-summary" onClick={onViewCart}>
-            <span>{cartItemCount} item{cartItemCount !== 1 ? 's' : ''} in cart</span>
+            <span>
+              {cartItemCount} item{cartItemCount !== 1 ? 's' : ''} in cart
+            </span>
             <span className="nf-menu-cart-total">{formatNaira(total)}</span>
             <span className="nf-menu-cart-view">View cart →</span>
+          </div>
+        )}
+
+        {notice && <p className="nf-menu-notice">{notice}</p>}
+
+        {!loading && menu.length > 0 && (
+          <div className="nf-category-scroll nf-menu-category-scroll">
+            {availableCategories.map((category) => (
+              <button
+                key={category.id}
+                className={`nf-category-chip ${activeCategory === category.id ? 'nf-category-chip--active' : ''}`}
+                onClick={() => setActiveCategory(category.id)}
+              >
+                {category.icon} {category.name}
+              </button>
+            ))}
           </div>
         )}
 
@@ -149,66 +167,102 @@ function FoodMenu({ restaurant, onBack, onViewCart, cart = [], onUpdateCart, onD
           <div className="empty-box">
             <span>🍽️</span>
             <h4>No menu items available</h4>
-            <p>This restaurant has not added menu items yet.</p>
+            <p>This restaurant has not added any available food items yet.</p>
+          </div>
+        ) : visibleMenu.length === 0 ? (
+          <div className="empty-box">
+            <span>🔍</span>
+            <h4>No food in this category</h4>
+            <p>Try another category to see more of this menu.</p>
           </div>
         ) : (
-          menuCategories.map((catId) => (
-            <section key={catId} className="nf-menu-section">
-              <h3 className="nf-menu-section-title">{getCategoryName(catId)}</h3>
-              <div className="nf-menu-items">
-                {menu
-                  .filter((item) => item.category === catId)
-                  .map((item) => {
-                    const cartItem = cart.find((i) => i.id === item.id)
-                    const quantity = cartItem?.quantity || 0
-                    return (
-                      <div key={item.id} className="nf-menu-item">
-                        <div className="nf-menu-item-info">
-                          <div className="nf-menu-item-header">
-                            <h4 className="nf-menu-item-name">{item.name}</h4>
-                            {item.popular && <span className="nf-menu-item-popular">Popular</span>}
-                          </div>
-                          <p className="nf-menu-item-desc">{item.description}</p>
-                          <p className="nf-menu-item-price">{formatNaira(item.price)}</p>
-                        </div>
-                        <div className="nf-menu-item-image-wrapper">
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="nf-menu-item-image"
-                            loading="lazy"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none'
-                              e.currentTarget.nextSibling.style.display = 'flex'
-                            }}
-                          />
-                          <div className="nf-menu-item-image-fallback" style={{ display: 'none' }}>
-                            🍽️
-                          </div>
-                          <div className="nf-menu-item-actions">
-                            {quantity === 0 ? (
-                              <button className="nf-menu-add-btn" onClick={() => addToCart(item)}>
-                                +
-                              </button>
-                            ) : (
-                              <div className="nf-menu-quantity-controls">
-                                <button className="nf-menu-qty-btn" onClick={() => removeFromCart(item.id)}>
-                                  −
-                                </button>
-                                <span className="nf-menu-qty-value">{quantity}</span>
-                                <button className="nf-menu-qty-btn" onClick={() => addToCart(item)}>
-                                  +
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
+          visibleMenu.map((item) => {
+            const quantity = quantityInCart(item.menuItemId)
+            return (
+              <section key={`${item.menuItemId ?? item.id}-${item.name}`} className="nf-menu-section nf-menu-section--item">
+                <div className="nf-menu-items">
+                  <div className="nf-menu-item">
+                    <div className="nf-menu-item-image-wrapper">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="nf-menu-item-image"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none'
+                          e.currentTarget.nextSibling.style.display = 'flex'
+                        }}
+                      />
+                      <div className="nf-menu-item-image-fallback" style={{ display: 'none' }}>
+                        🍽️
                       </div>
-                    )
-                  })}
-              </div>
-            </section>
-          ))
+                    </div>
+
+                    <div className="nf-menu-item-info">
+                      <div className="nf-menu-item-header">
+                        <h4 className="nf-menu-item-name">{item.name}</h4>
+                        {item.popular && <span className="nf-menu-item-popular">Popular</span>}
+                      </div>
+                      <p className="nf-menu-item-category">{categoryLabel(item.category)}</p>
+                      {item.description && <p className="nf-menu-item-desc">{item.description}</p>}
+                      <p className="nf-menu-item-price">{formatNaira(item.price)}</p>
+
+                      <div className="nf-menu-item-footer">
+                        {quantity > 0 ? (
+                          <div className="nf-menu-quantity-controls">
+                            <button
+                              className="nf-menu-qty-btn"
+                              onClick={() => handleDecrement(item)}
+                              aria-label={`Remove one ${item.name}`}
+                            >
+                              −
+                            </button>
+                            <span className="nf-menu-qty-value">{quantity}</span>
+                            <button
+                              className="nf-menu-qty-btn"
+                              onClick={() => handleAdd(item)}
+                              aria-label={`Add one more ${item.name}`}
+                            >
+                              +
+                            </button>
+                          </div>
+                        ) : null}
+
+                        <button className="nf-menu-add-to-cart" onClick={() => handleAdd(item)}>
+                          {quantity > 0 ? `Add to Cart (${quantity})` : 'Add to Cart'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )
+          })
+        )}
+
+        {cartItemCount > 0 && (
+          <div className="nf-menu-sticky-bar">
+            <div className="nf-menu-sticky-info">
+              <span>
+                {cartItemCount} item{cartItemCount !== 1 ? 's' : ''} · {formatNaira(subtotal)}
+              </span>
+              <span className="nf-menu-sticky-total">
+                Total {formatNaira(total)} incl. {formatNaira(deliveryFee)} delivery
+              </span>
+            </div>
+            <button className="nf-menu-sticky-cart" onClick={onViewCart}>
+              🛒 Cart ({cartItemCount})
+            </button>
+          </div>
+        )}
+
+        {onSwitchRestaurant && (
+          <p className="nf-menu-notice">
+            Ordering from a different restaurant?{' '}
+            <button className="nf-link-button" onClick={onSwitchRestaurant}>
+              Browse other restaurants
+            </button>
+          </p>
         )}
       </main>
     </div>

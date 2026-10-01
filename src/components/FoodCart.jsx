@@ -1,63 +1,31 @@
 import { useState } from 'react'
-import { createFoodOrder } from './FoodData.js'
+import { formatNaira } from './foodUtils.js'
 import { Logo } from './Logo.jsx'
 
-function formatNaira(amount) {
-  return `₦${Number(amount).toLocaleString()}`
-}
+function FoodCart({ cart = [], restaurant, deliveryFee = 0, onUpdateCart, onBack, onProceed, user, onSignIn }) {
+  const [signInPrompt, setSignInPrompt] = useState(false)
 
-function FoodCart({ cart = [], deliveryFee = 0, onUpdateCart, onBack, onPlaceOrder, user, restaurantId }) {
-  const [deliveryAddress, setDeliveryAddress] = useState('')
-  const [placing, setPlacing] = useState(false)
+  const subtotal = cart.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0)
+  const fee = Number(deliveryFee) || 0
+  const total = subtotal + fee
 
   const updateQuantity = (itemId, delta) => {
     const updated = cart
-      .map((item) => {
-        if (item.id === itemId) {
-          return { ...item, quantity: item.quantity + delta }
-        }
-        return item
-      })
+      .map((item) => (String(item.menuItemId) === String(itemId) ? { ...item, quantity: item.quantity + delta } : item))
       .filter((item) => item.quantity > 0)
     onUpdateCart?.(updated)
   }
 
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const total = subtotal + deliveryFee
+  const removeItem = (itemId) => {
+    onUpdateCart?.(cart.filter((item) => String(item.menuItemId) !== String(itemId)))
+  }
 
-  const handlePlaceOrder = async () => {
-    if (!deliveryAddress.trim()) {
-      alert('Please enter your delivery address.')
-      return
-    }
+  const handleProceed = () => {
     if (!user?.user_id) {
-      alert('Please log in to place an order.')
+      setSignInPrompt(true)
       return
     }
-    if (!restaurantId) {
-      alert('Restaurant information is missing.')
-      return
-    }
-
-    setPlacing(true)
-    try {
-      const result = await createFoodOrder({
-        customerUserId: user.user_id,
-        restaurantId,
-        items: cart,
-        deliveryAddress: deliveryAddress.trim(),
-        deliveryFee,
-      })
-
-      if (result.success) {
-        onPlaceOrder?.({ items: cart, deliveryAddress, subtotal, deliveryFee, total, order: result.order })
-      } else {
-        alert('Could not place order: ' + (result.error || 'Unknown error'))
-      }
-    } catch (error) {
-      alert('Something went wrong: ' + (error?.message || 'Unknown error'))
-    }
-    setPlacing(false)
+    onProceed?.()
   }
 
   if (cart.length === 0) {
@@ -73,7 +41,10 @@ function FoodCart({ cart = [], deliveryFee = 0, onUpdateCart, onBack, onPlaceOrd
           <div className="empty-box large-empty">
             <span>🛒</span>
             <h4>Your cart is empty</h4>
-            <p>Add items from a restaurant to get started.</p>
+            <p>Open a restaurant menu and add food to get started.</p>
+            <button className="primary-full" onClick={onBack}>
+              Browse Restaurants
+            </button>
           </div>
         </main>
       </div>
@@ -91,39 +62,56 @@ function FoodCart({ cart = [], deliveryFee = 0, onUpdateCart, onBack, onPlaceOrd
 
       <main className="inner-content">
         <span className="section-label">YOUR ORDER</span>
-        <h2>Cart</h2>
+        <h2>Your Cart</h2>
+
+        {restaurant && (
+          <div className="nf-cart-restaurant">
+            <span className="nf-cart-restaurant-label">Restaurant</span>
+            <strong className="nf-cart-restaurant-name">{restaurant.name}</strong>
+            {restaurant.cuisine && <span className="nf-cart-restaurant-meta">{restaurant.cuisine}</span>}
+            {restaurant.isDemo && (
+              <p className="nf-demo-note">
+                This is a demo restaurant with no database record, so an order cannot be saved.
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="nf-cart-items">
           {cart.map((item) => (
-            <div key={item.id} className="nf-cart-item">
+            <div key={item.menuItemId ?? item.id} className="nf-cart-item">
               <div className="nf-cart-item-info">
                 <h4 className="nf-cart-item-name">{item.name}</h4>
                 <p className="nf-cart-item-price">{formatNaira(item.price)} each</p>
+                <p className="nf-cart-item-subtotal-label">
+                  Subtotal: {formatNaira(item.price * item.quantity)}
+                </p>
               </div>
+
               <div className="nf-cart-item-controls">
                 <div className="nf-menu-quantity-controls">
-                  <button className="nf-menu-qty-btn" onClick={() => updateQuantity(item.id, -1)}>
+                  <button
+                    className="nf-menu-qty-btn"
+                    onClick={() => updateQuantity(item.menuItemId, -1)}
+                    aria-label={`Decrease ${item.name}`}
+                  >
                     −
                   </button>
                   <span className="nf-menu-qty-value">{item.quantity}</span>
-                  <button className="nf-menu-qty-btn" onClick={() => updateQuantity(item.id, 1)}>
+                  <button
+                    className="nf-menu-qty-btn"
+                    onClick={() => updateQuantity(item.menuItemId, 1)}
+                    aria-label={`Increase ${item.name}`}
+                  >
                     +
                   </button>
                 </div>
-                <p className="nf-cart-item-subtotal">{formatNaira(item.price * item.quantity)}</p>
+                <button className="nf-cart-remove" onClick={() => removeItem(item.menuItemId)}>
+                  Remove
+                </button>
               </div>
             </div>
           ))}
-        </div>
-
-        <div className="nf-cart-address">
-          <h3>Delivery Address</h3>
-          <input
-            type="text"
-            placeholder="Enter your delivery address (e.g. Ikeja, Lagos)"
-            value={deliveryAddress}
-            onChange={(e) => setDeliveryAddress(e.target.value)}
-          />
         </div>
 
         <div className="nf-cart-summary">
@@ -133,7 +121,7 @@ function FoodCart({ cart = [], deliveryFee = 0, onUpdateCart, onBack, onPlaceOrd
           </div>
           <div className="nf-cart-summary-row">
             <span>Delivery fee</span>
-            <span>{formatNaira(deliveryFee)}</span>
+            <span>{formatNaira(fee)}</span>
           </div>
           <div className="nf-cart-summary-row nf-cart-summary-total">
             <span>Total</span>
@@ -141,12 +129,29 @@ function FoodCart({ cart = [], deliveryFee = 0, onUpdateCart, onBack, onPlaceOrd
           </div>
         </div>
 
-        <button className="primary-full" onClick={handlePlaceOrder} disabled={placing}>
-          {placing ? 'Placing order...' : `Place order — ${formatNaira(total)}`}
+        <button className="primary-full" onClick={handleProceed}>
+          Proceed to Order — {formatNaira(total)}
         </button>
 
+        {signInPrompt && (
+          <div className="nf-inline-notice">
+            <p>Please sign in to place your food order so it can be saved to your account.</p>
+            <div className="nf-inline-notice-actions">
+              <button className="dash-btn dash-btn-outline" onClick={() => setSignInPrompt(false)}>
+                Keep Shopping
+              </button>
+              {onSignIn && (
+                <button className="dash-btn dash-btn-primary" onClick={onSignIn}>
+                  Sign In
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <p className="nf-cart-note">
-          Payment integration coming soon. Order will be saved to your account.
+          Online payment is not available for food orders on Ewizzy yet. You will confirm your order and
+          pay the restaurant on delivery.
         </p>
       </main>
     </div>

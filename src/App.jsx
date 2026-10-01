@@ -32,6 +32,9 @@ import { allServices, serviceCategories } from './components/ServicesData.js'
 
 const FoodMarketplace = lazy(() => import('./components/FoodMarketplace.jsx'))
 const FoodCart = lazy(() => import('./components/FoodCart.jsx'))
+const FoodCheckout = lazy(() => import('./components/FoodCheckout.jsx'))
+const FoodOrderStatus = lazy(() => import('./components/FoodOrderStatus.jsx'))
+const FoodOrderHistory = lazy(() => import('./components/FoodOrderHistory.jsx'))
 const ViewAllServices = lazy(() => import('./components/ViewAllServices.jsx'))
 const RestaurantDashboard = lazy(() => import('./components/RestaurantDashboard.jsx'))
 const RiderDashboard = lazy(() => import('./components/RiderDashboard.jsx'))
@@ -204,14 +207,281 @@ function saveLocalAppUser(appUser) {
   localStorage.setItem('naijafixUser', JSON.stringify(appUser))
 }
 
+// Single source of truth for reading browser coordinates. Every location UI
+// (customer profile, provider dashboard, provider onboarding) goes through
+// this helper so the browser prompt, the timeout and the failure messages stay
+// identical everywhere. It never throws: callers always get a result object
+// they can render, and a failure is never treated as "no coordinates set".
+function requestBrowserCoordinates() {
+  return new Promise((resolve) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      resolve({
+        ok: false,
+        latitude: null,
+        longitude: null,
+        message: 'Geolocation is not supported by your browser.',
+      })
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const latitude = Number(position.coords.latitude)
+        const longitude = Number(position.coords.longitude)
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+          resolve({
+            ok: false,
+            latitude: null,
+            longitude: null,
+            message: 'Your device returned an unusable location. Please try again.',
+          })
+          return
+        }
+        resolve({ ok: true, latitude, longitude, message: '' })
+      },
+      (error) => {
+        let message = 'Could not get your current location. Please allow location permission and try again.'
+        if (error?.code === 1) {
+          message = 'Location permission was denied. You can continue without it and add your map location later from your dashboard.'
+        } else if (error?.code === 2) {
+          message = 'Your location is currently unavailable. Please try again in a moment.'
+        } else if (error?.code === 3) {
+          message = 'Getting your location took too long. Please try again.'
+        }
+        resolve({ ok: false, latitude: null, longitude: null, message })
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    )
+  })
+}
+
+// True only when a provider row actually carries a usable map position. Used
+// to decide whether saved coordinates should ever be shown or written.
+function hasSavedCoordinates(record) {
+  return (
+    record != null &&
+    Number.isFinite(Number(record.latitude)) &&
+    Number.isFinite(Number(record.longitude))
+  )
+}
+
+// Nigeria-first list used by the manual location fallback. A provider or
+// customer who declines (or cannot use) browser geolocation can still record a
+// readable location without any external service. The list starts with Nigeria
+// but the select still starts empty, so a location is never recorded that the
+// user did not actually pick.
+const LOCATION_COUNTRIES = ['Nigeria']
+
+const NIGERIAN_STATES = [
+  'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue',
+  'Borno', 'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'Gombe',
+  'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara',
+  'Lagos', 'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau',
+  'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara', 'FCT - Abuja',
+]
+
+// Reads a readable place out of a Nominatim `address` object. Different
+// countries label the same concept differently, so each field falls back
+// through the accepted synonyms. Nothing is ever invented: if a level is
+// genuinely absent from the response, the result is an empty string.
+function readPlaceFromAddress(address) {
+  const pick = (...keys) => {
+    for (const key of keys) {
+      const value = address?.[key]
+      if (typeof value === 'string' && value.trim()) return value.trim()
+    }
+    return ''
+  }
+
+  return {
+    country: pick('country'),
+    state: pick('state', 'region', 'state_district', 'province'),
+    city: pick('city', 'town', 'village', 'municipality', 'hamlet', 'suburb', 'county'),
+  }
+}
+
+// Reverse geocodes coordinates into country / state / city using the public
+// Nominatim reverse endpoint.
+//
+// This is an EXTERNAL dependency and is treated as one:
+//   - It never throws and never rejects.
+//   - It resolves to null on any failure (offline, rate limit, timeout,
+//     unexpected payload), so a caller can still save the coordinates.
+//   - It never fabricates a value: no response means no place names.
+// Coordinates are captured and persisted first; naming them is best effort.
+//
+// REQUEST PROTECTION
+//   Nominatim's public endpoint allows at most 1 request/second. A module-level
+//   guard is used rather than React state because two clicks dispatched in the
+//   same tick both run before the disabled button has re-rendered — state cannot
+//   prevent that, a synchronous flag can. While a request is in flight any
+//   further call resolves to null immediately instead of adding another request.
+//   A null result is exactly how a geocoding failure is already handled, so the
+//   busy path is indistinguishable from "we could not name it": the user's
+//   coordinates are still captured and saved, and nothing is ever erased.
+let reverseGeocodeInFlight = false
+
+// Successful lookups only, kept in memory for the lifetime of the tab so that
+// re-capturing a nearby location does not hit the public endpoint again.
+// Keys are rounded to 4 decimal places (~11 m), so two captures a few metres
+// apart reuse the same entry.
+const REVERSE_GEOCODE_CACHE_LIMIT = 50
+const reverseGeocodeCache = new Map()
+
+function reverseGeocodeCacheKey(latitude, longitude) {
+  return `${Number(latitude).toFixed(4)},${Number(longitude).toFixed(4)}`
+}
+
+function readCachedPlace(latitude, longitude) {
+  const cached = reverseGeocodeCache.get(reverseGeocodeCacheKey(latitude, longitude))
+  // Hand back a copy so a caller can never mutate the shared entry.
+  return cached ? { ...cached } : null
+}
+
+function writeCachedPlace(latitude, longitude, place) {
+  const key = reverseGeocodeCacheKey(latitude, longitude)
+  reverseGeocodeCache.delete(key)
+  reverseGeocodeCache.set(key, { ...place })
+  // Simple bound: Map preserves insertion order, so the first key is the oldest.
+  while (reverseGeocodeCache.size > REVERSE_GEOCODE_CACHE_LIMIT) {
+    reverseGeocodeCache.delete(reverseGeocodeCache.keys().next().value)
+  }
+}
+
+function reverseGeocodeCoordinates(latitude, longitude) {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    return Promise.resolve(null)
+  }
+
+  const cachedPlace = readCachedPlace(latitude, longitude)
+  if (cachedPlace) {
+    return Promise.resolve(cachedPlace)
+  }
+
+  if (reverseGeocodeInFlight) {
+    return Promise.resolve(null)
+  }
+  reverseGeocodeInFlight = true
+
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null
+  const timeoutId = setTimeout(() => controller?.abort(), 8000)
+
+  // Only the Accept header is set. User-Agent is a forbidden header name in
+  // fetch and cannot be set from a browser; Nominatim identification therefore
+  // continues to come from the browser's own Referer, which is left untouched.
+  const params = new URLSearchParams({
+    format: 'geocodejson',
+    lat: String(latitude),
+    lon: String(longitude),
+    zoom: '10',
+    addressdetails: '1',
+    accept_language: 'en',
+  })
+
+  return fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`, {
+    signal: controller?.signal,
+    headers: { Accept: 'application/json' },
+  })
+    .then((response) => (response.ok ? response.json() : null))
+    .then((payload) => {
+      if (!payload || payload.error) return null
+      const place = readPlaceFromAddress(payload.address)
+      if (!place.country && !place.state && !place.city) return null
+      writeCachedPlace(latitude, longitude, place)
+      return place
+    })
+    .catch(() => null)
+    .finally(() => {
+      clearTimeout(timeoutId)
+      reverseGeocodeInFlight = false
+    })
+}
+
+// Builds the free-text `location` value from structured place names. Returns
+// an empty string when nothing is known so the caller can decide whether to
+// write it, rather than replacing an existing value with a blank.
+function buildLocationLabel(place, fallbackText) {
+  const parts = []
+  if (place?.city) parts.push(place.city)
+  if (place?.state && place.state !== place.city) parts.push(place.state)
+  if (place?.country && place.country !== place.state) parts.push(place.country)
+  if (parts.length) return parts.join(', ')
+  return typeof fallbackText === 'string' ? fallbackText.trim() : ''
+}
+
+// Display helper: renders the structured country / state / city of a profile
+// or provider row as one readable line. Returns '' when none of the three are
+// stored, so callers can hide the row instead of showing a blank value.
+function formatReadablePlace(record) {
+  if (!record) return ''
+  const parts = []
+  const city = typeof record.city === 'string' ? record.city.trim() : ''
+  const state = typeof record.state === 'string' ? record.state.trim() : ''
+  const country = typeof record.country === 'string' ? record.country.trim() : ''
+  if (city) parts.push(city)
+  if (state && state !== city) parts.push(state)
+  if (country && country !== state && country !== city) parts.push(country)
+  return parts.join(', ')
+}
+
+// OSM requires that data derived from OpenStreetMap is attributed wherever it
+// is shown to a user. The Leaflet map already carries its own attribution, but
+// the country / state / city values rendered outside the map come from the same
+// source and need their own visible credit. Always rendered inline and visible
+// — never hidden behind a tooltip or an extra click.
+function OsmAttribution() {
+  return (
+    <p style={{ fontSize: 11, color: 'var(--nf-text-muted)', margin: '6px 0 0' }}>
+      Location names ©{' '}
+      <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener noreferrer">
+        OpenStreetMap
+      </a>{' '}
+      contributors
+    </p>
+  )
+}
+
+// Combined browser-location flow: coordinates first, then a best-effort
+// reverse geocode. `place` is null when naming failed, which is not an error —
+// the coordinates remain fully usable and saveable. This is the single entry
+// point every location UI uses, so there is exactly one geolocation
+// implementation and one geocoding implementation in the app.
+function requestBrowserLocation() {
+  return requestBrowserCoordinates().then(async (result) => {
+    if (!result.ok) {
+      return { ...result, place: null }
+    }
+    const place = await reverseGeocodeCoordinates(result.latitude, result.longitude)
+    return {
+      ok: true,
+      latitude: result.latitude,
+      longitude: result.longitude,
+      place,
+      message: place ? '' : 'Location captured. We could not work out the area name, so only your map pin was saved.',
+    }
+  })
+}
+
 function MapView({ providers, onProviderSelect, savedCustomerLocation }) {
   const [userLocation, setUserLocation] = useState(null)
   const [locationError, setLocationError] = useState('')
+  const [locating, setLocating] = useState(false)
   const [searchArea, setSearchArea] = useState(false)
+  const [searchingArea, setSearchingArea] = useState(false)
+  const [searchBounds, setSearchBounds] = useState(null)
   const [MapContainer, setMapContainer] = useState(null)
   const [TileLayer, setTileLayer] = useState(null)
   const [Marker, setMarker] = useState(null)
   const [Popup, setPopup] = useState(null)
+
+  // Leaflet map instance. MapContainer only honours its `center`/`zoom` props
+  // on mount, so every later move has to go through the instance itself.
+  const mapRef = useRef(null)
+  // Synchronous duplicate-request guards. React state is not enough on its own:
+  // two taps dispatched in the same tick both run before the button re-renders
+  // as disabled.
+  const locatingRef = useRef(false)
+  const searchingRef = useRef(false)
 
   useEffect(() => {
     import('react-leaflet').then(({ MapContainer: MC, TileLayer: TL, Marker: MK, Popup: PP }) => {
@@ -222,14 +492,23 @@ function MapView({ providers, onProviderSelect, savedCustomerLocation }) {
     })
     import('leaflet').then((leaflet) => {
       const L = leaflet.default
-      if (!L.Icon.Default.prototype._getIconUrl) {
-        L.Icon.Default.mergeOptions({
-          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-        })
-      }
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+      })
     })
+  }, [])
+
+  // Recentres the map on the device position. Zoom 13 is close enough for a
+  // customer to recognise their own area without dropping the surrounding
+  // providers out of view.
+  const USER_LOCATION_ZOOM = 13
+
+  const focusMapOn = useCallback((lat, lng) => {
+    const map = mapRef.current
+    if (!map || typeof map.setView !== 'function') return
+    map.setView([lat, lng], USER_LOCATION_ZOOM)
   }, [])
 
   if (!MapContainer) {
@@ -246,28 +525,70 @@ function MapView({ providers, onProviderSelect, savedCustomerLocation }) {
     ? { lat: savedCustomerLocation.latitude, lng: savedCustomerLocation.longitude }
     : userLocation
 
+  // Navigates the map to the customer's device position. This is purely a
+  // map-navigation feature: it reads the device position through the shared
+  // geolocation helper and never writes anything to the customer profile.
   const requestLocation = () => {
-    if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by your browser.')
-      return
-    }
+    if (locatingRef.current) return
+    locatingRef.current = true
+    setLocating(true)
     setLocationError('')
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setUserLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        })
-      },
-      () => {
-        setLocationError('Location permission denied. You can still browse providers.')
+
+    requestBrowserCoordinates().then((result) => {
+      locatingRef.current = false
+      setLocating(false)
+
+      if (!result.ok) {
+        setLocationError(result.message)
+        return
       }
-    )
+
+      setUserLocation({ lat: result.latitude, lng: result.longitude })
+      focusMapOn(result.latitude, result.longitude)
+    })
   }
 
+  // Searches the providers inside the map area that is visible right now. This
+  // deliberately does NOT move the map and is not a reverse-geocode lookup: it
+  // reads the current viewport and re-filters the already-loaded provider list,
+  // which the parent page has already narrowed by category, verified-only,
+  // emergency, rating and sorting. Those filters therefore stay applied.
   const searchThisArea = () => {
-    setSearchArea(true)
-    setTimeout(() => setSearchArea(false), 2000)
+    if (searchingRef.current) return
+
+    const map = mapRef.current
+    if (!map || typeof map.getBounds !== 'function') {
+      setLocationError('The map is still loading. Please try again in a moment.')
+      return
+    }
+
+    let nextBounds
+    try {
+      const bounds = map.getBounds()
+      nextBounds = {
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        west: bounds.getWest(),
+      }
+    } catch {
+      setLocationError('Could not read the visible map area. Please try again.')
+      return
+    }
+
+    searchingRef.current = true
+    setSearchingArea(true)
+    setLocationError('')
+
+    // Brief settle window so the search reads the viewport the customer is
+    // looking at (mid-animation pans are ignored) and so rapid taps collapse
+    // into a single search instead of stacking up.
+    setTimeout(() => {
+      setSearchBounds(nextBounds)
+      setSearchArea(true)
+      setSearchingArea(false)
+      searchingRef.current = false
+    }, 250)
   }
 
   const mappableProviders = providers.filter(
@@ -308,11 +629,18 @@ function MapView({ providers, onProviderSelect, savedCustomerLocation }) {
   // coordinates and no user location are available.
   const NIGERIA_FALLBACK = { lat: 9.082, lng: 8.675 }
 
-  const displayedProviders = searchArea
+  // When an area search has run, keep only the providers whose coordinates fall
+  // inside the bounds that were visible at the moment the customer tapped.
+  const displayedProviders = searchArea && searchBounds
     ? mappableProviders.filter((p) => {
-        const center = effectiveUserLocation || providerCenter || NIGERIA_FALLBACK
-        const distance = getDistanceFromLatLonInKm(center.lat, center.lng, p.latitude, p.longitude)
-        return distance <= 50
+        const minLat = Math.min(searchBounds.north, searchBounds.south)
+        const maxLat = Math.max(searchBounds.north, searchBounds.south)
+        const minLng = Math.min(searchBounds.west, searchBounds.east)
+        const maxLng = Math.max(searchBounds.west, searchBounds.east)
+        return (
+          p.latitude >= minLat && p.latitude <= maxLat &&
+          p.longitude >= minLng && p.longitude <= maxLng
+        )
       })
     : mappableProviders
 
@@ -324,11 +652,11 @@ function MapView({ providers, onProviderSelect, savedCustomerLocation }) {
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-        <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" onClick={requestLocation}>
-          📍 Use my location
+        <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" onClick={requestLocation} disabled={locating}>
+          {locating ? 'Locating...' : '📍 Use my location'}
         </button>
-        <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" onClick={searchThisArea}>
-          🔍 Search this area
+        <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" onClick={searchThisArea} disabled={searchingArea}>
+          {searchingArea ? 'Searching...' : '🔍 Search this area'}
         </button>
         {locationError && (
           <span style={{ fontSize: 12, color: 'var(--nf-text-muted)', alignSelf: 'center' }}>
@@ -337,10 +665,10 @@ function MapView({ providers, onProviderSelect, savedCustomerLocation }) {
         )}
       </div>
       <div style={{ height: 360, borderRadius: 12, overflow: 'hidden', border: '1px solid #e2e8e4' }}>
-        <MapContainer center={[center.lat, center.lng]} zoom={mappableProviders.length > 0 ? 12 : 6} style={{ height: '100%', width: '100%' }}>
+        <MapContainer ref={mapRef} center={[center.lat, center.lng]} zoom={mappableProviders.length > 0 ? 12 : 6} style={{ height: '100%', width: '100%' }}>
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           {userLocation && (
             <Marker position={[userLocation.lat, userLocation.lng]}>
@@ -383,6 +711,11 @@ function MapView({ providers, onProviderSelect, savedCustomerLocation }) {
       {mappableProviders.length === 0 && (
         <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', marginTop: 6 }}>
           No providers have map coordinates yet. Providers can add locations in their dashboard.
+        </p>
+      )}
+      {searchArea && searchBounds && displayedProviders.length === 0 && (
+        <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', marginTop: 6 }}>
+          No providers in the area you are viewing. Zoom out or move the map and search again.
         </p>
       )}
     </div>
@@ -1746,6 +2079,35 @@ function Dashboard({
   const [favoriteProviders, setFavoriteProviders] = useState([])
   const [customerQuotes, setCustomerQuotes] = useState([])
   const [actingOnQuoteId, setActingOnQuoteId] = useState(null)
+  const [savedPlace, setSavedPlace] = useState(null)
+
+  // Loads the customer's own saved location so the dashboard can show it in
+  // the same human-readable form used on the profile page.
+  useEffect(() => {
+    let cancelled = false
+
+    const run = async () => {
+      if (!user?.user_id) {
+        setSavedPlace(null)
+        return
+      }
+
+      const { data } = await supabase
+        .from('profiles')
+        .select('location, city, state, country')
+        .eq('user_id', user.user_id)
+        .maybeSingle()
+
+      if (cancelled) return
+      setSavedPlace(data || null)
+    }
+
+    run()
+
+    return () => {
+      cancelled = true
+    }
+  }, [user?.user_id])
 
   const confirmCompletion = async (booking) => {
     if (!booking?.id) return
@@ -2114,6 +2476,12 @@ function Dashboard({
               <h3>{user?.name || 'Customer'}</h3>
               <p>{user?.email || ''}</p>
               {user?.phone && <p>📞 {user.phone}</p>}
+              {formatReadablePlace(savedPlace) && <p>🗺️ {formatReadablePlace(savedPlace)}</p>}
+              {formatReadablePlace(savedPlace) && <OsmAttribution />}
+              {!formatReadablePlace(savedPlace) && savedPlace?.location && <p>🗺️ {savedPlace.location}</p>}
+              {!savedPlace?.location && !formatReadablePlace(savedPlace) && (
+                <p style={{ color: 'var(--nf-text-muted)' }}>📍 No location saved yet</p>
+              )}
               <p style={{ textTransform: 'capitalize' }}>{user?.role || 'customer'} account</p>
               <StatusBadge status={customerVerification?.status || 'unverified'} />
             </div>
@@ -4596,6 +4964,10 @@ function Profile({ user, onBack, onLogout }) {
   const [editLocation, setEditLocation] = useState('')
   const [editLatitude, setEditLatitude] = useState(null)
   const [editLongitude, setEditLongitude] = useState(null)
+  const [editCountry, setEditCountry] = useState('')
+  const [editState, setEditState] = useState('')
+  const [editCity, setEditCity] = useState('')
+  const [locating, setLocating] = useState(false)
   const [saving, setSaving] = useState(false)
   const [locationNotice, setLocationNotice] = useState('')
   const [customerVerification, setCustomerVerification] = useState(null)
@@ -4613,27 +4985,34 @@ function Profile({ user, onBack, onLogout }) {
     setEditLocation(profile?.location || '')
     setEditLatitude(profile?.latitude || null)
     setEditLongitude(profile?.longitude || null)
+    setEditCountry(profile?.country || '')
+    setEditState(profile?.state || '')
+    setEditCity(profile?.city || '')
     setLocationNotice('')
     setEditing(true)
   }
 
   const useMyCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setLocationNotice('Geolocation is not supported by your browser.')
-      return
-    }
     setLocationNotice('')
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setEditLatitude(position.coords.latitude)
-        setEditLongitude(position.coords.longitude)
-        setLocationNotice('✓ Coordinates updated from your current location')
-      },
-      () => {
-        setLocationNotice('Location permission was denied. You can enter your location manually.')
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    )
+    setLocating(true)
+    requestBrowserLocation().then((result) => {
+      setLocating(false)
+      if (!result.ok) {
+        setLocationNotice(result.message)
+        return
+      }
+      setEditLatitude(result.latitude)
+      setEditLongitude(result.longitude)
+      if (result.place) {
+        setEditCountry(result.place.country || '')
+        setEditState(result.place.state || '')
+        setEditCity(result.place.city || '')
+        setEditLocation(buildLocationLabel(result.place))
+        setLocationNotice('✓ Location updated from your current location')
+      } else {
+        setLocationNotice(result.message)
+      }
+    })
   }
 
   const saveProfile = async () => {
@@ -4672,6 +5051,9 @@ function Profile({ user, onBack, onLogout }) {
         location: editLocation.trim(),
         latitude,
         longitude,
+        country: editCountry.trim() || null,
+        state: editState.trim() || null,
+        city: editCity.trim() || null,
         location_updated_at: (latitude != null && longitude != null) ? new Date().toISOString() : null,
       })
       .eq('user_id', user.user_id)
@@ -4687,6 +5069,9 @@ function Profile({ user, onBack, onLogout }) {
         location: editLocation.trim(),
         latitude,
         longitude,
+        country: editCountry.trim() || null,
+        state: editState.trim() || null,
+        city: editCity.trim() || null,
         location_updated_at: (latitude != null && longitude != null) ? new Date().toISOString() : null,
       }))
       if (latitude != null && longitude != null) {
@@ -4947,8 +5332,8 @@ function Profile({ user, onBack, onLogout }) {
               <label className="dash-form-label">My Location</label>
               <input className="dash-form-input" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} placeholder="e.g. Ikeja, Lagos" />
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" onClick={useMyCurrentLocation} disabled={saving}>
-                  📍 Use my current location
+                <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" onClick={useMyCurrentLocation} disabled={saving || locating}>
+                  {locating ? 'Locating...' : '📍 Use my current location'}
                 </button>
               </div>
               {locationNotice && (
@@ -4956,9 +5341,34 @@ function Profile({ user, onBack, onLogout }) {
                   {locationNotice}
                 </p>
               )}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, marginTop: 10 }}>
+                <div>
+                  <label className="dash-form-label" style={{ fontSize: 11 }}>Country</label>
+                  <select className="dash-form-select" value={editCountry} onChange={(e) => setEditCountry(e.target.value)}>
+                    <option value="">Select country</option>
+                    {LOCATION_COUNTRIES.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="dash-form-label" style={{ fontSize: 11 }}>State</label>
+                  <select className="dash-form-select" value={editState} onChange={(e) => setEditState(e.target.value)}>
+                    <option value="">Select state</option>
+                    {NIGERIAN_STATES.map((name) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="dash-form-label" style={{ fontSize: 11 }}>City</label>
+                  <input className="dash-form-input" value={editCity} onChange={(e) => setEditCity(e.target.value)} placeholder="e.g. Ikeja" />
+                </div>
+              </div>
               <p style={{ fontSize: 11, color: 'var(--nf-text-muted)', margin: '6px 0 0' }}>
                 Optional. Your saved location helps you discover nearby providers. It is private and never shown publicly.
               </p>
+              <OsmAttribution />
             </div>
             <div className="dash-form-group">
               <label className="dash-form-label">Email</label>
@@ -5000,6 +5410,15 @@ function Profile({ user, onBack, onLogout }) {
                 <span className="dash-profile-field-label">My Location</span>
                 <span className="dash-profile-field-value">📍 {profile.location}</span>
               </div>
+            )}
+            {formatReadablePlace(profile) && (
+              <>
+                <div className="dash-profile-field">
+                  <span className="dash-profile-field-label">Area</span>
+                  <span className="dash-profile-field-value">🗺️ {formatReadablePlace(profile)}</span>
+                </div>
+                <OsmAttribution />
+              </>
             )}
             {profile?.latitude != null && profile?.longitude != null && (
               <div className="dash-profile-field">
@@ -5242,6 +5661,10 @@ function ProviderDashboard({
   const [editEmergencyAvailable, setEditEmergencyAvailable] = useState(false)
   const [editLatitude, setEditLatitude] = useState(null)
   const [editLongitude, setEditLongitude] = useState(null)
+  const [editCountry, setEditCountry] = useState('')
+  const [editState, setEditState] = useState('')
+  const [editCity, setEditCity] = useState('')
+  const [locatingProvider, setLocatingProvider] = useState(false)
   const [savingProvider, setSavingProvider] = useState(false)
   const [locationNotice, setLocationNotice] = useState('')
   const [providerServices, setProviderServices] = useState([])
@@ -5316,6 +5739,9 @@ function ProviderDashboard({
     setEditEmergencyAvailable(!!providerProfile.emergency_available)
     setEditLatitude(providerProfile.latitude || null)
     setEditLongitude(providerProfile.longitude || null)
+    setEditCountry(providerProfile.country || '')
+    setEditState(providerProfile.state || '')
+    setEditCity(providerProfile.city || '')
     setLocationNotice('')
     setEditingProvider(true)
     // Scroll the edit form into view so the provider immediately sees it.
@@ -5329,10 +5755,20 @@ function ProviderDashboard({
     if (!providerProfile) return
     setSavingProvider(true)
 
-    // Validate optional coordinates before saving. Keep null rather than
-    // inventing coordinates when the provider has not set them.
-    let latitude = null
-    let longitude = null
+    // Coordinates are only written when the provider explicitly captured a new
+    // position during this edit session. Editing an unrelated field (phone,
+    // description, ...) must never overwrite a location that is already saved,
+    // and must never invent a default position when none exists.
+    const updates = {
+      business_name: editBusinessName.trim(),
+      description: editDescription.trim(),
+      category: editCategory.trim(),
+      location: editLocation.trim(),
+      phone: editPhone.trim(),
+      emergency_available: editEmergencyAvailable,
+    }
+
+    let capturedCoordinates = null
     if (editLatitude !== null && String(editLatitude).trim() !== '') {
       const latNum = Number(editLatitude)
       if (isNaN(latNum) || latNum < -90 || latNum > 90) {
@@ -5340,7 +5776,7 @@ function ProviderDashboard({
         setSavingProvider(false)
         return
       }
-      latitude = latNum
+      capturedCoordinates = { latitude: latNum }
     }
     if (editLongitude !== null && String(editLongitude).trim() !== '') {
       const lngNum = Number(editLongitude)
@@ -5349,18 +5785,38 @@ function ProviderDashboard({
         setSavingProvider(false)
         return
       }
-      longitude = lngNum
+      capturedCoordinates = { ...(capturedCoordinates || {}), longitude: lngNum }
     }
 
-    const updates = {
-      business_name: editBusinessName.trim(),
-      description: editDescription.trim(),
-      category: editCategory.trim(),
-      location: editLocation.trim(),
-      phone: editPhone.trim(),
-      emergency_available: editEmergencyAvailable,
-      latitude,
-      longitude,
+    // Only a complete, newly captured pair is sent. Anything else leaves the
+    // stored coordinates exactly as they are.
+    if (capturedCoordinates && hasSavedCoordinates(capturedCoordinates)) {
+      updates.latitude = capturedCoordinates.latitude
+      updates.longitude = capturedCoordinates.longitude
+    }
+
+    // Human-readable country / state / city follow the same rule as the
+    // coordinates: the three fields are seeded from the stored row when the
+    // edit form opens, so they are written back unchanged unless the provider
+    // actually picked new values. Nothing is ever derived or defaulted here.
+    const country = editCountry.trim()
+    const state = editState.trim()
+    const city = editCity.trim()
+    const storedPlace = {
+      country: typeof providerProfile.country === 'string' ? providerProfile.country.trim() : '',
+      state: typeof providerProfile.state === 'string' ? providerProfile.state.trim() : '',
+      city: typeof providerProfile.city === 'string' ? providerProfile.city.trim() : '',
+    }
+    if (
+      (country && country !== storedPlace.country) ||
+      (state && state !== storedPlace.state) ||
+      (city && city !== storedPlace.city)
+    ) {
+      // A provider clearing a field must not silently delete stored data, so
+      // only the values they actually supplied are written.
+      if (country) updates.country = country
+      if (state) updates.state = state
+      if (city) updates.city = city
     }
 
     const { error } = await supabase
@@ -5373,8 +5829,10 @@ function ProviderDashboard({
       alert('Could not update provider profile: ' + error.message)
     } else {
       setProviderProfile((current) => ({ ...current, ...updates }))
-      if (latitude != null && longitude != null) {
+      if (updates.latitude != null && updates.longitude != null) {
         setLocationNotice('✓ Location coordinates saved')
+      } else if (updates.country || updates.state || updates.city) {
+        setLocationNotice('✓ Location area saved')
       } else {
         setLocationNotice('')
       }
@@ -5386,22 +5844,26 @@ function ProviderDashboard({
   }
 
   const useMyCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      setLocationNotice('Geolocation is not supported by your browser.')
-      return
-    }
     setLocationNotice('')
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setEditLatitude(position.coords.latitude)
-        setEditLongitude(position.coords.longitude)
+    setLocatingProvider(true)
+    requestBrowserLocation().then((result) => {
+      setLocatingProvider(false)
+      if (!result.ok) {
+        setLocationNotice(result.message)
+        return
+      }
+      setEditLatitude(result.latitude)
+      setEditLongitude(result.longitude)
+      if (result.place) {
+        setEditCountry(result.place.country || '')
+        setEditState(result.place.state || '')
+        setEditCity(result.place.city || '')
+        setEditLocation(buildLocationLabel(result.place))
         setLocationNotice('✓ Coordinates updated from your current location')
-      },
-      () => {
-        setLocationNotice('Could not get your current location. Please allow location permission or enter coordinates manually.')
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    )
+      } else {
+        setLocationNotice(result.message)
+      }
+    })
   }
 
   const updateBookingStatus = async (bookingId, newStatus, reason) => {
@@ -6655,10 +7117,46 @@ function ProviderDashboard({
                     <input className="dash-form-input" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} placeholder="e.g. Rumuola, Port Harcourt" />
                   </div>
                   <div className="dash-form-group">
+                    <label className="dash-form-label">Service Area</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8 }}>
+                      <div>
+                        <label className="dash-form-label" style={{ fontSize: 11 }}>Country</label>
+                        <select className="dash-form-select" value={editCountry} onChange={(e) => setEditCountry(e.target.value)}>
+                          <option value="">Select country</option>
+                          {LOCATION_COUNTRIES.map((name) => (
+                            <option key={name} value={name}>{name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="dash-form-label" style={{ fontSize: 11 }}>State</label>
+                        <select className="dash-form-select" value={editState} onChange={(e) => setEditState(e.target.value)}>
+                          <option value="">Select state</option>
+                          {NIGERIAN_STATES.map((name) => (
+                            <option key={name} value={name}>{name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="dash-form-label" style={{ fontSize: 11 }}>City</label>
+                        <input className="dash-form-input" value={editCity} onChange={(e) => setEditCity(e.target.value)} placeholder="e.g. Rumuola" />
+                      </div>
+                    </div>
+                    <p style={{ fontSize: 11, color: 'var(--nf-text-muted)', margin: '6px 0 0' }}>
+                      Optional. Pick your area manually if GPS is unavailable or inaccurate.
+                    </p>
+                    <OsmAttribution />
+                  </div>
+                  <div className="dash-form-group">
                     <label className="dash-form-label">Coordinates</label>
+                    <p style={{ fontSize: 12, color: hasSavedCoordinates({ latitude: editLatitude, longitude: editLongitude }) ? 'var(--nf-success)' : 'var(--nf-text-muted)', margin: '0 0 8px' }}>
+                      {hasSavedCoordinates({ latitude: editLatitude, longitude: editLongitude })
+                        ? '✓ Location saved'
+                        : 'No map location saved yet'}
+                    </p>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" onClick={useMyCurrentLocation} disabled={savingProvider}>
-                        📍 Use my current location
+                      <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" onClick={useMyCurrentLocation} disabled={savingProvider || locatingProvider}>
+                        {locatingProvider ? 'Locating...' : '📍 Use my current location'}
                       </button>
                     </div>
                     {locationNotice && (
@@ -6701,6 +7199,12 @@ function ProviderDashboard({
                       {providerProfile?.description && <p>{providerProfile.description}</p>}
                       {providerProfile?.category && <p>🛠️ {providerProfile.category}</p>}
                       {providerProfile?.location && <p>📍 {providerProfile.location}</p>}
+                      {formatReadablePlace(providerProfile) && (
+                        <div>
+                          <p>🗺️ Service area: {formatReadablePlace(providerProfile)}</p>
+                          <OsmAttribution />
+                        </div>
+                      )}
                       {providerProfile?.phone && <p>📞 {providerProfile.phone}</p>}
                     </div>
                   </div>
@@ -7466,7 +7970,51 @@ function AdminDashboard({ user, onLogout, onHome }) {
       if (reviewsResult.error) {
         console.error('Failed to load reviews:', reviewsResult.error)
       } else {
-        setReviews(reviewsResult.data || [])
+        const reviewList = reviewsResult.data || []
+        setReviews(reviewList)
+
+        // Resolve the reviewer from the authoritative profiles table:
+        //   reviews.customer_user_id -> profiles.user_id -> profiles.full_name
+        // customer_verifications is deliberately NOT used here: most reviewers
+        // never submit one, so relying on it left those reviews showing
+        // "Unknown". profiles.user_id is the Supabase auth user id for BOTH
+        // email-created and phone-OTP customers, so this resolves either.
+        // The already-loaded profiles result is reused; the extra query is only
+        // a fallback for ids missing from it.
+        const profileNames = {}
+        const profileRows = usersResult.data || []
+        profileRows.forEach((profile) => {
+          if (profile?.user_id && profile?.full_name) {
+            profileNames[profile.user_id] = profile.full_name
+          }
+        })
+
+        const reviewCustomerIds = [
+          ...new Set(reviewList.map((review) => review.customer_user_id).filter(Boolean)),
+        ]
+        if (reviewCustomerIds.length > 0) {
+          const unresolvedIds = reviewCustomerIds.filter((id) => !profileNames[id])
+          if (unresolvedIds.length > 0) {
+            const { data: missingProfiles } = await supabase
+              .from('profiles')
+              .select('user_id, full_name')
+              .in('user_id', unresolvedIds)
+            const missingRows = missingProfiles || []
+            missingRows.forEach((profile) => {
+              if (profile?.user_id && profile?.full_name) {
+                profileNames[profile.user_id] = profile.full_name
+              }
+            })
+          }
+
+          setCustomerNames((current) => {
+            const merged = { ...current }
+            reviewCustomerIds.forEach((id) => {
+              if (profileNames[id]) merged[id] = profileNames[id]
+            })
+            return merged
+          })
+        }
       }
 
       if (quotesResult.error) {
@@ -8525,6 +9073,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
                        notification.type === 'support_update' ? '📋' :
                        notification.type === 'message' ? '💬' :
                        notification.type === 'booking' ? '📅' :
+                       notification.type === 'review' ? '⭐' :
                        notification.type === 'accepted' ? '✅' :
                        notification.type === 'declined' ? '❌' : '🔔'}
                     </span>
@@ -9263,6 +9812,9 @@ function ProviderOnboarding({ user, onBack, onComplete }) {
   const [providerProfile, setProviderProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [capturedLocation, setCapturedLocation] = useState(null)
+  const [locationNotice, setLocationNotice] = useState('')
+  const [locating, setLocating] = useState(false)
 
   const steps = [
     { id: 'business', label: 'Business', icon: '🏢' },
@@ -9270,11 +9822,46 @@ function ProviderOnboarding({ user, onBack, onComplete }) {
     { id: 'packages', label: 'Packages', icon: '📦' },
     { id: 'portfolio', label: 'Portfolio', icon: '📸' },
     { id: 'profile', label: 'Profile', icon: '👤' },
+    { id: 'location', label: 'Location', icon: '📍' },
     { id: 'verification', label: 'Verify', icon: '🪪' },
     { id: 'availability', label: 'Schedule', icon: '⏰' },
     { id: 'emergency', label: 'Emergency', icon: '🚨' },
     { id: 'review', label: 'Review', icon: '✅' },
   ]
+
+  // Location already stored on the provider row (loaded on mount), or the one
+  // just captured in this session. Either counts as "has a location".
+  const onboardingCoordinates = capturedLocation || providerProfile
+  const onboardingHasLocation = hasSavedCoordinates(onboardingCoordinates)
+
+  const captureOnboardingLocation = () => {
+    setLocationNotice('')
+    setLocating(true)
+    requestBrowserCoordinates().then((result) => {
+      setLocating(false)
+      if (!result.ok) {
+        setLocationNotice(result.message)
+        return
+      }
+      setCapturedLocation({ latitude: result.latitude, longitude: result.longitude })
+      setLocationNotice('✓ Location captured. It will be saved when you complete onboarding.')
+    })
+  }
+
+  // Only writes coordinates that were actually captured in this session. When
+  // the provider skips the step, nothing is sent and any location already on
+  // the row is left untouched.
+  const saveOnboardingLocation = async () => {
+    if (!user?.user_id || !capturedLocation) return
+    const { error } = await supabase
+      .from('providers')
+      .update({ latitude: capturedLocation.latitude, longitude: capturedLocation.longitude })
+      .eq('user_id', user.user_id)
+    if (error) {
+      console.error('Failed to save provider location:', error)
+      setLocationNotice('Could not save your location. You can retry or add it later from your dashboard.')
+    }
+  }
 
   const progress = Math.round(((step + 1) / steps.length) * 100)
 
@@ -9291,6 +9878,8 @@ function ProviderOnboarding({ user, onBack, onComplete }) {
         return (providerProfile.portfolio || []).length > 0
       case 'profile':
         return !!(providerProfile.logo_url || providerProfile.avatar_url)
+      case 'location':
+        return onboardingHasLocation
       case 'verification':
         return providerProfile.verification?.status === 'approved'
       case 'availability':
@@ -9417,16 +10006,34 @@ function ProviderOnboarding({ user, onBack, onComplete }) {
             </p>
           )}
           {step === 5 && (
+            <div>
+              <p style={{ color: 'var(--nf-text-muted)', fontSize: 13 }}>
+                Optional. Add your map location so customers nearby can find you on the map. You can skip this and add it later from your dashboard.
+              </p>
+              <p style={{ fontSize: 12, color: onboardingHasLocation ? 'var(--nf-success)' : 'var(--nf-text-muted)', margin: '12px 0 8px' }}>
+                {onboardingHasLocation ? '✓ Location saved' : 'No map location saved yet'}
+              </p>
+              <button type="button" className="dash-btn dash-btn-outline" onClick={captureOnboardingLocation} disabled={locating}>
+                {locating ? 'Locating...' : '📍 Use my current location'}
+              </button>
+              {locationNotice && (
+                <p style={{ fontSize: 12, color: locationNotice.startsWith('✓') ? '#16a34a' : 'var(--nf-text-muted)', margin: '8px 0 0' }}>
+                  {locationNotice}
+                </p>
+              )}
+            </div>
+          )}
+          {step === 6 && (
             <p style={{ color: 'var(--nf-text-muted)', fontSize: 13 }}>
               Submit identity verification to build trust.
             </p>
           )}
-          {step === 6 && (
+          {step === 7 && (
             <p style={{ color: 'var(--nf-text-muted)', fontSize: 13 }}>
               Set your weekly availability schedule.
             </p>
           )}
-          {step === 7 && (
+          {step === 8 && (
             <p style={{ color: 'var(--nf-text-muted)', fontSize: 13 }}>
               Enable emergency availability if you offer urgent services.
             </p>
@@ -9442,7 +10049,12 @@ function ProviderOnboarding({ user, onBack, onComplete }) {
             {step < steps.length - 1 ? (
               <button className="dash-btn dash-btn-primary" onClick={nextStep}>Next →</button>
             ) : (
-              <button className="dash-btn dash-btn-primary" onClick={() => { setSaving(true); setTimeout(() => { setSaving(false); onComplete() }, 400) }}>
+              <button className="dash-btn dash-btn-primary" onClick={async () => {
+                setSaving(true)
+                await saveOnboardingLocation()
+                setSaving(false)
+                onComplete()
+              }}>
                 {saving ? 'Completing...' : 'Complete onboarding'}
               </button>
             )}
@@ -9490,9 +10102,9 @@ function App() {
   const [customerLocation, setCustomerLocation] = useState(null)
 
   const [foodCart, setFoodCart] = useState([])
-  const [foodDeliveryFee, setFoodDeliveryFee] = useState(0)
-  const [foodRestaurantId, setFoodRestaurantId] = useState(null)
-  const [selectedFoodCategory, setSelectedFoodCategory] = useState('')
+  const [foodRestaurant, setFoodRestaurant] = useState(null)
+  const [foodPlacedOrderId, setFoodPlacedOrderId] = useState(null)
+  const [selectedServiceCategory, setSelectedServiceCategory] = useState('')
 
   const [marketplaceBackPage, setMarketplaceBackPage] = useState('home')
 
@@ -10415,7 +11027,7 @@ const appUser = {
     return (
       <Suspense fallback={<LoadingState text="Loading services..." />}>
         <ViewAllServices
-          initialCategory={selectedFoodCategory}
+          initialCategory={selectedServiceCategory}
           onBack={() => {
             setPage(marketplaceBackPage)
             setMarketplaceBackPage('home')
@@ -10431,14 +11043,11 @@ const appUser = {
       <Suspense fallback={<LoadingState text="Loading food marketplace..." />}>
         <FoodMarketplace
           onBack={() => setPage('home')}
-          cartItemCount={foodCart.reduce((sum, item) => sum + item.quantity, 0)}
           onViewCart={() => setPage('food-cart')}
+          onViewOrders={() => setPage('food-orders')}
           cart={foodCart}
           onUpdateCart={setFoodCart}
-          onDeliveryFeeChange={(fee) => {
-            setFoodDeliveryFee(fee)
-          }}
-          onRestaurantSelect={(id) => setFoodRestaurantId(id)}
+          onRestaurantChange={setFoodRestaurant}
           onRestaurantDashboard={() => setPage('restaurant-dashboard')}
           onRiderDashboard={() => setPage('rider-dashboard')}
         />
@@ -10451,23 +11060,66 @@ const appUser = {
       <Suspense fallback={<LoadingState text="Loading cart..." />}>
         <FoodCart
           cart={foodCart}
-          deliveryFee={foodDeliveryFee}
-          restaurantId={foodRestaurantId}
+          restaurant={foodRestaurant}
+          deliveryFee={foodCart[0]?.deliveryFee || 0}
           user={user}
-          onUpdateCart={(cart) => {
-            setFoodCart(cart)
-            if (cart.length === 0) {
-              setFoodDeliveryFee(0)
-            }
-          }}
+          onUpdateCart={setFoodCart}
           onBack={() => setPage('food')}
-          onPlaceOrder={(order) => {
+          onProceed={() => setPage('food-checkout')}
+          onSignIn={() => setPage('login')}
+        />
+      </Suspense>
+    )
+  }
+
+  if (effectivePage === 'food-checkout') {
+    return (
+      <Suspense fallback={<LoadingState text="Loading checkout..." />}>
+        <FoodCheckout
+          cart={foodCart}
+          restaurant={foodRestaurant}
+          deliveryFee={foodCart[0]?.deliveryFee || 0}
+          user={user}
+          customerLocation={customerLocation}
+          onBack={() => setPage('food-cart')}
+          onSignIn={() => setPage('login')}
+          onPlaced={({ order }) => {
+            setFoodPlacedOrderId(order.id)
             setFoodCart([])
-            setFoodDeliveryFee(0)
-            setFoodRestaurantId(null)
-            alert(`Order #${order.order?.id || ''} placed successfully!\n\nTotal: ₦${Number(order.total).toLocaleString()}\nDelivery to: ${order.deliveryAddress}\n\nThank you for ordering with Ewizzy!`)
-            setPage('food')
+            setFoodRestaurant(null)
+            setPage('food-order-placed')
           }}
+        />
+      </Suspense>
+    )
+  }
+
+  if (effectivePage === 'food-order-placed') {
+    return (
+      <Suspense fallback={<LoadingState text="Loading order..." />}>
+        <FoodOrderStatus
+          orderId={foodPlacedOrderId}
+          user={user}
+          onBack={() => setPage('food')}
+          onBrowseFood={() => setPage('food')}
+          onViewOrders={() => setPage('food-orders')}
+        />
+      </Suspense>
+    )
+  }
+
+  if (effectivePage === 'food-orders') {
+    return (
+      <Suspense fallback={<LoadingState text="Loading your food orders..." />}>
+        <FoodOrderHistory
+          user={user}
+          onBack={() => setPage('food')}
+          onBrowseFood={() => setPage('food')}
+          onOpenOrder={(id) => {
+            setFoodPlacedOrderId(id)
+            setPage('food-order-placed')
+          }}
+          onSignIn={() => setPage('login')}
         />
       </Suspense>
     )
@@ -10572,7 +11224,7 @@ const appUser = {
       }
       onService={goToService}
       onViewAllServices={(categoryId) => {
-        setSelectedFoodCategory(categoryId || '')
+        setSelectedServiceCategory(categoryId || '')
         setPage('all-services')
       }}
       onFood={() => setPage('food')}

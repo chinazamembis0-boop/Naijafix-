@@ -1083,7 +1083,7 @@
 
 /* --- Search --- */
 .dash-search {
-  background: var(--nf-white);
+  background: #F1F2F8;
   border: 1px solid var(--nf-border);
   border-radius: var(--nf-radius);
   padding: 12px 14px;
@@ -1098,6 +1098,7 @@
   border: 0;
   outline: 0;
   font-size: 13px;
+  background: #F1F2F8;
 }
 
 /* --- Dashboard Top Bar --- */

@@ -1,26 +1,22 @@
 import { supabase } from '../supabase.js'
+import { resolveCategoryId } from './foodUtils.js'
 
-export const foodCategories = [
-  { id: 'nigerian-food', name: 'Nigerian Food', icon: '🇳🇬' },
-  { id: 'jollof-rice', name: 'Jollof Rice', icon: '🍚' },
-  { id: 'fried-rice', name: 'Fried Rice', icon: '🍛' },
-  { id: 'swallow', name: 'Swallow', icon: '🍲' },
-  { id: 'soups-stews', name: 'Soups & Stews', icon: '🥘' },
-  { id: 'suya-grills', name: 'Suya & Grills', icon: '🥩' },
-  { id: 'chicken', name: 'Chicken', icon: '🍗' },
-  { id: 'fish-seafood', name: 'Fish & Seafood', icon: '🐟' },
-  { id: 'shawarma', name: 'Shawarma', icon: '🌯' },
-  { id: 'pizza', name: 'Pizza', icon: '🍕' },
-  { id: 'burgers', name: 'Burgers', icon: '🍔' },
-  { id: 'fast-food', name: 'Fast Food', icon: '🍟' },
-  { id: 'small-chops', name: 'Small Chops', icon: '🥟' },
-  { id: 'pastries', name: 'Pastries', icon: '🥐' },
-  { id: 'cakes', name: 'Cakes', icon: '🎂' },
-  { id: 'desserts', name: 'Desserts', icon: '🍰' },
-  { id: 'drinks', name: 'Drinks', icon: '🥤' },
-  { id: 'breakfast', name: 'Breakfast', icon: '🍳' },
-  { id: 'healthy-meals', name: 'Healthy Meals', icon: '🥗' },
-]
+/**
+ * Ewizzy Food & Restaurants data layer.
+ *
+ * Source of truth:
+ *   restaurants                  -> restaurant list
+ *   restaurant_menu_categories   -> menu grouping (joined onto menu items)
+ *   restaurant_menu_items        -> food items and prices (price is NOT NULL)
+ *   food_orders / food_order_items -> customer orders
+ *
+ * `mockRestaurants` below is the pre-existing demo catalogue. It is only
+ * used when the database has no active restaurants, and every demo entry is
+ * flagged with `isDemo: true` so the UI can refuse to fake an order for it.
+ */
+
+export const FALLBACK_MENU_IMAGE =
+  'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop'
 
 export const mockRestaurants = [
   {
@@ -41,7 +37,7 @@ export const mockRestaurants = [
         id: 'egusi-soup',
         name: 'Egusi Soup',
         description: 'Rich melon seed soup with assorted meat and vegetables',
-        price: 2500,
+        price: 4500,
         image: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=300&h=200&fit=crop',
         category: 'soups-stews',
         popular: true,
@@ -49,26 +45,26 @@ export const mockRestaurants = [
       {
         id: 'jollof-rice-chicken',
         name: 'Jollof Rice & Chicken',
-        description: 'Smoky party jollof rice with grilled chicken',
-        price: 3500,
+        description: 'Smoky party jollof rice served with grilled chicken',
+        price: 7500,
         image: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=300&h=200&fit=crop',
         category: 'jollof-rice',
         popular: true,
       },
       {
         id: 'pounded-yam-egusi',
-        name: 'Pounded Yam & Egusi',
-        description: 'Smooth pounded yam served with egusi soup',
-        price: 3000,
+        name: 'Pounded Yam & Egusi Soup',
+        description: 'Smooth pounded yam served with rich egusi soup',
+        price: 6500,
         image: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=300&h=200&fit=crop',
         category: 'swallow',
-        popular: false,
+        popular: true,
       },
       {
         id: 'efo-riro',
         name: 'Efo Riro',
         description: 'Spinach stew with assorted meat and stockfish',
-        price: 2800,
+        price: 5500,
         image: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=300&h=200&fit=crop',
         category: 'soups-stews',
         popular: true,
@@ -93,7 +89,7 @@ export const mockRestaurants = [
         id: 'beef-suya',
         name: 'Beef Suya (Full)',
         description: 'Spicy grilled beef with yaji spice and onions',
-        price: 3000,
+        price: 5000,
         image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=300&h=200&fit=crop',
         category: 'suya-grills',
         popular: true,
@@ -102,7 +98,7 @@ export const mockRestaurants = [
         id: 'chicken-suya',
         name: 'Chicken Suya',
         description: 'Grilled chicken with suya spice',
-        price: 4000,
+        price: 5000,
         image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=300&h=200&fit=crop',
         category: 'suya-grills',
         popular: true,
@@ -111,7 +107,7 @@ export const mockRestaurants = [
         id: 'grilled-fish',
         name: 'Grilled Tilapia',
         description: 'Whole grilled tilapia with pepper sauce',
-        price: 5500,
+        price: 7500,
         image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=300&h=200&fit=crop',
         category: 'fish-seafood',
         popular: true,
@@ -238,7 +234,7 @@ export const mockRestaurants = [
     rating: 4.4,
     reviewCount: 312,
     cuisine: 'Chicken & Fast Food',
-    categories: ['chicken', 'fast-food', 'rice'],
+    categories: ['chicken', 'fast-food', 'jollof-rice'],
     deliveryTime: '20-35 min',
     deliveryFee: 400,
     isOpen: true,
@@ -450,6 +446,47 @@ export const mockRestaurants = [
   },
 ]
 
+function deliveryTimeLabel(minutes) {
+  const value = Number(minutes)
+  if (!Number.isFinite(value) || value <= 0) return '30-45 min'
+  return `${Math.max(5, value - 15)}-${value} min`
+}
+
+function normaliseMenuItem(item, categoryName) {
+  return {
+    id: item.id,
+    menuItemId: item.id,
+    name: item.name,
+    description: item.description || '',
+    price: Number(item.price) || 0,
+    image: item.image_url || FALLBACK_MENU_IMAGE,
+    category: resolveCategoryId(categoryName),
+    categoryName: categoryName || 'Menu',
+    popular: false,
+  }
+}
+
+function normaliseDemoItem(item) {
+  return {
+    id: item.id,
+    // Demo items keep their string id so the cart can match them. Demo
+    // restaurants are refused by createFoodOrder, so this never reaches
+    // the food_order_items.menu_item_id foreign key.
+    menuItemId: item.id,
+    name: item.name,
+    description: item.description || '',
+    price: Number(item.price) || 0,
+    image: item.image || FALLBACK_MENU_IMAGE,
+    category: item.category || 'main',
+    categoryName: item.category || 'Menu',
+    popular: Boolean(item.popular),
+  }
+}
+
+/**
+ * Load active restaurants. Returns live database rows when available and
+ * otherwise falls back to the demo catalogue flagged with `isDemo: true`.
+ */
 export async function fetchRestaurants() {
   try {
     const { data, error } = await supabase
@@ -458,72 +495,83 @@ export async function fetchRestaurants() {
       .eq('is_active', true)
       .order('created_at', { ascending: false })
 
-    if (error) {
-      console.error('Failed to fetch restaurants:', error)
-      return mockRestaurants
-    }
+    if (error) throw error
 
     if (!data || data.length === 0) {
-      return mockRestaurants
+      return mockRestaurants.map((r) => ({ ...r, isDemo: true }))
     }
 
     return data.map((r) => ({
-      ...r,
-      image: r.cover_image_url || r.logo_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop',
+      id: r.id,
+      name: r.name,
+      image: r.cover_image_url || r.logo_url || FALLBACK_MENU_IMAGE,
       rating: Number(r.rating) || 0,
       reviewCount: 0,
       cuisine: r.cuisine || 'Nigerian Food',
-      categories: r.cuisine ? [r.cuisine.toLowerCase().replace(/\s+/g, '-')] : ['nigerian-food'],
-      deliveryTime: r.estimated_delivery_minutes ? `${Math.max(5, r.estimated_delivery_minutes-10)}-${r.estimated_delivery_minutes} min` : '30-45 min',
+      categories: [],
+      deliveryTime: deliveryTimeLabel(r.estimated_delivery_minutes),
       deliveryFee: Number(r.delivery_fee) || 0,
       isOpen: r.is_open !== false,
       address: r.address || r.city || 'Lagos',
+      description: r.description || '',
+      isDemo: false,
     }))
   } catch (error) {
     console.error('Error fetching restaurants:', error)
-    return mockRestaurants
+    return mockRestaurants.map((r) => ({ ...r, isDemo: true }))
   }
 }
 
+/**
+ * Load the menu for one restaurant, joining restaurant_menu_categories so
+ * each food item is grouped under its real database category name.
+ */
 export async function fetchRestaurantMenu(restaurantId) {
+  if (restaurantId === null || restaurantId === undefined) return []
+
+  // Demo restaurants use string ids, live restaurants use the bigint primary key.
+  if (typeof restaurantId === 'string' && !/^\d+$/.test(restaurantId)) {
+    const demo = mockRestaurants.find((r) => r.id === restaurantId)
+    return demo ? demo.menu.map(normaliseDemoItem) : []
+  }
+
+  const numericId = Number(restaurantId)
+  if (!Number.isFinite(numericId)) return []
+
   try {
-    const { data: items, error } = await supabase
-      .from('restaurant_menu_items')
-      .select('*')
-      .eq('restaurant_id', restaurantId)
-      .eq('available', true)
-      .order('created_at', { ascending: true })
+    const [{ data: items, error: itemsError }, { data: categories, error: catError }] =
+      await Promise.all([
+        supabase
+          .from('restaurant_menu_items')
+          .select('*')
+          .eq('restaurant_id', numericId)
+          .eq('available', true)
+          .order('created_at', { ascending: true }),
+        supabase
+          .from('restaurant_menu_categories')
+          .select('id,name')
+          .eq('restaurant_id', numericId)
+          .order('sort_order', { ascending: true }),
+      ])
 
-    if (error) {
-      console.error('Failed to fetch menu items:', error)
-      return null
-    }
+    if (itemsError) throw itemsError
+    if (catError) throw catError
 
-    if (!items || items.length === 0) {
-      const mockRestaurant = mockRestaurants.find((r) => r.id === restaurantId)
-      return mockRestaurant ? mockRestaurant.menu : []
-    }
+    const nameById = new Map((categories || []).map((c) => [c.id, c.name]))
 
-    return items.map((item) => ({
-      id: item.id,
-      name: item.name,
-      description: item.description || '',
-      price: Number(item.price),
-      image: item.image_url || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&h=200&fit=crop',
-      category: item.category || 'main',
-      popular: false,
-      _supabaseId: item.id,
-    }))
+    return (items || []).map((item) =>
+      normaliseMenuItem(item, nameById.get(item.category_id) || 'Menu')
+    )
   } catch (error) {
     console.error('Error fetching menu:', error)
-    return null
+    return []
   }
 }
 
-export async function fetchRestaurantsByCategory(categoryId) {
-  const all = await fetchRestaurants()
-  if (!categoryId) return all.filter((r) => r.isOpen)
-  return all.filter((r) => r.isOpen && r.categories.includes(categoryId))
+/** Category ids that actually have available food items for a restaurant. */
+export async function fetchRestaurantMenuCategories(restaurantId) {
+  const menu = await fetchRestaurantMenu(restaurantId)
+  return Array.from(new Set(menu.map((item) => item.category)))
 }
 
 export function searchRestaurants(query, restaurants) {
@@ -534,91 +582,412 @@ export function searchRestaurants(query, restaurants) {
       r.isOpen &&
       (String(r.name).toLowerCase().includes(q) ||
         String(r.cuisine).toLowerCase().includes(q) ||
-        String(r.description).toLowerCase().includes(q))
+        String(r.description || '').toLowerCase().includes(q))
   )
 }
 
-export async function createFoodOrder({ customerUserId, restaurantId, items, deliveryAddress, deliveryFee, notes }) {
+/**
+ * Filter restaurants down to those whose menu actually contains food in the
+ * selected category. Live restaurants are matched on real menu items; the
+ * demo catalogue is matched on its own `categories` list.
+ */
+export async function filterRestaurantsByCategory(restaurants, categoryId, menusById) {
+  if (!categoryId || categoryId === 'all') return restaurants.filter((r) => r.isOpen)
+
+  const matches = await Promise.all(
+    restaurants.map(async (restaurant) => {
+      if (!restaurant.isOpen) return false
+      if (restaurant.isDemo) {
+        return (restaurant.categories || []).includes(categoryId)
+      }
+      const menu = menusById?.get(String(restaurant.id)) ?? (await fetchRestaurantMenu(restaurant.id))
+      return (menu || []).some((item) => item.category === categoryId)
+    })
+  )
+
+  return restaurants.filter((_, index) => matches[index])
+}
+
+/**
+ * Place a food order.
+ *
+ * Prices are NOT decided here. This sends only the restaurant id, the
+ * menu item ids, the quantities, the address and optional notes/location.
+ * The database re-reads every price from restaurant_menu_items, verifies
+ * each item still exists, belongs to that restaurant and is available,
+ * re-reads the delivery fee from restaurants, and computes the subtotal and
+ * total itself. It also writes the order and its items in one transaction,
+ * so an order can never be left without its food.
+ *
+ * The saved food_order_items.unit_price is a historical snapshot: a later
+ * price change at the restaurant does not rewrite it.
+ *
+ * payment_status stays 'pending' because no food payment flow exists yet;
+ * nothing here pretends a payment succeeded.
+ */
+export async function createFoodOrder({
+  customerUserId,
+  restaurantId,
+  items,
+  deliveryAddress,
+  notes = null,
+  deliveryLatitude = null,
+  deliveryLongitude = null,
+}) {
+  if (!customerUserId) {
+    return { success: false, error: 'You must be signed in to place an order.' }
+  }
+  if (!restaurantId) {
+    return { success: false, error: 'Restaurant information is missing.' }
+  }
+  if (!Array.isArray(items) || items.length === 0) {
+    return { success: false, error: 'Your cart is empty.' }
+  }
+  if (!deliveryAddress || !String(deliveryAddress).trim()) {
+    return { success: false, error: 'A delivery address is required.' }
+  }
+  if (typeof restaurantId === 'string' && !/^\d+$/.test(restaurantId)) {
+    return {
+      success: false,
+      error:
+        'This is a demo restaurant with no database record, so an order cannot be saved. Please order from a registered Ewizzy restaurant.',
+    }
+  }
+
+  // Shape the request as menu item ids and quantities only. Any price on
+  // the cart object is deliberately dropped: the browser has no authority
+  // over what an order costs.
+  const lines = []
+  for (const item of items) {
+    const menuItemId = Number(item.menuItemId)
+    const quantity = Number(item.quantity)
+
+    if (!Number.isInteger(menuItemId) || menuItemId <= 0) {
+      return {
+        success: false,
+        error: 'Your cart contains an item that is not a real menu item. Please refresh and try again.',
+      }
+    }
+    if (!Number.isInteger(quantity) || quantity < 1) {
+      return { success: false, error: 'Every item in your cart needs a quantity of at least 1.' }
+    }
+
+    lines.push({ menu_item_id: menuItemId, quantity })
+  }
+
   try {
-    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
-    const total = subtotal + (deliveryFee || 0)
+    const { data, error } = await supabase.rpc('place_food_order', {
+      p_restaurant_id: Number(restaurantId),
+      p_items: lines,
+      p_delivery_address: String(deliveryAddress).trim(),
+      p_notes: notes || null,
+      p_delivery_latitude: deliveryLatitude,
+      p_delivery_longitude: deliveryLongitude,
+    })
 
-    const { data: order, error: orderError } = await supabase
-      .from('food_orders')
-      .insert({
-        customer_user_id: customerUserId,
-        restaurant_id: restaurantId,
-        delivery_address: deliveryAddress,
-        subtotal,
-        delivery_fee: deliveryFee || 0,
-        total,
-        status: 'pending',
-        payment_status: 'pending',
-        notes: notes || null,
-      })
-      .select('*')
-      .single()
-
-    if (orderError) {
-      console.error('Failed to create order:', orderError)
-      return { success: false, error: orderError.message }
+    if (error) {
+      console.error('Failed to place order:', error)
+      return { success: false, error: placeOrderErrorMessage(error.message) }
     }
 
-    const orderItems = items.map((item) => ({
-      order_id: order.id,
-      menu_item_id: item._supabaseId || null,
-      item_name_snapshot: item.name,
-      unit_price: item.price,
-      quantity: item.quantity,
-      line_total: item.price * item.quantity,
-    }))
-
-    const { error: itemsError } = await supabase
-      .from('food_order_items')
-      .insert(orderItems)
-
-    if (itemsError) {
-      console.error('Failed to create order items:', itemsError)
-      return { success: false, error: itemsError.message }
+    if (!data || !data.order_id) {
+      return { success: false, error: 'Your order could not be saved. Please try again.' }
     }
 
-    return { success: true, order }
+    // Return the authoritative figures the database persisted, so the UI
+    // shows the real prices rather than re-deriving them from the cart.
+    return {
+      success: true,
+      order: {
+        id: Number(data.order_id),
+        order_number: data.order_number || null,
+        status: data.status || 'pending',
+        subtotal: Number(data.subtotal) || 0,
+        delivery_fee: Number(data.delivery_fee) || 0,
+        total: Number(data.total) || 0,
+        items: (data.items || []).map((item) => ({
+          menuItemId: item.menu_item_id,
+          name: item.name,
+          price: Number(item.unit_price) || 0,
+          quantity: Number(item.quantity) || 0,
+          lineTotal: Number(item.line_total) || 0,
+        })),
+      },
+    }
   } catch (error) {
-    console.error('Error creating order:', error)
-    return { success: false, error: error.message }
+    console.error('Error placing order:', error)
+    return { success: false, error: placeOrderErrorMessage(error?.message) }
+  }
+}
+
+/** Turn the RPC's error text into something a customer can act on. */
+function placeOrderErrorMessage(message) {
+  const text = String(message || '')
+
+  if (text.includes('signed in to place a food order')) {
+    return 'You must be signed in to place an order.'
+  }
+  if (text.includes('cart is empty')) {
+    return 'Your cart is empty.'
+  }
+  if (text.includes('delivery address is required')) {
+    return 'Please enter a delivery address.'
+  }
+  if (text.includes('restaurant could not be found')) {
+    return 'This restaurant could not be found. Please choose another restaurant.'
+  }
+  if (text.includes('not currently available on Ewizzy')) {
+    return 'This restaurant is not currently available on Ewizzy.'
+  }
+  if (text.includes('closed right now')) {
+    return 'This restaurant is closed right now. Please try again later.'
+  }
+  if (text.includes('no longer exists')) {
+    return 'An item in your cart no longer exists. Please review your cart.'
+  }
+  if (text.includes('does not belong to this restaurant')) {
+    return 'An item in your cart does not belong to this restaurant. Please review your cart.'
+  }
+  if (text.includes('no longer available')) {
+    return 'An item in your cart is no longer available. Please review your cart.'
+  }
+  if (text.includes('does not have a valid price')) {
+    return 'An item in your cart does not have a valid price. Please contact Ewizzy support.'
+  }
+  if (text.includes('valid quantity') || text.includes('quantity of at least 1')) {
+    return 'Every item in your cart needs a valid quantity.'
+  }
+  if (text.includes('valid menu item')) {
+    return 'Your cart contains an item that is not a real menu item. Please refresh and try again.'
+  }
+  if (text.includes('at most')) {
+    return 'Your order has too many items. Please reduce the quantity and try again.'
+  }
+  if (text.includes('too large to place online')) {
+    return 'This order is too large to place online. Please contact Ewizzy support.'
+  }
+  if (text.includes('address is too long') || text.includes('notes are too long')) {
+    return 'Your delivery address or notes are too long. Please shorten them.'
+  }
+  if (text.includes('delivery location could not be read')) {
+    return 'That delivery location could not be read. Please check your address.'
+  }
+  if (text.includes('could not be saved with all of its items')) {
+    return 'Your order could not be saved with all of its items. Nothing was charged and no order was created.'
+  }
+  if (text.includes('place_food_order') || text.includes('404')) {
+    return 'Placing an order is not available yet. Please contact Ewizzy support.'
+  }
+
+  return text || 'Could not place your order. Please try again.'
+}
+
+const ORDER_SELECT = `
+  id,
+  order_number,
+  status,
+  payment_status,
+  subtotal,
+  delivery_fee,
+  total,
+  notes,
+  delivery_address,
+  created_at,
+  updated_at,
+  customer_user_id,
+  restaurant_id,
+  rider_id,
+  restaurant:restaurants(id, name, cover_image_url, logo_url, cuisine, address, phone),
+  items:food_order_items(id, order_id, menu_item_id, item_name_snapshot, unit_price, quantity, line_total)
+`
+
+function decorateOrder(order) {
+  if (!order) return null
+  const restaurant = order.restaurant
+  return {
+    ...order,
+    // food_orders.order_number is generated and stored by the database
+    // (e.g. EZ-000123). It is the persistent customer-facing reference.
+    orderNumber: order.order_number || null,
+    restaurantName: restaurant?.name || 'Restaurant',
+    restaurantImage: restaurant?.cover_image_url || restaurant?.logo_url || null,
+    items: (order.items || []).map((item) => ({
+      id: item.id,
+      menuItemId: item.menu_item_id,
+      name: item.item_name_snapshot,
+      price: Number(item.unit_price) || 0,
+      quantity: Number(item.quantity) || 0,
+      lineTotal: Number(item.line_total) || 0,
+    })),
   }
 }
 
 export async function fetchCustomerFoodOrders(customerUserId) {
+  if (!customerUserId) return []
   try {
     const { data, error } = await supabase
       .from('food_orders')
-      .select(`
-        *,
-        restaurant:restaurants(name, cover_image_url),
-        items:food_order_items(*)
-      `)
+      .select(ORDER_SELECT)
       .eq('customer_user_id', customerUserId)
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Failed to fetch orders:', error)
+      console.error('Failed to fetch customer food orders:', error)
       return []
     }
-
-    return data || []
+    return (data || []).map(decorateOrder)
   } catch (error) {
-    console.error('Error fetching orders:', error)
+    console.error('Error fetching customer food orders:', error)
     return []
   }
 }
 
-export async function fetchRestaurantOrders(restaurantId) {
+export async function fetchFoodOrder(orderId, customerUserId) {
+  if (!orderId) return null
+  try {
+    let query = supabase.from('food_orders').select(ORDER_SELECT).eq('id', orderId)
+    if (customerUserId) query = query.eq('customer_user_id', customerUserId)
+    const { data, error } = await query.maybeSingle()
+
+    if (error) {
+      console.error('Failed to fetch food order:', error)
+      return null
+    }
+    return decorateOrder(data)
+  } catch (error) {
+    console.error('Error fetching food order:', error)
+    return null
+  }
+}
+
+/**
+ * Claim an available food delivery.
+ *
+ * Uses the claim_food_order RPC rather than a direct update. The RPC
+ * assigns rider_id for the current authenticated rider while leaving the
+ * order status at 'ready_for_pickup'; picking the order up is a separate,
+ * later transition. It also makes the claim atomic, so two riders
+ * pressing Claim at the same time cannot both win.
+ *
+ * This performs no authorization of its own: the database decides whether
+ * the caller is an active, available rider and whether the order is still
+ * unclaimed.
+ */
+export async function claimFoodOrder(orderId) {
+  if (!orderId) return { success: false, error: 'Missing order reference.' }
+
+  try {
+    const { data, error } = await supabase.rpc('claim_food_order', {
+      p_order_id: orderId,
+    })
+
+    if (error) {
+      console.error('Failed to claim food order:', error)
+      return { success: false, error: claimErrorMessage(error.message) }
+    }
+
+    if (!data) {
+      return { success: false, error: 'This delivery is no longer available.' }
+    }
+
+    return { success: true, order: data }
+  } catch (error) {
+    console.error('Error claiming food order:', error)
+    return { success: false, error: claimErrorMessage(error?.message) }
+  }
+}
+
+/** Turn the RPC's error text into something a rider can act on. */
+function claimErrorMessage(message) {
+  const text = String(message || '')
+
+  if (text.includes('order_not_claimable')) {
+    return 'This delivery was just taken by another rider.'
+  }
+  if (text.includes('not an active Ewizzy rider')) {
+    return 'Your rider account is not active. Please contact Ewizzy support.'
+  }
+  if (text.includes('Go online before accepting')) {
+    return 'Go online before accepting a delivery.'
+  }
+  if (text.includes('order_id is required')) {
+    return 'This delivery could not be identified.'
+  }
+  if (text.includes('claim_food_order') || text.includes('404')) {
+    return 'Claiming a delivery is not available yet. Please contact Ewizzy support.'
+  }
+
+  return text || 'This delivery could not be claimed.'
+}
+
+/**
+ * Cancel a food order. The row is never deleted: status moves to
+ * 'cancelled', which the food_orders status constraint allows. The
+ * existing RLS policy only permits customer updates while the order is
+ * still 'pending', so this is rejected by the database once the
+ * restaurant has accepted the order.
+ *
+ * Only the cancellation reason is sent from the client. cancelled_at and
+ * cancelled_by are populated by the database trigger, so they are never
+ * supplied here and cannot be fabricated.
+ */
+export async function cancelFoodOrder(orderId, customerUserId, reason = null) {
+  if (!orderId) return { success: false, error: 'Missing order reference.' }
+  if (!customerUserId) return { success: false, error: 'You must be signed in to cancel an order.' }
+
+  const update = { status: 'cancelled' }
+  if (typeof reason === 'string' && reason.trim()) {
+    update.cancel_reason = reason.trim()
+  }
+
   try {
     const { data, error } = await supabase
       .from('food_orders')
+      .update(update)
+      .eq('id', orderId)
+      .eq('customer_user_id', customerUserId)
+      .eq('status', 'pending')
+      .select('*')
+      .maybeSingle()
+
+    if (error) {
+      console.error('Failed to cancel order:', error)
+      return { success: false, error: error.message }
+    }
+
+    if (!data) {
+      return {
+        success: false,
+        error: 'This order can no longer be cancelled because the restaurant has already accepted it.',
+      }
+    }
+
+    return { success: true, order: data }
+  } catch (error) {
+    console.error('Error cancelling order:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function fetchRestaurantOrders(restaurantId) {
+  if (!restaurantId) return []
+  try {
+    // food_orders.customer_user_id has no foreign key to profiles, so the
+    // customer is resolved with a separate lookup instead of an embed.
+    const { data, error } = await supabase
+      .from('food_orders')
       .select(`
-        *,
+        id,
+        order_number,
+        status,
+        payment_status,
+        subtotal,
+        delivery_fee,
+        total,
+        notes,
+        delivery_address,
+        created_at,
+        customer_user_id,
         items:food_order_items(*)
       `)
       .eq('restaurant_id', restaurantId)
@@ -629,21 +998,50 @@ export async function fetchRestaurantOrders(restaurantId) {
       return []
     }
 
-    return data || []
+    const customerIds = Array.from(
+      new Set((data || []).map((o) => o.customer_user_id).filter(Boolean))
+    )
+
+    let customersById = {}
+    if (customerIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, phone')
+        .in('user_id', customerIds)
+      customersById = Object.fromEntries(
+        (profiles || []).map((p) => [p.user_id, { name: p.full_name, phone: p.phone }])
+      )
+    }
+
+    return (data || []).map((order) => ({
+      ...order,
+      customerName: customersById[order.customer_user_id]?.name || 'Customer',
+      customerPhone: customersById[order.customer_user_id]?.phone || '',
+      items: (order.items || []).map((item) => ({
+        id: item.id,
+        name: item.item_name_snapshot,
+        price: Number(item.unit_price) || 0,
+        quantity: Number(item.quantity) || 0,
+        lineTotal: Number(item.line_total) || 0,
+      })),
+    }))
   } catch (error) {
     console.error('Error fetching restaurant orders:', error)
     return []
   }
 }
 
+/** Restaurant-side status transition. Accepts any status the schema allows. */
 export async function updateFoodOrderStatus(orderId, newStatus) {
+  if (!orderId || !newStatus) return { success: false, error: 'Missing order or status.' }
+
   try {
     const { data, error } = await supabase
       .from('food_orders')
       .update({ status: newStatus, updated_at: new Date().toISOString() })
       .eq('id', orderId)
       .select('*')
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error('Failed to update order status:', error)

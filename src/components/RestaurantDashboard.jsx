@@ -1,13 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase, getSignedStorageUrl, uploadPrivateFile } from '../supabase.js'
 import { fetchRestaurantOrders, updateFoodOrderStatus } from './FoodData.js'
+import { foodOrderReference, formatNaira, restaurantActionLabel, restaurantNextStatus, restaurantStatusLabel } from './foodUtils.js'
 import { Logo } from './Logo.jsx'
 
 const RESTAURANT_IMAGE_BUCKET = 'restaurant-images'
-
-function formatNaira(amount) {
-  return `₦${Number(amount).toLocaleString()}`
-}
 
 function RestaurantDashboard({ user, onBack, onRegister }) {
   const [restaurant, setRestaurant] = useState(null)
@@ -180,31 +177,9 @@ function RestaurantDashboard({ user, onBack, onRegister }) {
     return true
   })
 
-  const getNextStatus = (status) => {
-    const transitions = {
-      pending: 'confirmed',
-      confirmed: 'preparing',
-      preparing: 'ready_for_pickup',
-      ready_for_pickup: 'picked_up',
-      picked_up: 'out_for_delivery',
-      out_for_delivery: 'delivered',
-    }
-    return transitions[status] || null
-  }
+  const getNextStatus = (status) => restaurantNextStatus(status)
 
-  const getStatusLabel = (status) => {
-    const labels = {
-      pending: 'Pending',
-      confirmed: 'Confirmed',
-      preparing: 'Preparing',
-      ready_for_pickup: 'Ready for Pickup',
-      picked_up: 'Picked Up',
-      out_for_delivery: 'Out for Delivery',
-      delivered: 'Delivered',
-      cancelled: 'Cancelled',
-    }
-    return labels[status] || status
-  }
+  const getStatusLabel = (status) => restaurantStatusLabel(status)
 
   if (loading) {
     return (
@@ -365,11 +340,15 @@ function RestaurantDashboard({ user, onBack, onRegister }) {
               return (
                 <div key={order.id} className="nf-order-card">
                   <div className="nf-order-card-header">
-                    <h4>Order #{order.id}</h4>
+                    <h4>{foodOrderReference(order.id)}</h4>
                     <span className={`nf-order-status nf-order-status--${order.status}`}>
                       {getStatusLabel(order.status)}
                     </span>
                   </div>
+                  <p className="nf-order-restaurant">👤 {order.customerName || 'Customer'}</p>
+                  {order.customerPhone && (
+                    <p className="nf-order-address">📞 {order.customerPhone}</p>
+                  )}
                   <p className="nf-order-address">📍 {order.delivery_address}</p>
                   <p className="nf-order-time">
                     🕐 {new Date(order.created_at).toLocaleString()}
@@ -378,8 +357,8 @@ function RestaurantDashboard({ user, onBack, onRegister }) {
                   <div className="nf-order-items">
                     {order.items && order.items.map((item) => (
                       <div key={item.id} className="nf-order-item-row">
-                        <span>{item.quantity}x {item.item_name_snapshot}</span>
-                        <span>{formatNaira(item.line_total)}</span>
+                        <span>{item.quantity}x {item.name}</span>
+                        <span>{formatNaira(item.lineTotal)}</span>
                       </div>
                     ))}
                   </div>
@@ -392,7 +371,7 @@ function RestaurantDashboard({ user, onBack, onRegister }) {
                       className="dash-btn dash-btn-primary dash-btn-full"
                       onClick={() => handleStatusUpdate(order.id, nextStatus)}
                     >
-                      Mark as {getStatusLabel(nextStatus)}
+                      {restaurantActionLabel(order.status) || `Mark as ${getStatusLabel(nextStatus)}`}
                     </button>
                   )}
                   {order.status === 'pending' && (

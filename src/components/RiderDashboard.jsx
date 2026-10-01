@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabase.js'
+import { claimFoodOrder } from './FoodData.js'
+import { foodOrderReference, formatNaira } from './foodUtils.js'
 import { Logo } from './Logo.jsx'
-
-function formatNaira(amount) {
-  return `₦${Number(amount).toLocaleString()}`
-}
 
 function RiderDashboard({ user, onBack, onLogin, onSignup }) {
   const [rider, setRider] = useState(null)
   const [loading, setLoading] = useState(true)
   const [deliveries, setDeliveries] = useState([])
   const [activeTab, setActiveTab] = useState('available')
+  const [busyOrderId, setBusyOrderId] = useState(null)
+  const [actionError, setActionError] = useState('')
 
   useEffect(() => {
     const loadRider = async () => {
@@ -58,20 +58,69 @@ function RiderDashboard({ user, onBack, onLogin, onSignup }) {
     loadDeliveries()
   }, [rider])
 
-  const handleStatusUpdate = async (orderId, newStatus, riderId = null) => {
-    const updates = { status: newStatus, updated_at: new Date().toISOString() }
-    if (riderId) updates.rider_id = riderId
+  const currentStatusFor = (orderId) => deliveries.find((d) => d.id === orderId)?.status
+
+  /**
+   * Advance a delivery the rider already owns.
+   * The database decides whether the transition is allowed; this only
+   * performs the write for an order that is already assigned to this
+   * rider. Rider assignment itself never happens here.
+   */
+  const handleStatusUpdate = async (orderId, newStatus) => {
+    setBusyOrderId(orderId)
+    setActionError('')
 
     const { error } = await supabase
       .from('food_orders')
-      .update(updates)
+      .update({ status: newStatus })
       .eq('id', orderId)
+      .eq('rider_id', rider?.id)
+      .eq('status', currentStatusFor(orderId))
 
-    if (!error) {
-      setDeliveries((current) =>
-        current.map((d) => (d.id === orderId ? { ...d, status: newStatus, ...(riderId ? { rider_id: riderId } : {}) } : d))
-      )
+    setBusyOrderId(null)
+
+    if (error) {
+      console.error('Failed to update delivery status:', error)
+      setActionError('This delivery could not be updated. Please try again.')
+      return
     }
+
+    setDeliveries((current) =>
+      current.map((d) => (d.id === orderId ? { ...d, status: newStatus } : d))
+    )
+  }
+
+  /**
+   * Claim an available delivery. The claim_food_order RPC assigns
+   * rider_id and leaves the status at 'ready_for_pickup', so the order
+   * becomes this rider's responsibility without being marked as picked
+   * up. Marking the physical pickup is a separate action below.
+   */
+  const handleClaim = async (orderId) => {
+    setBusyOrderId(orderId)
+    setActionError('')
+
+    const result = await claimFoodOrder(orderId)
+
+    setBusyOrderId(null)
+
+    if (!result.success) {
+      setActionError(result.error || 'This delivery could not be claimed.')
+      // The order may have been taken while this rider was looking at it.
+      setDeliveries((current) => current.filter((d) => d.id !== orderId))
+      return
+    }
+
+    setDeliveries((current) =>
+      current.map((d) =>
+        d.id === orderId
+          ? // Merge only the assigned fields so the joined restaurant
+            // and items already on this row survive the update.
+            { ...d, rider_id: result.order.rider_id, status: result.order.status }
+          : d
+      )
+    )
+    setActiveTab('my-deliveries')
   }
 
   const registerRider = async () => {
@@ -155,7 +204,6 @@ if (loading) {
 
   const myDeliveries = deliveries.filter((d) => d.rider_id === rider.id)
   const availableDeliveries = deliveries.filter((d) => d.status === 'ready_for_pickup' && !d.rider_id)
-
   const displayDeliveries = activeTab === 'available' ? availableDeliveries : myDeliveries
 
   return (
@@ -201,11 +249,13 @@ if (loading) {
         ) : (
           <div className="nf-order-list">
             {displayDeliveries.map((order) => (
-              <div key={order.id} className="nf-order-card">
-                <div className="nf-order-card-header">
-                  <h4>Order #{order.id}</h4>
-                  <span className={`nf-order-status nf-order-status--${order.status}`}>{order.status.replace(/_/g, ' ')}</span>
-                </div>
+                <div key={order.id} className="nf-order-card">
+                  <div className="nf-order-card-header">
+                    <h4>{foodOrderReference(order)}</h4>
+                    <span className={`nf-order-status nf-order-status--${order.status}`}>
+                      {order.status.replace(/_/g, ' ')}
+                    </span>
+                  </div>
                 <p className="nf-order-address">📍 {order.delivery_address}</p>
                 <p style={{ fontSize: 13, color: 'var(--nf-text-muted)' }}>From: {order.restaurant?.name || 'Restaurant'}</p>
                 <div className="nf-order-total">
@@ -213,30 +263,50 @@ if (loading) {
                   <span>{formatNaira(order.total)}</span>
                 </div>
 
-                {activeTab === 'available' && order.status === 'ready_for_pickup' && (
+                {actionError && busyOrderId === null && (
+                  <p className="nf-form-error">{actionError}</p>
+                )}
+
+                {/* Available board: claim only. The status is left at
+                    ready_for_pickup so the customer sees "Rider assigned". */}
+                {!order.rider_id && order.status === 'ready_for_pickup' && (
                   <button
                     className="dash-btn dash-btn-primary dash-btn-full"
-                    onClick={() => handleStatusUpdate(order.id, 'picked_up', rider.id)}
+                    onClick={() => handleClaim(order.id)}
+                    disabled={busyOrderId === order.id}
                   >
-                    Accept Delivery
+                    {busyOrderId === order.id ? 'Claiming...' : 'Claim Order'}
                   </button>
                 )}
 
-                {activeTab === 'my-deliveries' && order.status === 'picked_up' && (
+                {/* Own deliveries: pickup is a separate step from claiming. */}
+                {order.rider_id === rider.id && order.status === 'ready_for_pickup' && (
+                  <button
+                    className="dash-btn dash-btn-primary dash-btn-full"
+                    onClick={() => handleStatusUpdate(order.id, 'picked_up')}
+                    disabled={busyOrderId === order.id}
+                  >
+                    {busyOrderId === order.id ? 'Updating...' : 'Mark Picked Up'}
+                  </button>
+                )}
+
+                {order.rider_id === rider.id && order.status === 'picked_up' && (
                   <button
                     className="dash-btn dash-btn-primary dash-btn-full"
                     onClick={() => handleStatusUpdate(order.id, 'out_for_delivery')}
+                    disabled={busyOrderId === order.id}
                   >
-                    Start Delivery
+                    {busyOrderId === order.id ? 'Updating...' : 'Start Delivery'}
                   </button>
                 )}
 
-                {activeTab === 'my-deliveries' && order.status === 'out_for_delivery' && (
+                {order.rider_id === rider.id && order.status === 'out_for_delivery' && (
                   <button
                     className="dash-btn dash-btn-primary dash-btn-full"
                     onClick={() => handleStatusUpdate(order.id, 'delivered')}
+                    disabled={busyOrderId === order.id}
                   >
-                    Mark Delivered
+                    {busyOrderId === order.id ? 'Updating...' : 'Mark Delivered'}
                   </button>
                 )}
               </div>
