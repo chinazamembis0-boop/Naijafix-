@@ -7811,7 +7811,11 @@ function AdminDashboard({ user, onLogout, onHome }) {
           .order('submitted_at', { ascending: false }),
         supabase
           .from('rider_verifications')
-          .select('*')
+          .select(`
+            *,
+            profiles!rider_user_id (user_id, full_name, role)
+          `)
+          .eq('profiles.role', 'rider')
           .order('submitted_at', { ascending: false }),
         supabase
           .from('support_reports')
@@ -7896,21 +7900,16 @@ function AdminDashboard({ user, onLogout, onHome }) {
       if (riderVerificationsResult.error) {
         console.error('Failed to load rider verifications:', riderVerificationsResult.error)
       } else {
-        setRiderVerifications(riderVerificationsResult.data || [])
-        const riderUserIds = [...new Set((riderVerificationsResult.data || []).map((v) => v.rider_user_id))]
-        if (riderUserIds.length > 0) {
-          const { data: profiles } = await supabase
-            .from('profiles')
-            .select('user_id, full_name')
-            .in('user_id', riderUserIds)
-          if (profiles) {
-            const names = {}
-            profiles.forEach((p) => {
-              names[p.user_id] = p.full_name
-            })
-            setRiderNames(names)
+        const riderVerificationsData = riderVerificationsResult.data || []
+        setRiderVerifications(riderVerificationsData)
+        // Extract rider names from the joined profiles data
+        const names = {}
+        riderVerificationsData.forEach((v) => {
+          if (v.profiles?.full_name) {
+            names[v.rider_user_id] = v.profiles.full_name
           }
-        }
+        })
+        setRiderNames(names)
       }
 
       if (reportsResult.error) {
