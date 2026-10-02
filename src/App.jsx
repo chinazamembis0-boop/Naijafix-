@@ -989,6 +989,12 @@ function Home({
               )}
             </div>
 
+            {onRiderSignup && (
+              <p className="hero-rider-note">
+                Join Ewizzy as a motorcycle/Okada delivery and dispatch rider.
+              </p>
+            )}
+
             <div className="home-search">
               <span>🔍</span>
               <input
@@ -1779,36 +1785,11 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
       }
     }
 
-    if (role === 'rider') {
-      const { error: riderError } =
-        await supabase
-          .from('riders')
-          .upsert(
-            {
-              user_id: userId,
-              full_name: name,
-              phone,
-              vehicle_type: 'motorcycle',
-              active: true,
-              available: true,
-            },
-            { onConflict: 'user_id', ignoreDuplicates: true }
-          )
-
-      if (riderError) {
-        console.error(
-          'Rider profile creation failed:',
-          riderError
-        )
-
-        alert(
-          'Account was created, but the rider profile could not be saved: ' +
-            riderError.message
-        )
-
-        return false
-      }
-    }
+    // A rider account is created by the Okada registration form on the
+    // rider dashboard, not here. Sign-up only establishes the auth user
+    // and the profile role; the rider row, the motorcycle vehicle type and
+    // the verification status are all written by
+    // submit_rider_verification() so they cannot be set from the browser.
 
     const appUser = buildAppUser(profile, null, {
       userId,
@@ -7760,6 +7741,7 @@ function ProviderDashboard({
 function AdminDashboard({ user, onLogout, onHome }) {
   const [verifications, setVerifications] = useState([])
   const [customerVerifications, setCustomerVerifications] = useState([])
+  const [riderVerifications, setRiderVerifications] = useState([])
   const [reports, setReports] = useState([])
   const [notifications, setNotifications] = useState([])
   const [unreadNotifications, setUnreadNotifications] = useState(0)
@@ -7775,6 +7757,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
   const [rejectReason, setRejectReason] = useState({})
   const [providerNames, setProviderNames] = useState({})
   const [customerNames, setCustomerNames] = useState({})
+  const [riderNames, setRiderNames] = useState({})
 
   const resolveProviderName = (booking) => {
     if (booking.provider_name) return booking.provider_name
@@ -7816,13 +7799,17 @@ function AdminDashboard({ user, onLogout, onHome }) {
     loadAdminDataRef.current = async () => {
       setLoading(true)
 
-      const [verificationsResult, customerVerificationsResult, reportsResult, notificationsResult, reviewsResult, quotesResult, usersResult, providersResult, bookingsResult, servicesResult] = await Promise.all([
+      const [verificationsResult, customerVerificationsResult, riderVerificationsResult, reportsResult, notificationsResult, reviewsResult, quotesResult, usersResult, providersResult, bookingsResult, servicesResult] = await Promise.all([
         supabase
           .from('provider_verifications')
           .select('*')
           .order('submitted_at', { ascending: false }),
         supabase
           .from('customer_verifications')
+          .select('*')
+          .order('submitted_at', { ascending: false }),
+        supabase
+          .from('rider_verifications')
           .select('*')
           .order('submitted_at', { ascending: false }),
         supabase
@@ -7897,6 +7884,26 @@ function AdminDashboard({ user, onLogout, onHome }) {
               names[p.user_id] = p.full_name
             })
             setCustomerNames(names)
+          }
+        }
+      }
+
+      if (riderVerificationsResult.error) {
+        console.error('Failed to load rider verifications:', riderVerificationsResult.error)
+      } else {
+        setRiderVerifications(riderVerificationsResult.data || [])
+        const riderUserIds = [...new Set((riderVerificationsResult.data || []).map((v) => v.rider_user_id))]
+        if (riderUserIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('user_id, full_name')
+            .in('user_id', riderUserIds)
+          if (profiles) {
+            const names = {}
+            profiles.forEach((p) => {
+              names[p.user_id] = p.full_name
+            })
+            setRiderNames(names)
           }
         }
       }
@@ -8529,11 +8536,76 @@ function AdminDashboard({ user, onLogout, onHome }) {
     }
   }, [markReportsAsViewed, markNotificationsAsRead, loadSettings])
 
+  const updateRiderVerification = async (verificationId, newStatus) => {
+    if (verificationLoading) return
+    setVerificationLoading(true)
+
+    const updates = {
+      status: newStatus,
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: user.user_id,
+    }
+
+    if (newStatus === 'rejected') {
+      const reason = rejectReason[verificationId]?.trim()
+      if (!reason) {
+        alert('Please provide a rejection reason.')
+        setVerificationLoading(false)
+        return
+      }
+      updates.rejection_reason = reason
+    }
+
+    const { error } = await supabase
+      .from('rider_verifications')
+      .update(updates)
+      .eq('id', verificationId)
+
+    if (error) {
+      console.error('Failed to update rider verification:', error)
+      alert('Could not update rider verification: ' + error.message)
+      setVerificationLoading(false)
+      return
+    }
+
+    const verification = riderVerifications.find((v) => v.id === verificationId)
+    if (verification?.rider_user_id) {
+      const title = newStatus === 'approved' ? 'Rider verification approved' : 'Rider verification rejected'
+      const message = newStatus === 'approved'
+        ? 'Your Ewizzy rider account is verified. You can now receive delivery requests.'
+        : `Your rider verification was rejected. Reason: ${updates.rejection_reason || 'Not provided'}`
+
+      const { error: notificationError } = await supabase.rpc('create_notification', {
+        p_user_id: verification.rider_user_id,
+        p_type: newStatus,
+        p_title: title,
+        p_message: message,
+      })
+
+      if (notificationError) {
+        console.error('Failed to create rider verification notification:', notificationError)
+      }
+    }
+
+    setRiderVerifications((current) =>
+      current.map((v) =>
+        v.id === verificationId ? { ...v, ...updates } : v
+      )
+    )
+
+    setVerificationLoading(false)
+  }
+
   const openVerificationDocument = async (path, type) => {
     if (!path) return
     setLoadingDoc(true)
     try {
-      const bucket = type === 'customer' ? 'customer-verification-documents' : 'provider-verification-documents'
+      const bucket =
+        type === 'customer'
+          ? 'customer-verification-documents'
+          : type === 'rider'
+          ? 'rider-verification-documents'
+          : 'provider-verification-documents'
       const signedUrl = await getSignedStorageUrl(bucket, path)
       setViewingDocUrl(signedUrl)
     } catch (error) {
@@ -8549,6 +8621,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
 
   const pendingProvider = verifications.filter(v => v.status === 'pending').length
   const pendingCustomer = customerVerifications.filter(v => v.status === 'pending').length
+  const pendingRider = riderVerifications.filter(v => v.status === 'pending').length
   const openReports = reports.filter(r => r.status === 'open' || r.status === 'in_review').length
 
   const tabs = [
@@ -8562,6 +8635,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
     { id: 'settings', icon: '⚙️', label: 'Settings' },
     { id: 'provider-verifications', icon: '🪪', label: 'Providers', badge: pendingProvider },
     { id: 'customer-verifications', icon: '🆔', label: 'Customers', badge: pendingCustomer },
+    { id: 'rider-verifications', icon: '🏍️', label: 'Riders', badge: pendingRider },
     { id: 'support-reports', icon: '📋', label: 'Reports', badge: openReports },
     { id: 'reviews', icon: '⭐', label: 'Reviews' },
     { id: 'quotes', icon: '💰', label: 'Quotes' },
@@ -8588,10 +8662,17 @@ function AdminDashboard({ user, onLogout, onHome }) {
   const emergencyProvidersCount = providers.filter(p => p.emergency_available).length
   const verifiedProvidersCount = providers.filter(p => p.verified).length
 
-  const renderVerificationCard = (verification, names, type) => (
-    <div className="dash-card dash-verification-card" key={verification.id}>
+  const renderVerificationCard = (verification, names, type) => {
+    const reviewAction = (newStatus) => {
+      if (type === 'provider') return updateVerification(verification.id, newStatus)
+      if (type === 'rider') return updateRiderVerification(verification.id, newStatus)
+      return updateCustomerVerification(verification.id, newStatus)
+    }
+
+    return (
+    <div className="dash-card dash-verification-card" key={`${type}-${verification.id}`}>
       <div className="dash-verification-header">
-        <h4>{names[type === 'provider' ? verification.provider_user_id : verification.customer_user_id] || 'Unknown user'}</h4>
+        <h4>{names[type === 'provider' ? verification.provider_user_id : type === 'rider' ? verification.rider_user_id : verification.customer_user_id] || 'Unknown user'}</h4>
         <div className="dash-verification-badges">
           <StatusBadge status={verification.status} />
           {verification.resubmitted_at && <span className="dash-resubmit-badge">Resubmitted</span>}
@@ -8601,9 +8682,17 @@ function AdminDashboard({ user, onLogout, onHome }) {
         <p><strong>Submitted:</strong> {verification.submitted_at ? new Date(verification.submitted_at).toLocaleString() : 'N/A'}</p>
         {verification.resubmitted_at && <p><strong>Resubmitted:</strong> {new Date(verification.resubmitted_at).toLocaleString()}</p>}
         {verification.rejection_reason && <p className="dash-rejection-reason"><strong>Reason:</strong> {verification.rejection_reason}</p>}
+        {type === 'rider' && verification.emergency_contact_name && (
+          <p><strong>Emergency contact:</strong> {verification.emergency_contact_name} ({verification.emergency_contact_phone || 'no phone'})</p>
+        )}
         {verification.id_document_url && (
           <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" onClick={() => openVerificationDocument(verification.id_document_url, type)} disabled={loadingDoc}>
             {loadingDoc ? 'Loading...' : 'View document'}
+          </button>
+        )}
+        {verification.id_document_path && (
+          <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" onClick={() => openVerificationDocument(verification.id_document_path, type)} disabled={loadingDoc}>
+            {loadingDoc ? 'Loading...' : 'View rider ID'}
           </button>
         )}
       </div>
@@ -8616,17 +8705,18 @@ function AdminDashboard({ user, onLogout, onHome }) {
             onChange={(e) => setRejectReason((current) => ({ ...current, [verification.id]: e.target.value }))}
           />
           <div className="dash-btn-group">
-            <button type="button" className="dash-btn dash-btn-primary" onClick={() => type === 'provider' ? updateVerification(verification.id, 'approved') : updateCustomerVerification(verification.id, 'approved')} disabled={verificationLoading}>
+            <button type="button" className="dash-btn dash-btn-primary" onClick={() => reviewAction('approved')} disabled={verificationLoading}>
               {verificationLoading ? 'Updating...' : 'Approve'}
             </button>
-            <button type="button" className="dash-btn dash-btn-danger" onClick={() => type === 'provider' ? updateVerification(verification.id, 'rejected') : updateCustomerVerification(verification.id, 'rejected')} disabled={verificationLoading}>
+            <button type="button" className="dash-btn dash-btn-danger" onClick={() => reviewAction('rejected')} disabled={verificationLoading}>
               Reject
             </button>
           </div>
         </div>
       )}
     </div>
-  )
+    )
+  }
 
   return (
     <>
@@ -8635,7 +8725,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
           <AdminSidebar
             active={activeTab}
             onChange={setActiveTab}
-            stats={{ pendingProvider, pendingCustomer, openReports, unreadNotifications, onLogout }}
+            stats={{ pendingProvider, pendingCustomer, pendingRider, openReports, unreadNotifications, onLogout }}
           />
         }
         header={
@@ -8662,6 +8752,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
             <StatGrid>
               <StatCard icon="🪪" value={pendingProvider} label="Pending providers" color="yellow" />
               <StatCard icon="🆔" value={pendingCustomer} label="Pending customers" color="yellow" />
+              <StatCard icon="🏍️" value={pendingRider} label="Pending riders" color="yellow" />
               <StatCard icon="📋" value={openReports} label="Open reports" color="red" />
               <StatCard icon="✅" value={verifications.filter(v => v.status === 'approved').length + customerVerifications.filter(v => v.status === 'approved').length} label="Approved" color="green" />
             </StatGrid>
@@ -8833,6 +8924,19 @@ function AdminDashboard({ user, onLogout, onHome }) {
               <EmptyState icon="✅" title="No customer verifications yet" />
             ) : (
               customerVerifications.map((v) => renderVerificationCard(v, customerNames, 'customer'))
+            )}
+          </>
+        )}
+
+        {activeTab === 'rider-verifications' && (
+          <>
+            <SectionHeader label="VERIFICATIONS" title="Rider verifications" />
+            {loading ? (
+              <LoadingState text="Loading verifications..." />
+            ) : riderVerifications.length === 0 ? (
+              <EmptyState icon="✅" title="No rider verifications yet" />
+            ) : (
+              riderVerifications.map((v) => renderVerificationCard(v, riderNames, 'rider'))
             )}
           </>
         )}

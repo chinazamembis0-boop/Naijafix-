@@ -252,6 +252,10 @@ export function AdminSidebar({ active, onChange, stats }) {
           🆔 <span>Customer Verifications</span>
           {stats?.pendingCustomer > 0 && <span className="dash-admin-nav-badge">{stats.pendingCustomer}</span>}
         </button>
+        <button className={`dash-admin-nav-btn ${active === 'rider-verifications' ? 'dash-admin-nav-active' : ''}`} onClick={() => onChange('rider-verifications')}>
+          🏍️ <span>Rider Verifications</span>
+          {stats?.pendingRider > 0 && <span className="dash-admin-nav-badge">{stats.pendingRider}</span>}
+        </button>
         <button className={`dash-admin-nav-btn ${active === 'support-reports' ? 'dash-admin-nav-active' : ''}`} onClick={() => onChange('support-reports')}>
           📋 <span>Support Reports</span>
           {stats?.openReports > 0 && <span className="dash-admin-nav-badge">{stats.openReports}</span>}

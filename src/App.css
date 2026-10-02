@@ -998,6 +998,181 @@ footer .brand span {
   color: var(--nf-text-muted);
 }
 
+.empty-box.rider-success {
+  border-color: var(--nf-green);
+}
+
+/* RIDER REGISTRATION AND STATUS */
+
+.hero-rider-note {
+  margin-top: 12px;
+  font-size: 15px;
+}
+
+.rider-hint {
+  margin: 6px 0 0;
+  color: var(--nf-text-muted);
+  font-size: 13px;
+}
+
+.rider-vehicle input {
+  background: #f1f2f8;
+  color: var(--nf-text);
+  font-weight: 700;
+}
+
+.rider-upload {
+  display: block;
+  cursor: pointer;
+}
+
+.rider-upload-btn {
+  display: block;
+  width: 100%;
+  padding: 18px;
+  border: 2px dashed var(--nf-purple);
+  border-radius: 15px;
+  background: white;
+  color: var(--nf-purple);
+  font-size: 17px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.rider-upload:hover .rider-upload-btn {
+  background: var(--nf-purple-light);
+}
+
+.rider-upload-preview {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--nf-border);
+  border-radius: 15px;
+  background: white;
+  text-align: center;
+}
+
+.rider-upload-preview img {
+  max-width: 100%;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: 10px;
+}
+
+.rider-upload-preview .secondary-button {
+  margin-top: 10px;
+  width: 100%;
+}
+
+.rider-id-section {
+  margin: 22px 0 10px;
+  padding: 18px;
+  border: 1px solid var(--nf-border);
+  border-radius: 15px;
+  background: white;
+}
+
+.rider-id-section h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+}
+
+.rider-id-section > p {
+  margin: 0 0 14px;
+  color: var(--nf-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.rider-error {
+  margin: 10px 0 0;
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.rider-status {
+  margin: 10px 0 0;
+  color: var(--nf-purple);
+  font-weight: 700;
+}
+
+.rider-submit {
+  margin-top: 18px;
+  padding: 18px;
+  font-size: 17px;
+}
+
+.rider-identity {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 18px;
+}
+
+.rider-identity h2 {
+  margin: 0 0 6px;
+}
+
+.rider-identity p {
+  margin: 0 0 4px;
+  color: var(--nf-text-muted);
+}
+
+.rider-identity-photo {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.rider-identity-photo--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  background: var(--nf-bg);
+}
+
+.rider-verification {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid var(--nf-border);
+  border-radius: 15px;
+  background: white;
+}
+
+.rider-verification-icon {
+  font-size: 24px;
+}
+
+.rider-verification strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.rider-verification p {
+  margin: 0;
+  color: var(--nf-text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.rider-verification--approved {
+  border-color: var(--nf-green);
+}
+
+.rider-verification--pending {
+  border-color: #f59e0b;
+}
+
+.rider-verification--rejected {
+  border-color: #dc2626;
+}
+
 .small-green-button {
   border: 0;
   background: var(--nf-green);

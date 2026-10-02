@@ -1,11 +1,31 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../supabase.js'
+import { supabase, getSignedStorageUrl } from '../supabase.js'
 import { claimFoodOrder } from './FoodData.js'
 import { foodOrderReference, formatNaira } from './foodUtils.js'
 import { Logo } from './Logo.jsx'
+import RiderRegistration, { RIDER_VEHICLE_LABEL } from './RiderRegistration.jsx'
+
+/**
+ * Rider-facing wording for the stored verification status. The status
+ * itself always comes from the database, never from local state.
+ */
+function verificationLabel(status) {
+  if (status === 'approved') return 'Verified'
+  if (status === 'rejected') return 'Verification needs attention'
+  return 'Pending Verification'
+}
+
+function verificationIcon(status) {
+  if (status === 'approved') return '✅'
+  if (status === 'rejected') return '⚠️'
+  return '⏳'
+}
 
 function RiderDashboard({ user, onBack, onLogin, onSignup }) {
   const [rider, setRider] = useState(null)
+  const [verification, setVerification] = useState(null)
+  const [photoUrl, setPhotoUrl] = useState('')
+  const [registered, setRegistered] = useState(false)
   const [loading, setLoading] = useState(true)
   const [deliveries, setDeliveries] = useState([])
   const [activeTab, setActiveTab] = useState('available')
@@ -34,8 +54,49 @@ function RiderDashboard({ user, onBack, onLogin, onSignup }) {
   }, [user])
 
   useEffect(() => {
+    const loadVerification = async () => {
+      if (!user?.user_id) {
+        setVerification(null)
+        return
+      }
+      const { data, error } = await supabase
+        .from('rider_verifications')
+        .select('id, status, rejection_reason, submitted_at, reviewed_at')
+        .eq('rider_user_id', user.user_id)
+        .maybeSingle()
+
+      if (error) {
+        console.error('Failed to load rider verification:', error)
+        return
+      }
+      setVerification(data)
+    }
+    loadVerification()
+  }, [user, registered])
+
+  useEffect(() => {
+    const loadPhoto = async () => {
+      if (!rider?.photo_path) {
+        setPhotoUrl('')
+        return
+      }
+      try {
+        setPhotoUrl(await getSignedStorageUrl('profile-photos', rider.photo_path))
+      } catch (error) {
+        console.error('Failed to load rider photo:', error)
+        setPhotoUrl('')
+      }
+    }
+    loadPhoto()
+  }, [rider?.photo_path])
+
+  const isApproved = verification?.status === 'approved'
+
+  useEffect(() => {
     const loadDeliveries = async () => {
-      if (!rider?.id) {
+      // The database refuses to return claimable deliveries to an
+      // unverified rider, so there is nothing to request yet.
+      if (!rider?.id || !isApproved) {
         setDeliveries([])
         return
       }
@@ -56,7 +117,7 @@ function RiderDashboard({ user, onBack, onLogin, onSignup }) {
       setDeliveries(data || [])
     }
     loadDeliveries()
-  }, [rider])
+  }, [rider, isApproved])
 
   const currentStatusFor = (orderId) => deliveries.find((d) => d.id === orderId)?.status
 
@@ -123,29 +184,6 @@ function RiderDashboard({ user, onBack, onLogin, onSignup }) {
     setActiveTab('my-deliveries')
   }
 
-  const registerRider = async () => {
-    if (!user?.user_id) return
-    const fullName = user.name || 'Rider'
-    const { data, error } = await supabase
-      .from('riders')
-      .insert({
-        user_id: user.user_id,
-        full_name: fullName,
-        phone: user.phone || '',
-        vehicle_type: 'motorcycle',
-        active: true,
-        available: true,
-      })
-      .select('*')
-      .single()
-
-    if (error) {
-      alert('Failed to register: ' + error.message)
-    } else {
-      setRider(data)
-    }
-  }
-
   const toggleAvailability = async () => {
     if (!rider) return
     const { error } = await supabase
@@ -184,17 +222,48 @@ if (loading) {
           {!user ? (
             <>
               <h2>Become a Delivery Rider</h2>
-              <p>Register as a rider to start accepting delivery assignments.</p>
+              <p>Join Ewizzy as a motorcycle/Okada delivery and dispatch rider.</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <button className="primary-full" onClick={onSignup}>Create account</button>
                 <button className="secondary-button" onClick={onLogin}>Log in</button>
               </div>
             </>
+          ) : registered ? (
+            <>
+              <h2>Become a Delivery Rider</h2>
+              <p>Join Ewizzy as a motorcycle/Okada delivery and dispatch rider.</p>
+              <div className="empty-box rider-success">
+                <span>✅</span>
+                <h4>Registration submitted successfully.</h4>
+                <p>
+                  Your Ewizzy rider account is pending verification. We will review your
+                  information and ID before you can receive delivery requests.
+                </p>
+              </div>
+            </>
           ) : (
             <>
               <h2>Become a Delivery Rider</h2>
-              <p>Register as a rider to start accepting delivery assignments.</p>
-              <button className="primary-full" onClick={registerRider}>Register as Rider</button>
+              <p>Join Ewizzy as a motorcycle/Okada delivery and dispatch rider.</p>
+              <p className="rider-hint">
+                Fill this in once. You need your name, phone, one photo, the area you
+                deliver in, an emergency contact and one ID card.
+              </p>
+              <RiderRegistration
+                user={user}
+                defaultName={user.name || ''}
+                defaultPhone={user.phone || ''}
+                onRegistered={async (submitted) => {
+                  setVerification(submitted)
+                  setRegistered(true)
+                  const { data } = await supabase
+                    .from('riders')
+                    .select('*')
+                    .eq('user_id', user.user_id)
+                    .maybeSingle()
+                  setRider(data)
+                }}
+              />
             </>
           )}
         </main>
@@ -215,9 +284,65 @@ if (loading) {
 
       <main className="inner-content">
         <span className="section-label">RIDER</span>
-        <h2>{rider.full_name}</h2>
-        <p>{rider.vehicle_type || 'Motorcycle'}</p>
 
+        <div className="rider-identity">
+          {photoUrl ? (
+            <img className="rider-identity-photo" src={photoUrl} alt={rider.full_name} />
+          ) : (
+            <div className="rider-identity-photo rider-identity-photo--empty">🏍️</div>
+          )}
+          <div>
+            <h2>{rider.full_name}</h2>
+            <p>🏍️ {RIDER_VEHICLE_LABEL}</p>
+            {rider.operating_area && <p>📍 {rider.operating_area}</p>}
+          </div>
+        </div>
+
+        <div className={`rider-verification rider-verification--${verification?.status || 'pending'}`}>
+          <span className="rider-verification-icon">
+            {verificationIcon(verification?.status)}
+          </span>
+          <div>
+            <strong>{verificationLabel(verification?.status)}</strong>
+            {verification?.status === 'rejected' && verification.rejection_reason && (
+              <p>{verification.rejection_reason}</p>
+            )}
+            {verification?.status === 'pending' && (
+              <p>We are checking your details and ID. You will be able to take deliveries soon.</p>
+            )}
+            {verification?.status === 'approved' && (
+              <p>You are verified and can receive delivery requests.</p>
+            )}
+          </div>
+        </div>
+
+        {/* A rider who is not approved yet is shown the status instead of
+            the delivery board. The database enforces the same rule, so
+            this is presentation only. */}
+        {!isApproved ? (
+          verification?.status === 'rejected' ? (
+            <>
+              <div className="empty-box">
+                <span>⚠️</span>
+                <h4>Verification needs attention</h4>
+                <p>Send a new ID card photo below. Delivery requests open once an Ewizzy admin approves your account.</p>
+              </div>
+              <RiderRegistration
+                user={user}
+                defaultName={rider.full_name || ''}
+                defaultPhone={rider.phone || ''}
+                onRegistered={(submitted) => setVerification(submitted)}
+              />
+            </>
+          ) : (
+            <div className="empty-box">
+              <span>🔒</span>
+              <h4>No deliveries yet</h4>
+              <p>Delivery requests unlock as soon as an Ewizzy admin approves your verification.</p>
+            </div>
+          )
+        ) : (
+          <>
         <button
           className={`dash-btn ${rider.available ? 'dash-btn-primary' : 'dash-btn-outline'} dash-btn-full`}
           onClick={toggleAvailability}
@@ -312,6 +437,8 @@ if (loading) {
               </div>
             ))}
           </div>
+        )}
+          </>
         )}
       </main>
     </div>
