@@ -244,6 +244,9 @@ export function AdminSidebar({ active, onChange, stats }) {
         <button className={`dash-admin-nav-btn ${active === 'services' ? 'dash-admin-nav-active' : ''}`} onClick={() => onChange('services')}>
           🏷️ <span>Services</span>
         </button>
+        <button className={`dash-admin-nav-btn ${active === 'restaurants' ? 'dash-admin-nav-active' : ''}`} onClick={() => onChange('restaurants')}>
+          🏪 <span>Restaurants</span>
+        </button>
         <button className={`dash-admin-nav-btn ${active === 'provider-verifications' ? 'dash-admin-nav-active' : ''}`} onClick={() => onChange('provider-verifications')}>
           🪪 <span>Provider Verifications</span>
           {stats?.pendingProvider > 0 && <span className="dash-admin-nav-badge">{stats.pendingProvider}</span>}

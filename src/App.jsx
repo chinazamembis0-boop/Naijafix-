@@ -7751,6 +7751,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
   const [providers, setProviders] = useState([])
   const [bookings, setBookings] = useState([])
   const [services, setServices] = useState([])
+  const [restaurants, setRestaurants] = useState([])
   const [loading, setLoading] = useState(true)
   const [verificationLoading, setVerificationLoading] = useState(false)
   const [reportLoading, setReportLoading] = useState(false)
@@ -7799,7 +7800,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
     loadAdminDataRef.current = async () => {
       setLoading(true)
 
-      const [verificationsResult, customerVerificationsResult, riderVerificationsResult, reportsResult, notificationsResult, reviewsResult, quotesResult, usersResult, providersResult, bookingsResult, servicesResult] = await Promise.all([
+      const [verificationsResult, customerVerificationsResult, riderVerificationsResult, reportsResult, notificationsResult, reviewsResult, quotesResult, usersResult, providersResult, bookingsResult, servicesResult, restaurantsResult] = await Promise.all([
         supabase
           .from('provider_verifications')
           .select('*')
@@ -7846,6 +7847,10 @@ function AdminDashboard({ user, onLogout, onHome }) {
           .select('*')
           .eq('active', true)
           .order('name', { ascending: true }),
+        supabase
+          .from('restaurants')
+          .select('*')
+          .order('created_at', { ascending: false }),
       ])
 
       if (verificationsResult.error) {
@@ -8059,11 +8064,17 @@ function AdminDashboard({ user, onLogout, onHome }) {
         setBookings(bookingsResult.data || [])
       }
 
-       if (servicesResult.error) {
-         console.error('Failed to load services:', servicesResult.error)
-       } else {
-         setServices(dedupeServices(servicesResult.data || []))
-       }
+if (servicesResult.error) {
+          console.error('Failed to load services:', servicesResult.error)
+        } else {
+          setServices(dedupeServices(servicesResult.data || []))
+        }
+
+        if (restaurantsResult.error) {
+          console.error('Failed to load restaurants:', restaurantsResult.error)
+        } else {
+          setRestaurants(restaurantsResult.data || [])
+        }
 
       setLoading(false)
     }
@@ -8596,6 +8607,59 @@ function AdminDashboard({ user, onLogout, onHome }) {
     setVerificationLoading(false)
   }
 
+  const toggleRestaurantActive = async (restaurantId, newActiveStatus) => {
+    if (savingSettings) return
+    setSavingSettings(true)
+
+    try {
+      const { error } = await supabase
+        .from('restaurants')
+        .update({ is_active: newActiveStatus })
+        .eq('id', restaurantId)
+
+      if (error) {
+        console.error('Failed to update restaurant status:', error)
+        alert('Could not update restaurant status: ' + error.message)
+        setSavingSettings(false)
+        return
+      }
+
+      setRestaurants((current) =>
+        current.map((r) =>
+          r.id === restaurantId ? { ...r, is_active: newActiveStatus } : r
+        )
+      )
+
+      const restaurant = restaurants.find((r) => r.id === restaurantId)
+      if (restaurant?.owner_user_id) {
+        const title = newActiveStatus ? 'Restaurant activated' : 'Restaurant deactivated'
+        const message = newActiveStatus
+          ? 'Your restaurant has been activated and is now visible to customers.'
+          : 'Your restaurant has been deactivated and is no longer visible to customers.'
+
+        try {
+          const { error: notificationError } = await supabase.rpc('create_notification', {
+            p_user_id: restaurant.owner_user_id,
+            p_type: newActiveStatus ? 'approved' : 'rejected',
+            p_title: title,
+            p_message: message,
+          })
+
+          if (notificationError) {
+            console.error('Failed to create restaurant status notification:', notificationError)
+          }
+        } catch (notificationError) {
+          console.error('Failed to create restaurant status notification:', notificationError)
+        }
+      }
+    } catch (err) {
+      console.error('Unexpected error updating restaurant status:', err)
+      alert('Something went wrong: ' + (err?.message || 'Unknown error'))
+    }
+
+    setSavingSettings(false)
+  }
+
   const openVerificationDocument = async (path, type) => {
     if (!path) return
     setLoadingDoc(true)
@@ -8631,6 +8695,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
     { id: 'providers', icon: '🛠️', label: 'Providers' },
     { id: 'bookings', icon: '📅', label: 'Bookings' },
     { id: 'services', icon: '🏷️', label: 'Services' },
+    { id: 'restaurants', icon: '🏪', label: 'Restaurants' },
     { id: 'ads', icon: '📢', label: 'Ads' },
     { id: 'settings', icon: '⚙️', label: 'Settings' },
     { id: 'provider-verifications', icon: '🪪', label: 'Providers', badge: pendingProvider },
@@ -8897,6 +8962,75 @@ function AdminDashboard({ user, onLogout, onHome }) {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === 'restaurants' && (
+          <>
+            <SectionHeader label="RESTAURANTS" title="All restaurants" />
+            {loading ? (
+              <LoadingState text="Loading restaurants..." />
+            ) : restaurants.length === 0 ? (
+              <EmptyState icon="🏪" title="No restaurants yet" description="Restaurants will appear here once registered." />
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {restaurants.map((restaurant) => {
+                  const owner = users.find((u) => u.user_id === restaurant.owner_user_id)
+                  const isActive = restaurant.is_active !== false
+                  const isOpen = restaurant.is_open !== false
+                  return (
+                    <div key={restaurant.id} className="dash-card" style={{ padding: 14 }}>
+                      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                        <div style={{ flex: 1, minWidth: 260 }}>
+                          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
+                            <strong style={{ fontSize: 16 }}>{restaurant.name}</strong>
+                            <span className={`dash-status-badge ${isActive ? 'dash-status-approved' : 'dash-status-declined'}`}>
+                              {isActive ? 'Active' : 'Inactive'}
+                            </span>
+                            <span className={`dash-status-badge ${isOpen ? 'dash-status-accepted' : 'dash-status-pending'}`}>
+                              {isOpen ? 'Open' : 'Closed'}
+                            </span>
+                          </div>
+                          <p style={{ fontSize: 13, color: 'var(--nf-text-muted)', margin: '2px 0' }}>
+                            🍽️ {restaurant.cuisine || 'Not specified'}
+                          </p>
+                          <p style={{ fontSize: 13, color: 'var(--nf-text-muted)', margin: '2px 0' }}>
+                            📍 {restaurant.address || ''} {restaurant.city ? `, ${restaurant.city}` : ''}
+                          </p>
+                          {restaurant.phone && (
+                            <p style={{ fontSize: 13, color: 'var(--nf-text-muted)', margin: '2px 0' }}>
+                              📞 {restaurant.phone}
+                            </p>
+                          )}
+                          {restaurant.email && (
+                            <p style={{ fontSize: 13, color: 'var(--nf-text-muted)', margin: '2px 0' }}>
+                              📧 {restaurant.email}
+                            </p>
+                          )}
+                          <p style={{ fontSize: 12, color: 'var(--nf-text-muted)', margin: '6px 0 0' }}>
+                            Owner: {owner?.full_name || owner?.email || restaurant.owner_user_id || 'Unknown'}
+                            {restaurant.delivery_fee && <span style={{ marginLeft: 12 }}>💰 Delivery: ₦{Number(restaurant.delivery_fee).toLocaleString()}</span>}
+                            {restaurant.estimated_delivery_minutes && <span style={{ marginLeft: 12 }}>⏱️ {restaurant.estimated_delivery_minutes} min</span>}
+                          </p>
+                          <p style={{ fontSize: 11, color: 'var(--nf-text-muted)', margin: '4px 0 0' }}>
+                            Created: {restaurant.created_at ? new Date(restaurant.created_at).toLocaleString() : 'N/A'}
+                          </p>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+                          <button
+                            className={`dash-btn dash-btn-sm ${isActive ? 'dash-btn-danger' : 'dash-btn-primary'}`}
+                            onClick={() => toggleRestaurantActive(restaurant.id, !isActive)}
+                            disabled={savingSettings}
+                          >
+                            {isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </>
