@@ -1641,14 +1641,15 @@ function Signup({ onBack, onLogin, initialRole = 'customer' }) {
           return
         }
 
-        const ok = await finishSignup(
-          authenticatedUser.id,
-          name,
-          email,
-          phone,
-          role,
-          form.category
-        )
+const ok = await finishSignup(
+  authenticatedUser.id,
+  name,
+  email,
+  phone,
+  role,
+  form.category,
+  { freshAccount: true }
+)
 
         if (ok) {
           alert('Welcome to Ewizzy!')
