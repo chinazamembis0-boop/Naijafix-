@@ -8556,6 +8556,11 @@ if (servicesResult.error) {
 
   const updateRiderVerification = async (verificationId, newStatus) => {
     if (verificationLoading) return
+    if (!user || user.role !== 'admin') {
+      alert('Only an admin can approve or reject rider verifications.')
+      setVerificationLoading(false)
+      return
+    }
     setVerificationLoading(true)
 
     const updates = {
