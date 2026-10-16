@@ -4,6 +4,16 @@ import { claimFoodOrder } from './FoodData.js'
 import { foodOrderReference, formatNaira } from './foodUtils.js'
 import { Logo } from './Logo.jsx'
 import RiderRegistration, { RIDER_VEHICLE_LABEL } from './RiderRegistration.jsx'
+import { DashboardCard } from './DashboardUI.jsx'
+import {
+  claimDispatchBooking,
+  updateDispatchBookingStatus,
+  fetchAvailableDispatchBookings,
+  fetchRiderDispatchBookings,
+  dispatchBookingReference,
+  dispatchStatusLabel,
+  dispatchStatusIcon,
+} from './DispatchData.js'
 
 /**
  * Rider-facing wording for the stored verification status. The status
@@ -21,7 +31,7 @@ function verificationIcon(status) {
   return '⏳'
 }
 
-function RiderDashboard({ user, onBack, onLogin, onSignup }) {
+function RiderDashboard({ user, onBack, onLogin, onSignup, onLogout }) {
   const [rider, setRider] = useState(null)
   const [verification, setVerification] = useState(null)
   const [photoUrl, setPhotoUrl] = useState('')
@@ -29,8 +39,12 @@ function RiderDashboard({ user, onBack, onLogin, onSignup }) {
   const [loading, setLoading] = useState(true)
   const [deliveries, setDeliveries] = useState([])
   const [activeTab, setActiveTab] = useState('available')
+  const [dispatchBookings, setDispatchBookings] = useState([])
+  const [dispatchActiveTab, setDispatchActiveTab] = useState('available')
   const [busyOrderId, setBusyOrderId] = useState(null)
+  const [busyBookingId, setBusyBookingId] = useState(null)
   const [actionError, setActionError] = useState('')
+  const [dispatchError, setDispatchError] = useState('')
 
   useEffect(() => {
     const loadRider = async () => {
@@ -122,6 +136,33 @@ function RiderDashboard({ user, onBack, onLogin, onSignup }) {
   const currentStatusFor = (orderId) => deliveries.find((d) => d.id === orderId)?.status
 
   /**
+   * Load dispatch bookings (available + assigned) for the current rider.
+   * Separate from food orders because the table, schema and claim RPC
+   * are different. Unverified riders see nothing here too.
+   */
+  useEffect(() => {
+    const loadDispatch = async () => {
+      if (!rider?.id || !isApproved) {
+        setDispatchBookings([])
+        return
+      }
+      try {
+        const [available, mine] = await Promise.all([
+          fetchAvailableDispatchBookings(),
+          fetchRiderDispatchBookings(),
+        ])
+        // Only keep dispatch bookings assigned to THIS rider
+        const mineForMe = (mine || []).filter((b) => b.rider_id === rider.id)
+        setDispatchBookings([...available, ...mineForMe])
+      } catch (error) {
+        console.error('Failed to load dispatch bookings:', error)
+        setDispatchError('Could not load dispatch bookings.')
+      }
+    }
+    loadDispatch()
+  }, [rider, isApproved])
+
+  /**
    * Advance a delivery the rider already owns.
    * The database decides whether the transition is allowed; this only
    * performs the write for an order that is already assigned to this
@@ -194,6 +235,54 @@ function RiderDashboard({ user, onBack, onLogin, onSignup }) {
     if (!error) {
       setRider((current) => ({ ...current, available: !current.available }))
     }
+  }
+
+  /**
+   * Claim an available dispatch booking via the claim_dispatch_booking RPC.
+   * Atomic, race-safe. Status becomes 'accepted'.
+   */
+  const handleClaimDispatch = async (bookingId) => {
+    setBusyBookingId(bookingId)
+    setDispatchError('')
+
+    const result = await claimDispatchBooking(bookingId)
+
+    setBusyBookingId(null)
+
+    if (!result.success) {
+      setDispatchError(result.error || 'This dispatch could not be claimed.')
+      setDispatchBookings((current) => current.filter((b) => b.id !== bookingId))
+      return
+    }
+
+    setDispatchBookings((current) =>
+      current.map((b) =>
+        b.id === bookingId ? { ...b, rider_id: result.booking.rider_id, status: result.booking.status } : b
+      )
+    )
+    setDispatchActiveTab('my-dispatches')
+  }
+
+  /**
+   * Update the status of a dispatch booking the rider already owns.
+   * Only status transitions are allowed; the database guard enforces this.
+   */
+  const handleDispatchStatusUpdate = async (bookingId, newStatus) => {
+    setBusyBookingId(bookingId)
+    setDispatchError('')
+
+    const result = await updateDispatchBookingStatus(bookingId, newStatus)
+
+    setBusyBookingId(null)
+
+    if (!result.success) {
+      setDispatchError(result.error || 'This dispatch could not be updated.')
+      return
+    }
+
+    setDispatchBookings((current) =>
+      current.map((b) => (b.id === bookingId ? { ...b, status: newStatus } : b))
+    )
   }
 
 if (loading) {
@@ -275,6 +364,12 @@ if (loading) {
   const availableDeliveries = deliveries.filter((d) => d.status === 'ready_for_pickup' && !d.rider_id)
   const displayDeliveries = activeTab === 'available' ? availableDeliveries : myDeliveries
 
+  const myDispatches = dispatchBookings.filter((b) => b.rider_id === rider.id)
+  const availableDispatches = dispatchBookings.filter(
+    (b) => !b.rider_id && (b.status === 'pending' || b.status === 'searching_for_rider')
+  )
+  const displayDispatches = dispatchActiveTab === 'available' ? availableDispatches : myDispatches
+
   return (
     <div className="inner-page">
       <header className="inner-header">
@@ -343,6 +438,9 @@ if (loading) {
           )
         ) : (
           <>
+        <div className="nf-section-divider">
+          <span> motorcycle/Okada Deliveries</span>
+        </div>
         <button
           className={`dash-btn ${rider.available ? 'dash-btn-primary' : 'dash-btn-outline'} dash-btn-full`}
           onClick={toggleAvailability}
@@ -364,6 +462,90 @@ if (loading) {
             My Deliveries ({myDeliveries.length})
           </button>
         </div>
+
+        {dispatchError && (
+          <p className="nf-form-error">{dispatchError}</p>
+        )}
+
+        <div className="nf-order-tabs nf-dispatch-tabs">
+          <button
+            className={`nf-order-tab ${dispatchActiveTab === 'available' ? 'nf-order-tab--active' : ''}`}
+            onClick={() => setDispatchActiveTab('available')}
+          >
+            Available Dispatch ({availableDispatches.length})
+          </button>
+          <button
+            className={`nf-order-tab ${dispatchActiveTab === 'my-dispatches' ? 'nf-order-tab--active' : ''}`}
+            onClick={() => setDispatchActiveTab('my-dispatches')}
+          >
+            My Dispatches ({myDispatches.length})
+          </button>
+        </div>
+
+        {displayDispatches.length === 0 ? (
+          <div className="empty-box">
+            <span>📦</span>
+            <h4>No dispatch bookings</h4>
+            <p>{dispatchActiveTab === 'available' ? 'No dispatch requests available right now.' : 'You have no active dispatch bookings.'}</p>
+          </div>
+        ) : (
+          <div className="nf-order-list">
+            {displayDispatches.map((booking) => (
+              <div key={booking.id} className="nf-order-card nf-dispatch-card">
+                <div className="nf-order-card-header">
+                  <h4>{dispatchBookingReference(booking.id)}</h4>
+                  <span className={`nf-order-status nf-order-status--${booking.status}`}>
+                    {dispatchStatusIcon(booking.status)} {dispatchStatusLabel(booking.status)}
+                  </span>
+                </div>
+                <p className="nf-order-address">📦 {booking.item_description}</p>
+                <p style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>
+                  📍 {booking.pickup_address} → 🎯 {booking.dropoff_address}
+                </p>
+
+                {!booking.rider_id && (booking.status === 'pending' || booking.status === 'searching_for_rider') && (
+                  <button
+                    className="dash-btn dash-btn-primary dash-btn-full"
+                    onClick={() => handleClaimDispatch(booking.id)}
+                    disabled={busyBookingId === booking.id}
+                  >
+                    {busyBookingId === booking.id ? 'Claiming...' : 'Accept Dispatch'}
+                  </button>
+                )}
+
+                {booking.rider_id === rider.id && booking.status === 'accepted' && (
+                  <button
+                    className="dash-btn dash-btn-primary dash-btn-full"
+                    onClick={() => handleDispatchStatusUpdate(booking.id, 'picked_up')}
+                    disabled={busyBookingId === booking.id}
+                  >
+                    {busyBookingId === booking.id ? 'Updating...' : 'Mark Picked Up'}
+                  </button>
+                )}
+
+                {booking.rider_id === rider.id && booking.status === 'picked_up' && (
+                  <button
+                    className="dash-btn dash-btn-primary dash-btn-full"
+                    onClick={() => handleDispatchStatusUpdate(booking.id, 'in_transit')}
+                    disabled={busyBookingId === booking.id}
+                  >
+                    {busyBookingId === booking.id ? 'Updating...' : 'Start Delivery'}
+                  </button>
+                )}
+
+                {booking.rider_id === rider.id && booking.status === 'in_transit' && (
+                  <button
+                    className="dash-btn dash-btn-primary dash-btn-full"
+                    onClick={() => handleDispatchStatusUpdate(booking.id, 'delivered')}
+                    disabled={busyBookingId === booking.id}
+                  >
+                    {busyBookingId === booking.id ? 'Updating...' : 'Mark Delivered'}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         {displayDeliveries.length === 0 ? (
           <div className="empty-box">
@@ -439,6 +621,13 @@ if (loading) {
           </div>
         )}
           </>
+        )}
+        {onLogout && (
+          <DashboardCard>
+            <button className="dash-btn dash-btn-danger dash-btn-full" onClick={onLogout}>
+              Log out
+            </button>
+          </DashboardCard>
         )}
       </main>
     </div>

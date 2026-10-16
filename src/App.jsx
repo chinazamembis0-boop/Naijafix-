@@ -40,6 +40,9 @@ const RestaurantDashboard = lazy(() => import('./components/RestaurantDashboard.
 const RiderDashboard = lazy(() => import('./components/RiderDashboard.jsx'))
 const ShareableProvider = lazy(() => import('./components/ShareableProvider.jsx'))
 const RestaurantSignup = lazy(() => import('./components/RestaurantSignup.jsx'))
+const DispatchBooking = lazy(() => import('./components/DispatchBooking.jsx'))
+const DispatchBookingHistory = lazy(() => import('./components/DispatchBookingHistory.jsx'))
+const DispatchOrderStatus = lazy(() => import('./components/DispatchOrderStatus.jsx'))
 const TermsOfService = lazy(() => import('./components/PolicyPages.jsx').then(m => ({ default: m.TermsOfService })))
 const PrivacyPolicy = lazy(() => import('./components/PolicyPages.jsx').then(m => ({ default: m.PrivacyPolicy })))
 const CancellationPolicy = lazy(() => import('./components/PolicyPages.jsx').then(m => ({ default: m.CancellationPolicy })))
@@ -922,6 +925,7 @@ function Home({
   onService,
   onViewAllServices,
   onFood,
+  onDispatch,
   setPage,
 }) {
   const [search, setSearch] = useState('')
@@ -1037,6 +1041,21 @@ function Home({
                 </div>
               </button>
             )}
+          </section>
+        )}
+
+        {onDispatch && (
+          <section className="section nf-home-food-section">
+            <button className="nf-home-food-banner" onClick={onDispatch}>
+              <div className="nf-home-food-banner-content">
+                <span className="nf-home-food-icon">🏍️</span>
+                <div>
+                  <h3>Book a Dispatch Rider</h3>
+                  <p>Send parcels with Ewizzy motorcycle delivery</p>
+                </div>
+                <span className="nf-home-food-arrow">→</span>
+              </div>
+            </button>
           </section>
         )}
 
@@ -10362,6 +10381,7 @@ function App() {
   const [foodCart, setFoodCart] = useState([])
   const [foodRestaurant, setFoodRestaurant] = useState(null)
   const [foodPlacedOrderId, setFoodPlacedOrderId] = useState(null)
+  const [dispatchBookingId, setDispatchBookingId] = useState(null)
   const [selectedServiceCategory, setSelectedServiceCategory] = useState('')
 
   const [marketplaceBackPage, setMarketplaceBackPage] = useState('home')
@@ -11390,6 +11410,54 @@ const targetPage =
     )
   }
 
+  if (effectivePage === 'dispatch') {
+    return (
+      <Suspense fallback={<LoadingState text="Creating dispatch booking..." />}>
+        <DispatchBooking
+          user={user}
+          onBack={() => setPage('home')}
+          onSignIn={() => setPage('login')}
+          onBookingCreated={({ booking }) => {
+            setDispatchBookingId(booking.id)
+            setPage('dispatch-order-placed')
+          }}
+        />
+      </Suspense>
+    )
+  }
+
+  if (effectivePage === 'dispatch-history') {
+    return (
+      <Suspense fallback={<LoadingState text="Loading dispatch bookings..." />}>
+        <DispatchBookingHistory
+          user={user}
+          onBack={() => setPage('home')}
+          onBookDispatch={() => setPage('dispatch')}
+          onOpenBooking={(id) => {
+            setDispatchBookingId(id)
+            setPage('dispatch-order-placed')
+          }}
+          onSignIn={() => setPage('login')}
+        />
+      </Suspense>
+    )
+  }
+
+  if (effectivePage === 'dispatch-order-placed') {
+    return (
+      <Suspense fallback={<LoadingState text="Loading dispatch booking..." />}>
+        <DispatchOrderStatus
+          bookingId={dispatchBookingId}
+          user={user}
+          onBack={() => setPage('dispatch-history')}
+          onBookDispatch={() => setPage('dispatch')}
+          onOpenHistory={() => setPage('dispatch-history')}
+          onSignIn={() => setPage('login')}
+        />
+      </Suspense>
+    )
+  }
+
   if (effectivePage === 'restaurant-dashboard') {
     return (
       <Suspense fallback={<LoadingState text="Loading restaurant dashboard..." />}>
@@ -11410,6 +11478,7 @@ const targetPage =
           onBack={() => setPage('home')}
           onLogin={() => setPage('login')}
           onSignup={() => setPage('rider-signup')}
+          onLogout={() => setPage('login')}
         />
       </Suspense>
     )
@@ -11494,6 +11563,7 @@ const targetPage =
       }}
       onFood={() => setPage('food')}
       setPage={setPage}
+      onDispatch={() => setPage('dispatch')}
       user={user}
     />
   )
