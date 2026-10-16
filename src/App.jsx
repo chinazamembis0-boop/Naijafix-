@@ -7760,6 +7760,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
   const [providerNames, setProviderNames] = useState({})
   const [customerNames, setCustomerNames] = useState({})
   const [riderNames, setRiderNames] = useState({})
+  const [riderVerificationsError, setRiderVerificationsError] = useState(null)
 
   const resolveProviderName = (booking) => {
     if (booking.provider_name) return booking.provider_name
@@ -7814,9 +7815,8 @@ function AdminDashboard({ user, onLogout, onHome }) {
           .from('rider_verifications')
           .select(`
             *,
-            profiles!rider_user_id (user_id, full_name, role)
+            profiles!rider_user_id (user_id, full_name)
           `)
-          .eq('profiles.role', 'rider')
           .order('submitted_at', { ascending: false }),
         supabase
           .from('support_reports')
@@ -7900,7 +7900,10 @@ function AdminDashboard({ user, onLogout, onHome }) {
 
       if (riderVerificationsResult.error) {
         console.error('Failed to load rider verifications:', riderVerificationsResult.error)
+        setRiderVerificationsError(riderVerificationsResult.error.message)
+        setRiderVerifications([])
       } else {
+        setRiderVerificationsError(null)
         const riderVerificationsData = riderVerificationsResult.data || []
         setRiderVerifications(riderVerificationsData)
         // Extract rider names from the joined profiles data
@@ -9065,6 +9068,14 @@ if (servicesResult.error) {
         {activeTab === 'rider-verifications' && (
           <>
             <SectionHeader label="VERIFICATIONS" title="Rider verifications" />
+            {riderVerificationsError && (
+              <div className="dash-card dash-error-card">
+                <p className="dash-error-text">Failed to load rider verifications: {riderVerificationsError}</p>
+                <button type="button" className="dash-btn dash-btn-outline dash-btn-sm" onClick={() => loadAdminDataRef.current?.()}>
+                  Retry
+                </button>
+              </div>
+            )}
             {loading ? (
               <LoadingState text="Loading verifications..." />
             ) : riderVerifications.length === 0 ? (
