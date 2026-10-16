@@ -10544,18 +10544,23 @@ const appUser = {
         })
       }
 
-            if (shouldSetInitialPage) {
-              setPage(
-                appUser.role === 'admin'
-                  ? 'admin-dashboard'
-                  : appUser.role === 'provider'
-                  ? 'provider-dashboard'
-                  : appUser.role === 'rider'
-                  ? 'rider-dashboard'
-                  : appUser.role === 'restaurant'
-                  ? 'restaurant-dashboard'
-                  : 'dashboard'
-              )
+const targetPage =
+              appUser.role === 'admin'
+                ? 'admin-dashboard'
+                : appUser.role === 'provider'
+                ? 'provider-dashboard'
+                : appUser.role === 'rider'
+                ? 'rider-dashboard'
+                : appUser.role === 'restaurant'
+                ? 'restaurant-dashboard'
+                : 'dashboard'
+
+            // Always route to the correct dashboard when the current page
+            // is a dashboard page, not just on initial load. This ensures
+            // role changes (e.g. customer -> rider) take effect after login
+            // or page refresh without needing a manual page navigation.
+            if (shouldSetInitialPage || page === 'dashboard' || page === 'provider-dashboard' || page === 'rider-dashboard' || page === 'restaurant-dashboard' || page === 'admin-dashboard') {
+              setPage(targetPage)
             }
             return
           }
@@ -10563,7 +10568,7 @@ const appUser = {
 
         alert(
           'Your account is signed in, but your Ewizzy profile could not be loaded: ' +
-            profileError.message
+          profileError.message
         )
 
         setCurrentUser(null)
@@ -10595,18 +10600,19 @@ const appUser = {
           setCurrentUser(appUser)
           localStorage.setItem('naijafixUser', JSON.stringify(appUser))
 
-          if (shouldSetInitialPage) {
-            setPage(
-              appUser.role === 'admin'
-                ? 'admin-dashboard'
-                : appUser.role === 'provider'
-                ? 'provider-dashboard'
-                : appUser.role === 'rider'
-                ? 'rider-dashboard'
-                : appUser.role === 'restaurant'
-                ? 'restaurant-dashboard'
-                : 'dashboard'
-            )
+          const targetPage =
+            appUser.role === 'admin'
+              ? 'admin-dashboard'
+              : appUser.role === 'provider'
+              ? 'provider-dashboard'
+              : appUser.role === 'rider'
+              ? 'rider-dashboard'
+              : appUser.role === 'restaurant'
+              ? 'restaurant-dashboard'
+              : 'dashboard'
+
+          if (shouldSetInitialPage || page === 'dashboard' || page === 'provider-dashboard' || page === 'rider-dashboard' || page === 'restaurant-dashboard' || page === 'admin-dashboard') {
+            setPage(targetPage)
           }
           return
         }
@@ -10658,18 +10664,19 @@ const appUser = {
         })
       }
 
-      if (shouldSetInitialPage) {
-        setPage(
-          appUser.role === 'admin'
-            ? 'admin-dashboard'
-            : appUser.role === 'provider'
-            ? 'provider-dashboard'
-            : appUser.role === 'rider'
-            ? 'rider-dashboard'
-            : appUser.role === 'restaurant'
-            ? 'restaurant-dashboard'
-            : 'dashboard'
-        )
+      const targetPage =
+        appUser.role === 'admin'
+          ? 'admin-dashboard'
+          : appUser.role === 'provider'
+          ? 'provider-dashboard'
+          : appUser.role === 'rider'
+          ? 'rider-dashboard'
+          : appUser.role === 'restaurant'
+          ? 'restaurant-dashboard'
+          : 'dashboard'
+
+      if (shouldSetInitialPage || page === 'dashboard' || page === 'provider-dashboard' || page === 'rider-dashboard' || page === 'restaurant-dashboard' || page === 'admin-dashboard') {
+        setPage(targetPage)
       }
     }
 
