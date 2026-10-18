@@ -17,6 +17,7 @@ function DispatchOrderStatus({ bookingId, user, onBack, onBookDispatch, onOpenHi
   const [cancelling, setCancelling] = useState(false)
   const [cancelError, setCancelError] = useState('')
   const [cancelled, setCancelled] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -46,17 +47,24 @@ function DispatchOrderStatus({ bookingId, user, onBack, onBookDispatch, onOpenHi
     const result = await cancelDispatchBooking(
       booking.id,
       user?.user_id,
-      'Cancelled by customer'
+      cancelReason.trim() || 'Cancelled by customer'
     )
     setCancelling(false)
 
     if (result.success) {
       setConfirmOpen(false)
       setCancelled(true)
+      setCancelReason('')
       setBooking((current) => (current ? { ...current, status: 'cancelled' } : current))
     } else {
       setCancelError(result.error || 'This booking could not be cancelled.')
     }
+  }
+
+  const openCancelDialog = () => {
+    setCancelReason('')
+    setCancelError('')
+    setConfirmOpen(true)
   }
 
   const status = String(booking?.status ?? '').toLowerCase()
@@ -149,7 +157,7 @@ function DispatchOrderStatus({ bookingId, user, onBack, onBookDispatch, onOpenHi
             </div>
 
             {cancellable && (
-              <button className="nf-cancel-order-btn" onClick={() => setConfirmOpen(true)}>
+              <button className="nf-cancel-order-btn" onClick={openCancelDialog}>
                 Cancel Booking
               </button>
             )}
@@ -182,6 +190,9 @@ function DispatchOrderStatus({ bookingId, user, onBack, onBookDispatch, onOpenHi
         cancelLabel="Keep Booking"
         destructive
         busy={cancelling}
+        reasonLabel="Reason for cancelling (optional)"
+        reasonValue={cancelReason}
+        onReasonChange={setCancelReason}
         onConfirm={handleCancel}
         onCancel={() => setConfirmOpen(false)}
       />

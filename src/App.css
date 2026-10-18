@@ -5044,25 +5044,47 @@ select:focus-visible {
 /* --- Order history --- */
 
 .nf-history-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nf-history-card-main {
   display: block;
   width: 100%;
   text-align: left;
   cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+}
+
+.nf-history-card-main:hover {
+  border-color: var(--nf-purple);
 }
 
 .nf-history-card:hover {
   border-color: var(--nf-purple);
 }
 
-.nf-order-restaurant {
-  margin: 4px 0 2px;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--nf-navy);
+.nf-history-cancel-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--nf-border);
 }
 
 .nf-history-cancel-hint {
-  margin: 10px 0 0;
+  margin: 0;
   font-size: 12px;
   font-weight: 700;
   color: var(--nf-purple);

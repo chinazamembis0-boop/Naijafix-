@@ -1,6 +1,10 @@
 /**
  * Reusable confirmation dialog built on the existing Ewizzy
  * .modal-overlay / .modal-content design language.
+ *
+ * Optional `reasonLabel`/`reasonValue`/`onReasonChange` props add a free
+ * text field (e.g. a cancellation reason). When they are omitted the
+ * dialog renders as before, with no extra UI.
  */
 function ConfirmDialog({
   open,
@@ -12,6 +16,10 @@ function ConfirmDialog({
   busy = false,
   onConfirm,
   onCancel,
+  reasonLabel,
+  reasonValue,
+  onReasonChange,
+  reasonPlaceholder = 'Optional reason',
 }) {
   if (!open) return null
 
@@ -26,6 +34,18 @@ function ConfirmDialog({
         </div>
         <div className="modal-body">
           <p className="nf-confirm-message">{message}</p>
+          {reasonLabel && (
+            <label className="nf-confirm-reason">
+              <span>{reasonLabel}</span>
+              <textarea
+                rows={2}
+                value={reasonValue || ''}
+                placeholder={reasonPlaceholder}
+                onChange={(event) => onReasonChange?.(event.target.value)}
+                disabled={busy}
+              />
+            </label>
+          )}
           <div className="nf-confirm-actions">
             <button
               className={`dash-btn ${destructive ? 'dash-btn-danger' : 'dash-btn-outline'} dash-btn-full`}

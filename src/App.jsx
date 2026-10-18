@@ -11421,6 +11421,7 @@ const targetPage =
             setDispatchBookingId(booking.id)
             setPage('dispatch-order-placed')
           }}
+          onViewBookings={() => setPage('dispatch-history')}
         />
       </Suspense>
     )

@@ -16,6 +16,7 @@ function DispatchBookingHistory({ user, onBack, onBookDispatch, onOpenBooking, o
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [cancellingId, setCancellingId] = useState(null)
   const [cancelError, setCancelError] = useState('')
+  const [cancelReason, setCancelReason] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -58,11 +59,12 @@ function DispatchBookingHistory({ user, onBack, onBookDispatch, onOpenBooking, o
     const result = await cancelDispatchBooking(
       bookingToCancel.id,
       user.user_id,
-      'Cancelled by customer'
+      cancelReason.trim() || 'Cancelled by customer'
     )
     setCancellingId(null)
     if (result.success) {
       setConfirmOpen(false)
+      setCancelReason('')
       setBookings((current) =>
         current.map((b) =>
           b.id === bookingToCancel.id ? { ...b, status: 'cancelled' } : b
@@ -133,50 +135,79 @@ function DispatchBookingHistory({ user, onBack, onBookDispatch, onOpenBooking, o
               </div>
             ) : (
               <div className="nf-order-list">
-                {visible.map((booking) => (
-                  <button
-                    key={booking.id}
-                    className="nf-order-card nf-history-card"
-                    onClick={() => onOpenBooking?.(booking.id)}
-                  >
-                    <div className="nf-order-card-header">
-                      <h4>{dispatchBookingReference(booking.id)}</h4>
-                      <span
-                        className={`nf-order-status nf-order-status--${booking.status}`}
+                {visible.map((booking) => {
+                  const cancellable = isDispatchCancellable(
+                    booking.status,
+                    booking.rider_id
+                  )
+                  return (
+                    <div key={booking.id} className="nf-order-card nf-history-card">
+                      <button
+                        className="nf-history-card-main"
+                        onClick={() => onOpenBooking?.(booking.id)}
                       >
-                        {dispatchStatusIcon(booking.status)}
-                        {dispatchStatusLabel(booking.status)}
-                      </span>
-                    </div>
+                        <div className="nf-order-card-header">
+                          <h4>{dispatchBookingReference(booking.id)}</h4>
+                          <span
+                            className={`nf-order-status nf-order-status--${booking.status}`}
+                          >
+                            {dispatchStatusIcon(booking.status)}
+                            {dispatchStatusLabel(booking.status)}
+                          </span>
+                        </div>
 
-                    <p className="nf-order-restaurant">
-                      📦 {booking.item_description}
-                    </p>
-                    <p className="nf-order-time">
-                      📅 {new Date(booking.created_at).toLocaleDateString(
-                        'en-NG',
-                        { day: 'numeric', month: 'short', year: 'numeric' }
+                        <p className="nf-order-restaurant">
+                          📦 {booking.item_description}
+                        </p>
+                        <p className="nf-order-time">
+                          📅 {new Date(booking.created_at).toLocaleDateString(
+                            'en-NG',
+                            { day: 'numeric', month: 'short', year: 'numeric' }
+                          )}
+                        </p>
+
+                        <div className="nf-order-details">
+                          <span>📍 {booking.pickup_address}</span>
+                          <span>🎯 {booking.dropoff_address}</span>
+                        </div>
+
+                        {booking.rider_id && (
+                          <p className="nf-history-rider-hint">
+                            Rider assigned to your delivery.
+                          </p>
+                        )}
+                      </button>
+
+                      {cancellable && (
+                        <div className="nf-history-cancel-row">
+                          <span className="nf-history-cancel-hint">
+                            No rider has accepted yet — you can cancel this
+                            booking.
+                          </span>
+                          <button
+                            className="dash-btn dash-btn-danger dash-btn-full"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setCancellingId(booking.id)
+                              setCancelReason('')
+                              setCancelError('')
+                              setConfirmOpen(true)
+                            }}
+                          >
+                            Cancel Booking
+                          </button>
+                        </div>
                       )}
-                    </p>
 
-                    <div className="nf-order-details">
-                      <span>📍 {booking.pickup_address}</span>
-                      <span>🎯 {booking.dropoff_address}</span>
+                      {!cancellable && booking.status !== 'cancelled' && (
+                        <p className="nf-history-cancel-hint">
+                          This booking can no longer be cancelled because a
+                          rider has already accepted it.
+                        </p>
+                      )}
                     </div>
-
-                    {booking.rider_id && (
-                      <p className="nf-history-rider-hint">
-                        Rider assigned to your delivery.
-                      </p>
-                    )}
-
-                    {isDispatchCancellable(booking.status, booking.rider_id) && (
-                      <p className="nf-history-cancel-hint">
-                        You can cancel this booking before a rider accepts it.
-                      </p>
-                    )}
-                  </button>
-                ))}
+                  )
+                })}
               </div>
             )}
 
@@ -193,6 +224,9 @@ function DispatchBookingHistory({ user, onBack, onBookDispatch, onOpenBooking, o
               cancelLabel="Keep Booking"
               destructive
               busy={cancellingId !== null}
+              reasonLabel="Reason for cancelling (optional)"
+              reasonValue={cancelReason}
+              onReasonChange={setCancelReason}
               onConfirm={handleCancel}
               onCancel={() => setConfirmOpen(false)}
             />
