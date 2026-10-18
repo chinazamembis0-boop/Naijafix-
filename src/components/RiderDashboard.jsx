@@ -5,14 +5,18 @@ import { foodOrderReference, formatNaira } from './foodUtils.js'
 import { Logo } from './Logo.jsx'
 import RiderRegistration, { RIDER_VEHICLE_LABEL } from './RiderRegistration.jsx'
 import { DashboardCard } from './DashboardUI.jsx'
+import ConfirmDialog from './ConfirmDialog.jsx'
 import {
   claimDispatchBooking,
   updateDispatchBookingStatus,
+  cancelRiderDispatchBooking,
+  releaseDispatchBooking,
   fetchAvailableDispatchBookings,
   fetchRiderDispatchBookings,
   dispatchBookingReference,
   dispatchStatusLabel,
   dispatchStatusIcon,
+  claimDispatchUnavailableError,
 } from './DispatchData.js'
 
 /**
@@ -45,6 +49,10 @@ function RiderDashboard({ user, onBack, onLogin, onSignup, onLogout }) {
   const [busyBookingId, setBusyBookingId] = useState(null)
   const [actionError, setActionError] = useState('')
   const [dispatchError, setDispatchError] = useState('')
+  const [dispatchCancelConfirm, setDispatchCancelConfirm] = useState(null)
+  const [dispatchCancelReason, setDispatchCancelReason] = useState('')
+  const [dispatchCancelBusy, setDispatchCancelBusy] = useState(false)
+  const [dispatchCancelError, setDispatchCancelError] = useState('')
 
   useEffect(() => {
     const loadRider = async () => {
@@ -121,7 +129,11 @@ function RiderDashboard({ user, onBack, onLogin, onSignup, onLogout }) {
           restaurant:restaurants(name),
           items:food_order_items(*)
         `)
-        .or(`rider_id.eq.${rider.id},status.eq.ready_for_pickup`)
+        // Claimable board: ready_for_pickup AND unassigned. My deliveries:
+        // anything already assigned to this rider. The second clause uses
+        // an embedded AND so an assigned ready_for_pickup order is only
+        // returned via the first clause, never listed as available.
+        .or(`rider_id.eq.${rider.id},and(status.eq.ready_for_pickup,rider_id.is.null)`)
         .order('created_at', { ascending: false })
         .limit(20)
 
@@ -149,9 +161,11 @@ function RiderDashboard({ user, onBack, onLogin, onSignup, onLogout }) {
       try {
         const [available, mine] = await Promise.all([
           fetchAvailableDispatchBookings(),
-          fetchRiderDispatchBookings(),
+          fetchRiderDispatchBookings(rider.id),
         ])
-        // Only keep dispatch bookings assigned to THIS rider
+        // Only keep dispatch bookings assigned to THIS rider. The query
+        // is now scoped server-side, but the client filter remains as a
+        // safety net in case a bigint/string mismatch slipped through.
         const mineForMe = (mine || []).filter((b) => b.rider_id === rider.id)
         setDispatchBookings([...available, ...mineForMe])
       } catch (error) {
@@ -159,7 +173,30 @@ function RiderDashboard({ user, onBack, onLogin, onSignup, onLogout }) {
         setDispatchError('Could not load dispatch bookings.')
       }
     }
+
     loadDispatch()
+
+    // Realtime refresh: a new dispatch booking appearing, a rider claiming
+    // one, or a status change should update this board without a manual
+    // reload. The channel is cleaned up on unmount and when the approved
+    // rider identity changes. Subscription errors are logged and ignored
+    // so a realtime outage cannot break the dashboard.
+    const channel = supabase
+      .channel(`rider-dispatches:${rider?.id ?? 'none'}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'dispatch_bookings' },
+        () => loadDispatch()
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIPTION_ERROR' || status === 'CHANNEL_ERROR') {
+          console.warn('Realtime subscription for dispatch bookings failed:', status)
+        }
+      })
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [rider, isApproved])
 
   /**
@@ -250,8 +287,15 @@ function RiderDashboard({ user, onBack, onLogin, onSignup, onLogout }) {
     setBusyBookingId(null)
 
     if (!result.success) {
-      setDispatchError(result.error || 'This dispatch could not be claimed.')
-      setDispatchBookings((current) => current.filter((b) => b.id !== bookingId))
+      const message = result.error || 'This dispatch could not be claimed.'
+      setDispatchError(message)
+      // Only remove the booking from the list when the server confirms it
+      // is no longer claimable (taken by another rider). Transient
+      // failures — network, permission, server — leave it in place so the
+      // rider can retry instead of losing the row.
+      if (claimDispatchUnavailableError(message)) {
+        setDispatchBookings((current) => current.filter((b) => b.id !== bookingId))
+      }
       return
     }
 
@@ -263,10 +307,10 @@ function RiderDashboard({ user, onBack, onLogin, onSignup, onLogout }) {
     setDispatchActiveTab('my-dispatches')
   }
 
-  /**
-   * Update the status of a dispatch booking the rider already owns.
-   * Only status transitions are allowed; the database guard enforces this.
-   */
+/**
+    * Update the status of a dispatch booking the rider already owns.
+    * Only status transitions are allowed; the database guard enforces this.
+    */
   const handleDispatchStatusUpdate = async (bookingId, newStatus) => {
     setBusyBookingId(bookingId)
     setDispatchError('')
@@ -283,6 +327,49 @@ function RiderDashboard({ user, onBack, onLogin, onSignup, onLogout }) {
     setDispatchBookings((current) =>
       current.map((b) => (b.id === bookingId ? { ...b, status: newStatus } : b))
     )
+  }
+
+  /**
+    * Rider cancel / release of a dispatch booking they already own.
+    *
+    * Two paths, chosen by the booking's current status:
+    *   - pending / searching_for_rider: the booking is still unassigned, so
+    *     the rider cancels it through the customer-style path. Under the
+    *     current transition rules this is the only cancellable stage.
+    *   - accepted: the rider owns the booking and may release it back to
+    *     the pool via the release_dispatch_booking RPC (migration
+    *     20261016000004). The RPC enforces rider ownership and stage, and
+    *     never touches protected fields.
+    *
+    * A customer, another rider, or an unverified account cannot call
+    * either path. The button is never shown for another rider's booking.
+    */
+  const handleRiderCancelDispatch = async (bookingId, currentStatus) => {
+    setDispatchCancelBusy(bookingId)
+    setDispatchCancelError('')
+
+    const reason = dispatchCancelReason.trim() || 'Cancelled by rider'
+    const result =
+      currentStatus === 'accepted'
+        ? await releaseDispatchBooking(bookingId, rider.id, reason)
+        : await cancelRiderDispatchBooking(bookingId, rider.id, reason)
+
+    setDispatchCancelBusy(null)
+
+    if (!result.success) {
+      setDispatchCancelError(result.error || 'This dispatch could not be cancelled.')
+      return
+    }
+
+    setDispatchCancelConfirm(null)
+    setDispatchCancelReason('')
+    // Merge the full row returned by the RPC (rider_id cleared,
+    // status='released') rather than only the status, so the local
+    // board reflects the server state without waiting for realtime.
+    setDispatchBookings((current) =>
+      current.map((b) => (b.id === bookingId ? result.booking : b))
+    )
+    setDispatchActiveTab('available')
   }
 
 if (loading) {
@@ -366,7 +453,11 @@ if (loading) {
 
   const myDispatches = dispatchBookings.filter((b) => b.rider_id === rider.id)
   const availableDispatches = dispatchBookings.filter(
-    (b) => !b.rider_id && (b.status === 'pending' || b.status === 'searching_for_rider')
+    (b) =>
+      !b.rider_id &&
+      (b.status === 'pending' ||
+        b.status === 'searching_for_rider' ||
+        b.status === 'released')
   )
   const displayDispatches = dispatchActiveTab === 'available' ? availableDispatches : myDispatches
 
@@ -503,7 +594,10 @@ if (loading) {
                   📍 {booking.pickup_address} → 🎯 {booking.dropoff_address}
                 </p>
 
-                {!booking.rider_id && (booking.status === 'pending' || booking.status === 'searching_for_rider') && (
+                {!booking.rider_id &&
+                  (booking.status === 'pending' ||
+                    booking.status === 'searching_for_rider' ||
+                    booking.status === 'released') && (
                   <button
                     className="dash-btn dash-btn-primary dash-btn-full"
                     onClick={() => handleClaimDispatch(booking.id)}
@@ -542,10 +636,62 @@ if (loading) {
                     {busyBookingId === booking.id ? 'Updating...' : 'Mark Delivered'}
                   </button>
                 )}
+
+                {/* Rider cancel / release. A rider may cancel a booking they
+                    own only at a stage the database transition rules permit.
+                    Under the current rules that is only before acceptance, so
+                    an accepted booking shows a release control that needs the
+                    rider-release migration (20261016000004) to become
+                    actionable. The button is never shown for another rider's
+                    booking, and it never alters rider assignment directly. */}
+                {booking.rider_id === rider.id &&
+                  booking.status !== 'delivered' &&
+                  booking.status !== 'cancelled' && (
+                    <button
+                      className="dash-btn dash-btn-outline dash-btn-full"
+                      onClick={() => {
+                        setDispatchCancelReason('')
+                        setDispatchCancelError('')
+                        setDispatchCancelConfirm(booking.id)
+                      }}
+                      disabled={dispatchCancelBusy === booking.id}
+                    >
+                      Cancel / Release Dispatch
+                    </button>
+                  )}
               </div>
             ))}
           </div>
         )}
+
+        {dispatchCancelError && (
+          <p className="nf-form-error">{dispatchCancelError}</p>
+        )}
+
+        <ConfirmDialog
+          open={dispatchCancelConfirm !== null}
+          title="Cancel or release this dispatch?"
+          message={
+            'Releasing this dispatch makes it available to other eligible ' +
+            'riders and clears your assignment. The customer will see the ' +
+            'booking as unassigned. This action cannot be undone.'
+          }
+          confirmLabel="Release Dispatch"
+          cancelLabel="Keep Booking"
+          destructive
+          busy={dispatchCancelBusy !== null}
+          reasonLabel="Reason for releasing (optional)"
+          reasonValue={dispatchCancelReason}
+          onReasonChange={setDispatchCancelReason}
+          onConfirm={() =>
+            dispatchCancelConfirm !== null &&
+            handleRiderCancelDispatch(
+              dispatchCancelConfirm,
+              dispatchBookings.find((b) => b.id === dispatchCancelConfirm)?.status
+            )
+          }
+          onCancel={() => setDispatchCancelConfirm(null)}
+        />
 
         {displayDeliveries.length === 0 ? (
           <div className="empty-box">
