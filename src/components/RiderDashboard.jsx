@@ -7,9 +7,17 @@ import RiderRegistration, { RIDER_VEHICLE_LABEL } from './RiderRegistration.jsx'
 import { DashboardCard } from './DashboardUI.jsx'
 import ConfirmDialog from './ConfirmDialog.jsx'
 import {
+  claimOkadaRide,
+  updateOkadaRideStatus,
+  fetchAvailableOkadaRides,
+  fetchRiderOkadaRides,
+  okadaStatusLabel,
+  okadaStatusIcon,
+  okadaRideReference,
+} from './OkadaData.js'
+import {
   claimDispatchBooking,
   updateDispatchBookingStatus,
-  cancelRiderDispatchBooking,
   releaseDispatchBooking,
   fetchAvailableDispatchBookings,
   fetchRiderDispatchBookings,
@@ -44,6 +52,8 @@ function RiderDashboard({ user, onBack, onLogin, onSignup, onLogout }) {
   const [deliveries, setDeliveries] = useState([])
   const [activeTab, setActiveTab] = useState('available')
   const [dispatchBookings, setDispatchBookings] = useState([])
+  const [okadaRides, setOkadaRides] = useState([])
+  const [okadaActiveTab, setOkadaActiveTab] = useState('available')
   const [dispatchActiveTab, setDispatchActiveTab] = useState('available')
   const [busyOrderId, setBusyOrderId] = useState(null)
   const [busyBookingId, setBusyBookingId] = useState(null)
@@ -262,6 +272,32 @@ function RiderDashboard({ user, onBack, onLogin, onSignup, onLogout }) {
     setActiveTab('my-deliveries')
   }
 
+  useEffect(() => {
+    const loadOkada = async () => {
+      if (!rider?.id || !isApproved || !rider.accepts_okada) {
+        setOkadaRides([])
+        return
+      }
+      try {
+        const [available, mine] = await Promise.all([
+          fetchAvailableOkadaRides(),
+          fetchRiderOkadaRides(rider.id),
+        ])
+        setOkadaRides([...available, ...mine])
+      } catch (error) {
+        console.error('Failed to load okada rides:', error)
+      }
+    }
+    loadOkada()
+    const channel = supabase
+      .channel(`rider-okada:${rider?.id ?? 'none'}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'okada_rides' }, () => loadOkada())
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [rider, isApproved])
+
   const toggleAvailability = async () => {
     if (!rider) return
     const { error } = await supabase
@@ -344,15 +380,15 @@ function RiderDashboard({ user, onBack, onLogin, onSignup, onLogout }) {
     * A customer, another rider, or an unverified account cannot call
     * either path. The button is never shown for another rider's booking.
     */
-  const handleRiderCancelDispatch = async (bookingId, currentStatus) => {
+  const handleRiderCancelDispatch = async (bookingId) => {
     setDispatchCancelBusy(bookingId)
     setDispatchCancelError('')
 
-    const reason = dispatchCancelReason.trim() || 'Cancelled by rider'
-    const result =
-      currentStatus === 'accepted'
-        ? await releaseDispatchBooking(bookingId, rider.id, reason)
-        : await cancelRiderDispatchBooking(bookingId, rider.id, reason)
+    const reason = dispatchCancelReason.trim() || 'Rider released dispatch'
+    // The release control only renders for status='accepted', so this always
+    // delegates to the SECURITY DEFINER release RPC. The cancel path for
+    // pre-acceptance unassigned bookings is not reachable from here.
+    const result = await releaseDispatchBooking(bookingId, rider.id, reason)
 
     setDispatchCancelBusy(null)
 
@@ -637,28 +673,27 @@ if (loading) {
                   </button>
                 )}
 
-                {/* Rider cancel / release. A rider may cancel a booking they
-                    own only at a stage the database transition rules permit.
-                    Under the current rules that is only before acceptance, so
-                    an accepted booking shows a release control that needs the
-                    rider-release migration (20261016000004) to become
-                    actionable. The button is never shown for another rider's
-                    booking, and it never alters rider assignment directly. */}
-                {booking.rider_id === rider.id &&
-                  booking.status !== 'delivered' &&
-                  booking.status !== 'cancelled' && (
-                    <button
-                      className="dash-btn dash-btn-outline dash-btn-full"
-                      onClick={() => {
-                        setDispatchCancelReason('')
-                        setDispatchCancelError('')
-                        setDispatchCancelConfirm(booking.id)
-                      }}
-                      disabled={dispatchCancelBusy === booking.id}
-                    >
-                      Cancel / Release Dispatch
-                    </button>
-                  )}
+                {/* Rider release. The release_dispatch_booking(bigint, text)
+                    SECURITY DEFINER RPC only permits releasing a booking that
+                    is currently assigned to the caller AND in 'accepted'
+                    stage (migration 20261016000004:137). Show the control
+                    only for that status so a rider cannot attempt a release
+                    the server will reject. 'picked_up' and 'in_transit' are
+                    deliberately excluded: they are in-progress stages that
+                    can only advance via Mark Picked Up / Start Delivery. */}
+                {booking.rider_id === rider.id && booking.status === 'accepted' && (
+                  <button
+                    className="dash-btn dash-btn-outline dash-btn-full"
+                    onClick={() => {
+                      setDispatchCancelReason('')
+                      setDispatchCancelError('')
+                      setDispatchCancelConfirm(booking.id)
+                    }}
+                    disabled={dispatchCancelBusy === booking.id}
+                  >
+                    Release Dispatch
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -670,7 +705,7 @@ if (loading) {
 
         <ConfirmDialog
           open={dispatchCancelConfirm !== null}
-          title="Cancel or release this dispatch?"
+          title="Release this dispatch?"
           message={
             'Releasing this dispatch makes it available to other eligible ' +
             'riders and clears your assignment. The customer will see the ' +
@@ -685,13 +720,136 @@ if (loading) {
           onReasonChange={setDispatchCancelReason}
           onConfirm={() =>
             dispatchCancelConfirm !== null &&
-            handleRiderCancelDispatch(
-              dispatchCancelConfirm,
-              dispatchBookings.find((b) => b.id === dispatchCancelConfirm)?.status
-            )
+            handleRiderCancelDispatch(dispatchCancelConfirm)
           }
           onCancel={() => setDispatchCancelConfirm(null)}
         />
+
+        <div className="nf-section-divider">
+          <span>Okada Passenger Rides</span>
+        </div>
+
+        <div className="nf-order-tabs nf-okada-tabs">
+          <button
+            className={`nf-order-tab ${okadaActiveTab === 'available' ? 'nf-order-tab--active' : ''}`}
+            onClick={() => setOkadaActiveTab('available')}
+          >
+            Available Okada ({okadaRides.filter((r) => !r.rider_id).length})
+          </button>
+          <button
+            className={`nf-order-tab ${okadaActiveTab === 'mine' ? 'nf-order-tab--active' : ''}`}
+            onClick={() => setOkadaActiveTab('mine')}
+          >
+            My Okada Rides ({okadaRides.filter((r) => r.rider_id === rider.id).length})
+          </button>
+        </div>
+
+        {okadaRides.length === 0 ? (
+          <div className="empty-box">
+            <span>🏍️</span>
+            <h4>No Okada rides</h4>
+            <p>No passenger rides available right now.</p>
+          </div>
+        ) : (
+          <div className="nf-order-list">
+            {okadaRides
+              .filter((r) =>
+                okadaActiveTab === 'available' ? !r.rider_id : r.rider_id === rider.id
+              )
+              .map((ride) => (
+                <div key={ride.id} className="nf-order-card">
+                  <div className="nf-order-card-header">
+                    <h4>{okadaRideReference(ride.id)}</h4>
+                    <span className={`nf-order-status nf-order-status--${ride.status}`}>
+                      {okadaStatusIcon(ride.status)} {okadaStatusLabel(ride.status)}
+                    </span>
+                  </div>
+                  <p className="nf-order-address">📍 {ride.pickup_address} → 🎯 {ride.destination_address}</p>
+                  <p style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>
+                    Passenger: {ride.passenger_name} ({ride.passenger_phone})
+                  </p>
+                  <p style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>
+                    Fare estimate: {formatNaira(ride.fare_estimate)}
+                  </p>
+                  {!ride.rider_id && (
+                    <button
+                      className="dash-btn dash-btn-primary dash-btn-full"
+                      onClick={async () => {
+                        const result = await claimOkadaRide(ride.id)
+                        if (result.success) {
+                          setOkadaRides((current) =>
+                            current.map((r) => (r.id === ride.id ? result.ride : r))
+                          )
+                        }
+                      }}
+                    >
+                      Accept Okada Ride
+                    </button>
+                  )}
+                  {ride.rider_id === rider.id && ride.status === 'accepted' && (
+                    <button
+                      className="dash-btn dash-btn-primary dash-btn-full"
+                      onClick={async () => {
+                        const result = await updateOkadaRideStatus(ride.id, 'arriving')
+                        if (result.success) {
+                          setOkadaRides((current) =>
+                            current.map((r) => (r.id === ride.id ? result.ride : r))
+                          )
+                        }
+                      }}
+                    >
+                      Mark Arriving
+                    </button>
+                  )}
+                  {ride.rider_id === rider.id && ride.status === 'arriving' && (
+                    <button
+                      className="dash-btn dash-btn-primary dash-btn-full"
+                      onClick={async () => {
+                        const result = await updateOkadaRideStatus(ride.id, 'picked_up')
+                        if (result.success) {
+                          setOkadaRides((current) =>
+                            current.map((r) => (r.id === ride.id ? result.ride : r))
+                          )
+                        }
+                      }}
+                    >
+                      Mark Picked Up
+                    </button>
+                  )}
+                  {ride.rider_id === rider.id && ride.status === 'picked_up' && (
+                    <button
+                      className="dash-btn dash-btn-primary dash-btn-full"
+                      onClick={async () => {
+                        const result = await updateOkadaRideStatus(ride.id, 'in_progress')
+                        if (result.success) {
+                          setOkadaRides((current) =>
+                            current.map((r) => (r.id === ride.id ? result.ride : r))
+                          )
+                        }
+                      }}
+                    >
+                      Start Ride
+                    </button>
+                  )}
+                  {ride.rider_id === rider.id && ride.status === 'in_progress' && (
+                    <button
+                      className="dash-btn dash-btn-primary dash-btn-full"
+                      onClick={async () => {
+                        const result = await updateOkadaRideStatus(ride.id, 'completed', Number(ride.fare_estimate))
+                        if (result.success) {
+                          setOkadaRides((current) =>
+                            current.map((r) => (r.id === ride.id ? result.ride : r))
+                          )
+                        }
+                      }}
+                    >
+                      Complete Ride
+                    </button>
+                  )}
+                </div>
+              ))}
+          </div>
+        )}
 
         {displayDeliveries.length === 0 ? (
           <div className="empty-box">

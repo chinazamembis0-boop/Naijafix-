@@ -41,6 +41,8 @@ const RiderDashboard = lazy(() => import('./components/RiderDashboard.jsx'))
 const ShareableProvider = lazy(() => import('./components/ShareableProvider.jsx'))
 const RestaurantSignup = lazy(() => import('./components/RestaurantSignup.jsx'))
 const DispatchBooking = lazy(() => import('./components/DispatchBooking.jsx'))
+const OkadaBooking = lazy(() => import('./components/OkadaBooking.jsx'))
+const OkadaHistory = lazy(() => import('./components/OkadaHistory.jsx'))
 const DispatchBookingHistory = lazy(() => import('./components/DispatchBookingHistory.jsx'))
 const DispatchOrderStatus = lazy(() => import('./components/DispatchOrderStatus.jsx'))
 const TermsOfService = lazy(() => import('./components/PolicyPages.jsx').then(m => ({ default: m.TermsOfService })))
@@ -4658,6 +4660,7 @@ function Notifications({ user, onBack, onOpenBooking }) {
       accepted: '✅',
       declined: '❌',
       booking: '📅',
+      dispatch: '🚚',
       update: '🔔',
     }
 
@@ -7772,6 +7775,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
   const [bookings, setBookings] = useState([])
   const [services, setServices] = useState([])
   const [restaurants, setRestaurants] = useState([])
+  const [dispatchBookings, setDispatchBookings] = useState([])
   const [loading, setLoading] = useState(true)
   const [verificationLoading, setVerificationLoading] = useState(false)
   const [reportLoading, setReportLoading] = useState(false)
@@ -7799,6 +7803,17 @@ function AdminDashboard({ user, onLogout, onHome }) {
     }
     return 'Unknown'
   }
+  const resolveCustomerName = (customerUserId) => {
+    if (!customerUserId) return null
+    if (customerNames[customerUserId]) return customerNames[customerUserId]
+    const profile = (users || []).find((p) => p.user_id === customerUserId)
+    return profile?.full_name || null
+  }
+  const resolveRiderName = (riderId) => {
+    if (!riderId) return null
+    if (riderNames[riderId]) return riderNames[riderId]
+    return null
+  }
   const [reporterNames, setReporterNames] = useState({})
   const [reportedNames, setReportedNames] = useState({})
   const [reportStatus, setReportStatus] = useState({})
@@ -7821,7 +7836,7 @@ function AdminDashboard({ user, onLogout, onHome }) {
     loadAdminDataRef.current = async () => {
       setLoading(true)
 
-      const [verificationsResult, customerVerificationsResult, riderVerificationsResult, reportsResult, notificationsResult, reviewsResult, quotesResult, usersResult, providersResult, bookingsResult, servicesResult, restaurantsResult] = await Promise.all([
+      const [verificationsResult, customerVerificationsResult, riderVerificationsResult, reportsResult, notificationsResult, reviewsResult, quotesResult, usersResult, providersResult, bookingsResult, servicesResult, restaurantsResult, dispatchBookingsResult] = await Promise.all([
         supabase
           .from('provider_verifications')
           .select('*')
@@ -7870,6 +7885,10 @@ function AdminDashboard({ user, onLogout, onHome }) {
           .order('name', { ascending: true }),
         supabase
           .from('restaurants')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('dispatch_bookings')
           .select('*')
           .order('created_at', { ascending: false }),
       ])
@@ -8096,13 +8115,19 @@ if (servicesResult.error) {
           setServices(dedupeServices(servicesResult.data || []))
         }
 
-        if (restaurantsResult.error) {
+if (restaurantsResult.error) {
           console.error('Failed to load restaurants:', restaurantsResult.error)
         } else {
           setRestaurants(restaurantsResult.data || [])
         }
 
-      setLoading(false)
+        if (dispatchBookingsResult.error) {
+          console.error('Failed to load dispatch bookings:', dispatchBookingsResult.error)
+        } else {
+          setDispatchBookings(dispatchBookingsResult.data || [])
+        }
+
+        setLoading(false)
     }
 
     loadAdminDataRef.current()
@@ -8734,8 +8759,9 @@ if (servicesResult.error) {
     { id: 'rider-verifications', icon: '🏍️', label: 'Riders', badge: pendingRider },
     { id: 'support-reports', icon: '📋', label: 'Reports', badge: openReports },
     { id: 'reviews', icon: '⭐', label: 'Reviews' },
-    { id: 'quotes', icon: '💰', label: 'Quotes' },
-    { id: 'notifications', icon: '🔔', label: 'Alerts', badge: unreadNotifications },
+{ id: 'quotes', icon: '💰', label: 'Quotes' },
+      { id: 'dispatches', icon: '🚚', label: 'Dispatches', badge: dispatchBookings.length },
+      { id: 'notifications', icon: '🔔', label: 'Alerts', badge: unreadNotifications },
   ]
 
   // Admin analytics computed from existing platform data.
@@ -8753,6 +8779,11 @@ if (servicesResult.error) {
   const totalServices = services.length
   const totalReviews = reviews.length
   const totalQuotes = quotes.length
+  const totalDispatches = dispatchBookings.length
+  const pendingDispatches = dispatchBookings.filter((d) => d.status === 'pending' || d.status === 'searching_for_rider').length
+  const acceptedDispatches = dispatchBookings.filter((d) => d.status === 'accepted').length
+  const activeDispatches = dispatchBookings.filter((d) => ['picked_up', 'in_transit'].includes(d.status)).length
+  const completedDispatches = dispatchBookings.filter((d) => d.status === 'delivered').length
   const approvedProviderVerifications = verifications.filter(v => v.status === 'approved').length
   const approvedCustomerVerifications = customerVerifications.filter(v => v.status === 'approved').length
   const emergencyProvidersCount = providers.filter(p => p.emergency_available).length
@@ -8851,6 +8882,11 @@ if (servicesResult.error) {
               <StatCard icon="🏍️" value={pendingRider} label="Pending riders" color="yellow" />
               <StatCard icon="📋" value={openReports} label="Open reports" color="red" />
               <StatCard icon="✅" value={verifications.filter(v => v.status === 'approved').length + customerVerifications.filter(v => v.status === 'approved').length} label="Approved" color="green" />
+              <StatCard icon="🚚" value={totalDispatches} label="Dispatch bookings" color="indigo" />
+              <StatCard icon="⏳" value={pendingDispatches} label="Pending dispatches" color="yellow" />
+              <StatCard icon="✅" value={acceptedDispatches} label="Accepted dispatches" color="teal" />
+              <StatCard icon="📦" value={activeDispatches} label="In-progress dispatches" color="amber" />
+              <StatCard icon="🏁" value={completedDispatches} label="Delivered dispatches" color="green" />
             </StatGrid>
             <SectionHeader label="RECENT ACTIVITY" title="Latest provider verifications" />
             {loading ? (
@@ -8953,6 +8989,45 @@ if (servicesResult.error) {
                   <p style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>{b.booking_date} {b.preferred_time || ''}</p>
                 </div>
               ))
+            )}
+          </>
+        )}
+
+        {activeTab === 'dispatches' && (
+          <>
+            <SectionHeader label="DISPATCHES" title="All dispatch bookings" />
+            {loading ? (
+              <LoadingState text="Loading dispatch bookings..." />
+            ) : dispatchBookings.length === 0 ? (
+              <EmptyState icon="🚚" title="No dispatch bookings yet" />
+            ) : (
+              dispatchBookings.map((d) => {
+                const customerName = resolveCustomerName(d.customer_user_id)
+                const riderName = resolveRiderName(d.rider_id)
+                return (
+                  <div key={d.id} className="dash-card" style={{ padding: 12, marginBottom: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <strong>DISP-{100000 + d.id}</strong>
+                      <StatusBadge status={d.status} />
+                    </div>
+                    <p><strong>Customer:</strong> {customerName || 'Unknown'}</p>
+                    {d.rider_id ? (
+                      <p><strong>Rider:</strong> {riderName || `ID ${d.rider_id}`}</p>
+                    ) : null}
+                    <p><strong>From:</strong> {d.pickup_address || 'Unknown'}</p>
+                    <p><strong>To:</strong> {d.dropoff_address || 'Unknown'}</p>
+                    <p style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>
+                      Created {d.created_at ? new Date(d.created_at).toLocaleString() : 'N/A'}
+                      {d.accepted_at ? ' • Accepted ' + new Date(d.accepted_at).toLocaleTimeString() : ''}
+                      {d.picked_up_at ? ' • Picked up ' + new Date(d.picked_up_at).toLocaleTimeString() : ''}
+                      {d.delivered_at ? ' • Delivered ' + new Date(d.delivered_at).toLocaleTimeString() : ''}
+                    </p>
+                    {d.cancel_reason ? (
+                      <p style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>Reason: {d.cancel_reason}</p>
+                    ) : null}
+                  </div>
+                )
+              })
             )}
           </>
         )}
@@ -9346,13 +9421,14 @@ if (servicesResult.error) {
                     key={notification.id}
                   >
                     <span className="dash-notification-icon">
-                      {notification.type === 'verification' ? '🪪' :
-                       notification.type === 'support_update' ? '📋' :
-                       notification.type === 'message' ? '💬' :
-                       notification.type === 'booking' ? '📅' :
-                       notification.type === 'review' ? '⭐' :
-                       notification.type === 'accepted' ? '✅' :
-                       notification.type === 'declined' ? '❌' : '🔔'}
+{notification.type === 'verification' ? '🪪' :
+                        notification.type === 'support_update' ? '📋' :
+                        notification.type === 'message' ? '💬' :
+                        notification.type === 'booking' ? '📅' :
+                        notification.type === 'dispatch' ? '🚚' :
+                        notification.type === 'review' ? '⭐' :
+                        notification.type === 'accepted' ? '✅' :
+                        notification.type === 'declined' ? '❌' : '🔔'}
                     </span>
                     <div className="dash-notification-content">
                       <strong>{notification.title || 'Notification'}</strong>
@@ -10382,6 +10458,7 @@ function App() {
   const [foodRestaurant, setFoodRestaurant] = useState(null)
   const [foodPlacedOrderId, setFoodPlacedOrderId] = useState(null)
   const [dispatchBookingId, setDispatchBookingId] = useState(null)
+  const [okadaRideId, setOkadaRideId] = useState(null)
   const [selectedServiceCategory, setSelectedServiceCategory] = useState('')
 
   const [marketplaceBackPage, setMarketplaceBackPage] = useState('home')
@@ -11405,6 +11482,34 @@ const targetPage =
             setPage('food-order-placed')
           }}
           onSignIn={() => setPage('login')}
+        />
+      </Suspense>
+    )
+  }
+
+  if (effectivePage === 'okada') {
+    return (
+      <Suspense fallback={<LoadingState text="Loading Okada booking..." />}>
+        <OkadaBooking
+          user={user}
+          onBack={() => setPage('home')}
+          onRideCreated={({ ride }) => {
+            setOkadaRideId(ride.id)
+            setPage('okada-ride-placed')
+          }}
+          onViewRides={() => setPage('okada-history')}
+        />
+      </Suspense>
+    )
+  }
+
+  if (effectivePage === 'okada-history') {
+    return (
+      <Suspense fallback={<LoadingState text="Loading Okada rides..." />}>
+        <OkadaHistory
+          user={user}
+          onBack={() => setPage('home')}
+          onBookOkada={() => setPage('okada')}
         />
       </Suspense>
     )
