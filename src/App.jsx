@@ -5673,6 +5673,7 @@ function ProviderDashboard({
   onLogout,
   onFindService,
   onOkada,
+  onOkadaHistory,
   onFood,
 }) {
   const [bookings, setBookings] = useState([])
@@ -6941,6 +6942,11 @@ function ProviderDashboard({
                  {onOkada && (
                    <button className="dash-btn dash-btn-outline dash-btn-full" onClick={onOkada} style={{ marginTop: 8 }}>
                      🏍️ Book an Okada Ride
+                   </button>
+                 )}
+                 {onOkadaHistory && (
+                   <button className="dash-btn dash-btn-outline dash-btn-full" onClick={onOkadaHistory} style={{ marginTop: 8 }}>
+                     🏍️ My Okada Rides
                    </button>
                  )}
                  {onFood && (
@@ -11167,6 +11173,7 @@ const targetPage =
            setPage('all-services')
          }}
          onOkada={() => { setOkadaBackPage('provider-dashboard'); setPage('okada') }}
+         onOkadaHistory={() => { setOkadaHistoryBackPage('provider-dashboard'); setPage('okada-history') }}
          onFood={() => { setFoodBackPage('provider-dashboard'); setPage('food') }}
       />
     )
