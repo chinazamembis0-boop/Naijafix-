@@ -10773,7 +10773,7 @@ const appUser = {
         name: retry.data.full_name || '',
         email: retry.data.email || user.email || '',
         phone: retry.data.phone || '',
-        role: retry.data.role || 'customer',
+        role: String(retry.data.role || 'customer').trim().toLowerCase(),
         avatar_url: retry.data.avatar_url || '',
       }
 
@@ -10837,7 +10837,7 @@ const targetPage =
             name: retry.data.full_name || '',
             email: retry.data.email || user.email || '',
             phone: retry.data.phone || '',
-            role: retry.data.role || 'customer',
+            role: String(retry.data.role || 'customer').trim().toLowerCase(),
             avatar_url: retry.data.avatar_url || '',
           }
 
@@ -10886,8 +10886,7 @@ const targetPage =
         phone:
           profile.phone || '',
         role:
-          profile.role ||
-          'customer',
+          String(profile.role || 'customer').trim().toLowerCase(),
         avatar_url:
           profile.avatar_url ||
           '',
