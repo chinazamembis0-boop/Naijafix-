@@ -10488,6 +10488,7 @@ function App() {
   const [okadaRideId, setOkadaRideId] = useState(null)
   const [okadaBackPage, setOkadaBackPage] = useState('home')
   const [foodBackPage, setFoodBackPage] = useState('home')
+  const [marketplaceBackPage, setMarketplaceBackPage] = useState('home')
   const [selectedServiceCategory, setSelectedServiceCategory] = useState('')
 
   const openVerifiedDashboard = async () => {
