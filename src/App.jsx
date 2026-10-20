@@ -8540,6 +8540,29 @@ if (restaurantsResult.error) {
     }
   }, [reports])
 
+  const markDispatchNotificationsAsRead = useCallback(async () => {
+    const unreadIds = notifications
+      .filter((n) => !n.is_read && n.type === 'dispatch')
+      .map((n) => n.id)
+    if (unreadIds.length === 0) return
+    try {
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .in('id', unreadIds)
+        .eq('user_id', user?.user_id)
+      if (error) {
+        console.error('Failed to mark dispatch notifications as read:', error)
+        return
+      }
+      setNotifications((current) =>
+        current.map((n) => (unreadIds.includes(n.id) ? { ...n, is_read: true } : n))
+      )
+      setUnreadNotifications((current) => Math.max(0, current - unreadIds.length))
+    } catch (err) {
+      console.error('Unexpected error marking dispatch notifications as read:', err)
+    }
+  }, [notifications, user])
   const markNotificationsAsRead = useCallback(async () => {
     const unreadIds = notifications.filter((n) => !n.is_read).map((n) => n.id)
     if (unreadIds.length === 0) return
@@ -8619,10 +8642,12 @@ if (restaurantsResult.error) {
       setTimeout(() => markReportsAsViewed(), 0)
     } else if (tabId === 'notifications') {
       setTimeout(() => markNotificationsAsRead(), 0)
+    } else if (tabId === 'dispatches') {
+      setTimeout(() => markDispatchNotificationsAsRead(), 0)
     } else if (tabId === 'settings') {
       setTimeout(() => loadSettings(), 0)
     }
-  }, [markReportsAsViewed, markNotificationsAsRead, loadSettings])
+  }, [markReportsAsViewed, markNotificationsAsRead, markDispatchNotificationsAsRead, loadSettings])
 
   const updateRiderVerification = async (verificationId, newStatus) => {
     if (verificationLoading) return
