@@ -8811,7 +8811,7 @@ if (restaurantsResult.error) {
     { id: 'support-reports', icon: '📋', label: 'Reports', badge: openReports },
     { id: 'reviews', icon: '⭐', label: 'Reviews' },
 { id: 'quotes', icon: '💰', label: 'Quotes' },
-      { id: 'dispatches', icon: '🚚', label: 'Dispatches', badge: dispatchBookings.length },
+       { id: 'dispatches', icon: '🚚', label: 'Dispatches', badge: notifications.filter((n) => !n.is_read && n.type === 'dispatch').length },
       { id: 'notifications', icon: '🔔', label: 'Alerts', badge: unreadNotifications },
   ]
 
