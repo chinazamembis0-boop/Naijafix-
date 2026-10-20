@@ -305,13 +305,14 @@ export default function PhoneAuth({
          return
        }
 
-       // Server-side phone reservation (best-effort; does not block client flow).
-       try {
-         await supabase.functions.invoke('phone-otp-reserve', {
-           body: { phone: sentTo, otp: token },
-         })
-       } catch (reserveError) {
-         console.error('Phone reservation call failed:', reserveError)
+       // Server-side phone reservation; fail closed.
+       const { data: reserveData, error: reserveError } = await supabase.functions.invoke('phone-otp-reserve', {
+         body: { phone: sentTo, otp: token },
+       })
+       if (reserveError || !reserveData?.ok) {
+         setStatus('')
+         setError('Phone verification could not be confirmed. Please try again.')
+         return
        }
 
       // Only the just-verified user's own profile is readable under RLS, so
