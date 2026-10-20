@@ -15,15 +15,17 @@ export default function ImageAdCarousel() {
   const prev = () => setIndex((i) => (i - 1 + ADS.length) % ADS.length)
   const next = () => setIndex((i) => (i + 1) % ADS.length)
   return (
-    <section className="nf-image-ad-carousel">
-      <img src={ADS[index].src} alt={ADS[index].alt} />
-      <button onClick={prev} aria-label="Previous">‹</button>
-      <button onClick={next} aria-label="Next">›</button>
+    <div className="nf-image-ad-carousel">
+      <div className="nf-image-ad-viewport">
+        <img src={ADS[index].src} alt={ADS[index].alt} />
+      </div>
+      <button className="nf-image-ad-prev" onClick={prev} aria-label="Previous">‹</button>
+      <button className="nf-image-ad-next" onClick={next} aria-label="Next">›</button>
       <div className="nf-image-ad-dots">
         {ADS.map((a, i) => (
           <button key={a.id} className={i === index ? 'active' : ''} onClick={() => setIndex(i)} aria-label={`Slide ${i + 1}`} />
         ))}
       </div>
-    </section>
+    </div>
   )
 }

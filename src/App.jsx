@@ -1064,9 +1064,6 @@ function Home({
           </section>
         )}
 
-        <Suspense fallback={null}>
-          <ImageAdCarousel />
-        </Suspense>
         <section className="section">
           <div className="section-heading">
             <span className="section-label">CATEGORIES</span>
@@ -1180,10 +1177,9 @@ function Home({
         </section>
 
         <section className="section" style={{ paddingTop: 0 }}>
-          <AdPlacement
-            position="inline"
-            onAction={() => onSignup?.()}
-          />
+          <Suspense fallback={null}>
+            <ImageAdCarousel />
+          </Suspense>
         </section>
       </main>
 
