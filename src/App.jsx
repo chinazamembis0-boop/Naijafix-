@@ -2071,6 +2071,7 @@ function Dashboard({
   onFavorites,
   onRewards,
   onOkada,
+  onOkadaHistory,
   onFood,
   onReviewBooking,
   onLogout,
@@ -2508,6 +2509,11 @@ function Dashboard({
             {onOkada && (
               <button className="dash-btn dash-btn-outline dash-btn-full" onClick={onOkada}>
                 🏍️ Book an Okada Ride
+              </button>
+            )}
+            {onOkadaHistory && (
+              <button className="dash-btn dash-btn-outline dash-btn-full" onClick={onOkadaHistory}>
+                🏍️ My Okada Rides
               </button>
             )}
             {onFood && (
@@ -10512,6 +10518,7 @@ function App() {
   const [dispatchBookingId, setDispatchBookingId] = useState(null)
   const [okadaRideId, setOkadaRideId] = useState(null)
   const [okadaBackPage, setOkadaBackPage] = useState('home')
+  const [okadaHistoryBackPage, setOkadaHistoryBackPage] = useState('home')
   const [foodBackPage, setFoodBackPage] = useState('home')
   const [marketplaceBackPage, setMarketplaceBackPage] = useState('home')
   const [selectedServiceCategory, setSelectedServiceCategory] = useState('')
@@ -11191,6 +11198,7 @@ const targetPage =
         }
          onRewards={() => setPage('rewards')}
          onOkada={() => { setOkadaBackPage('dashboard'); setPage('okada') }}
+         onOkadaHistory={() => { setOkadaHistoryBackPage('dashboard'); setPage('okada-history') }}
          onFood={() => { setFoodBackPage('dashboard'); setPage('food') }}
         onReviewBooking={(booking) => {
           setReviewBookingId(booking.id)
@@ -11593,6 +11601,7 @@ const targetPage =
           onBack={() => setPage(okadaBackPage)}
           onRideCreated={(ride) => {
             setOkadaRideId(ride?.id ?? null)
+            setOkadaHistoryBackPage(okadaBackPage)
             setPage('okada-history')
           }}
           onViewRides={() => setPage('okada-history')}
@@ -11606,7 +11615,7 @@ const targetPage =
       <Suspense fallback={<LoadingState text="Loading Okada rides..." />}>
         <OkadaHistory
           user={user}
-          onBack={() => setPage(okadaBackPage)}
+          onBack={() => setPage(okadaHistoryBackPage)}
           onBookOkada={() => setPage('okada')}
         />
       </Suspense>
