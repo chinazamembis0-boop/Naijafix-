@@ -2541,7 +2541,9 @@ function Dashboard({
           <StatCard icon="📋" value={supportReports.length} label="Reports" color="red" />
         </StatGrid>
 
-        <AdPlacement position="inline" onAction={() => onService?.(services?.[0])} />
+        <Suspense fallback={null}>
+          <ImageAdCarousel />
+        </Suspense>
 
         <SectionHeader label="SERVICES" title="Find a service" />
         <ServiceGrid
@@ -2553,7 +2555,9 @@ function Dashboard({
           <EmptyState icon="🔎" title="No service found" description="Try searching for another service." />
         )}
 
-        <AdPlacement position="inline" onAction={() => onService?.(services?.[0])} />
+        <Suspense fallback={null}>
+          <ImageAdCarousel />
+        </Suspense>
 
         {popularProviders.length > 0 && (
           <>
@@ -3067,7 +3071,9 @@ function Services({
         )}
 
         <div style={{ marginTop: 20 }}>
-          <AdPlacement position="inline" />
+          <Suspense fallback={null}>
+          <ImageAdCarousel />
+        </Suspense>
         </div>
       </main>
     </div>
@@ -3650,7 +3656,9 @@ function ProviderDetails({
           )}
         </section>
 
-        <AdPlacement position="inline" />
+        <Suspense fallback={null}>
+          <ImageAdCarousel />
+        </Suspense>
 
         <section className="details-card">
           <h3>Leave a review</h3>
@@ -5463,7 +5471,9 @@ function Profile({ user, onBack, onLogout }) {
           </DashboardCard>
         )}
 
-        <AdPlacement position="inline" />
+        <Suspense fallback={null}>
+          <ImageAdCarousel />
+        </Suspense>
 
         <DashboardCard>
           <div className="dash-btn-group" style={{ flexDirection: 'column' }}>
@@ -7077,7 +7087,9 @@ function ProviderDashboard({
               ))
             )}
 
-            <AdPlacement position="inline" />
+            <Suspense fallback={null}>
+          <ImageAdCarousel />
+        </Suspense>
 
             <SectionHeader
               label="SERVICE REQUESTS"
