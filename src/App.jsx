@@ -2070,6 +2070,8 @@ function Dashboard({
   onConversations,
   onFavorites,
   onRewards,
+  onOkada,
+  onFood,
   onReviewBooking,
   onLogout,
 }) {
@@ -2501,6 +2503,16 @@ function Dashboard({
             {onFavorites && (
               <button className="dash-btn dash-btn-outline dash-btn-full" onClick={onFavorites}>
                 ❤️ Saved providers
+              </button>
+            )}
+            {onOkada && (
+              <button className="dash-btn dash-btn-outline dash-btn-full" onClick={onOkada}>
+                🏍️ Book an Okada Ride
+              </button>
+            )}
+            {onFood && (
+              <button className="dash-btn dash-btn-outline dash-btn-full" onClick={onFood}>
+                🍽️ Food & Restaurants
               </button>
             )}
             {onRewards && (
@@ -5645,6 +5657,8 @@ function ProviderDashboard({
   onProfile,
   onLogout,
   onFindService,
+  onOkada,
+  onFood,
 }) {
   const [bookings, setBookings] = useState([])
   const [providerProfile, setProviderProfile] = useState(null)
@@ -6906,9 +6920,19 @@ function ProviderDashboard({
                 <p style={{ color: 'var(--nf-text-muted)', fontSize: 13, marginBottom: 12 }}>
                   Need another service? Browse the marketplace as a customer.
                 </p>
-                <button className="dash-btn dash-btn-primary dash-btn-full" onClick={onFindService}>
-                  🔍 Find a Service
-                </button>
+                 <button className="dash-btn dash-btn-primary dash-btn-full" onClick={onFindService}>
+                   🔍 Find a Service
+                 </button>
+                 {onOkada && (
+                   <button className="dash-btn dash-btn-outline dash-btn-full" onClick={onOkada} style={{ marginTop: 8 }}>
+                     🏍️ Book an Okada Ride
+                   </button>
+                 )}
+                 {onFood && (
+                   <button className="dash-btn dash-btn-outline dash-btn-full" onClick={onFood} style={{ marginTop: 8 }}>
+                     🍽️ Food & Restaurants
+                   </button>
+                 )}
               </div>
             </DashboardCard>
 
@@ -10462,6 +10486,8 @@ function App() {
   const [foodPlacedOrderId, setFoodPlacedOrderId] = useState(null)
   const [dispatchBookingId, setDispatchBookingId] = useState(null)
   const [okadaRideId, setOkadaRideId] = useState(null)
+  const [okadaBackPage, setOkadaBackPage] = useState('home')
+  const [foodBackPage, setFoodBackPage] = useState('home')
   const [selectedServiceCategory, setSelectedServiceCategory] = useState('')
 
   const openVerifiedDashboard = async () => {
@@ -11092,10 +11118,12 @@ const targetPage =
           el?.scrollIntoView({ behavior: 'smooth' })
         }}
         onLogout={handleLogout}
-        onFindService={() => {
-          setMarketplaceBackPage('provider-dashboard')
-          setPage('all-services')
-        }}
+         onFindService={() => {
+           setMarketplaceBackPage('provider-dashboard')
+           setPage('all-services')
+         }}
+         onOkada={() => { setOkadaBackPage('provider-dashboard'); setPage('okada') }}
+         onFood={() => { setFoodBackPage('provider-dashboard'); setPage('food') }}
       />
     )
   }
@@ -11135,7 +11163,9 @@ const targetPage =
         onFavorites={() =>
           setPage('favorites')
         }
-        onRewards={() => setPage('rewards')}
+         onRewards={() => setPage('rewards')}
+         onOkada={() => { setOkadaBackPage('dashboard'); setPage('okada') }}
+         onFood={() => { setFoodBackPage('dashboard'); setPage('food') }}
         onReviewBooking={(booking) => {
           setReviewBookingId(booking.id)
           setSelectedProvider(null)
@@ -11446,7 +11476,7 @@ const targetPage =
     return (
       <Suspense fallback={<LoadingState text="Loading food marketplace..." />}>
         <FoodMarketplace
-          onBack={() => setPage('home')}
+          onBack={() => setPage(foodBackPage)}
           onViewCart={() => setPage('food-cart')}
           onViewOrders={() => setPage('food-orders')}
           cart={foodCart}
@@ -11534,7 +11564,7 @@ const targetPage =
       <Suspense fallback={<LoadingState text="Loading Okada booking..." />}>
         <OkadaBooking
           user={user}
-          onBack={() => setPage('home')}
+          onBack={() => setPage(okadaBackPage)}
           onRideCreated={(ride) => {
             setOkadaRideId(ride?.id ?? null)
             setPage('okada-history')
@@ -11550,7 +11580,7 @@ const targetPage =
       <Suspense fallback={<LoadingState text="Loading Okada rides..." />}>
         <OkadaHistory
           user={user}
-          onBack={() => setPage('home')}
+          onBack={() => setPage(okadaBackPage)}
           onBookOkada={() => setPage('okada')}
         />
       </Suspense>
