@@ -10424,6 +10424,7 @@ function App() {
   const [page, setPage] =
     useState('home')
 
+
   const [dbServices, setDbServices] =
     useState(defaultServices)
 
@@ -10483,6 +10484,7 @@ function App() {
 
     if (profileError || !profile) {
       console.error('Could not resolve dashboard profile:', profileError)
+
       setCurrentUser(null)
       localStorage.removeItem('naijafixUser')
       setPage('login')
@@ -10494,6 +10496,7 @@ function App() {
     setCurrentUser(appUser)
 
     const role = String(appUser.role || 'customer').trim().toLowerCase()
+
     setPage(
       role === 'admin'
         ? 'admin-dashboard'
@@ -10996,33 +10999,19 @@ const targetPage =
 
   if (effectivePage === 'login') {
     return (
-      <Login
-        setPage={setPage}
-        onBack={() => setPage('home')}
-        onSignup={() =>
-          setPage('signup')
-        }
-        onDashboard={() => {
-          const saved = JSON.parse(
-            localStorage.getItem(
-              'naijafixUser'
-            ) || 'null'
-          )
+      <>
 
-          setCurrentUser(saved)
-          setPage(
-            saved?.role === 'provider'
-              ? 'provider-dashboard'
-              : saved?.role === 'rider'
-              ? 'rider-dashboard'
-              : saved?.role === 'restaurant'
-              ? 'restaurant-dashboard'
-              : saved?.role === 'admin'
-              ? 'admin-dashboard'
-              : 'dashboard'
-          )
-        }}
-      />
+        <Login
+          setPage={setPage}
+          onBack={() => setPage('home')}
+          onSignup={() =>
+            setPage('signup')
+          }
+          onDashboard={() => {
+            void openVerifiedDashboard()
+          }}
+        />
+      </>
     )
   }
 
