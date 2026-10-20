@@ -203,7 +203,7 @@ function buildAppUser(profile, authUser, fallbacks = {}) {
     name: profile.full_name || fallbacks.name || '',
     email: profile.email || authUser?.email || fallbacks.email || '',
     phone: profile.phone || fallbacks.phone || authUser?.phone || '',
-    role: profile.role || 'customer',
+    role: String(profile.role || 'customer').trim().toLowerCase(),
     avatar_url: profile.avatar_url || '',
   }
 }
@@ -1047,20 +1047,7 @@ function Home({
           </section>
         )}
 
-        {onDispatch && (
-          <section className="section nf-home-food-section">
-            <button className="nf-home-food-banner" onClick={onDispatch}>
-              <div className="nf-home-food-banner-content">
-                <span className="nf-home-food-icon">🏍️</span>
-                <div>
-                  <h3>Book a Dispatch Rider</h3>
-                  <p>Send parcels with Ewizzy motorcycle delivery</p>
-                </div>
-                <span className="nf-home-food-arrow">→</span>
-              </div>
-            </button>
-          </section>
-        )}
+
 
         {onOkada && (
           <section className="section nf-home-food-section">
@@ -11610,69 +11597,6 @@ const targetPage =
           user={user}
           onBack={() => setPage('home')}
           onBookOkada={() => setPage('okada')}
-        />
-      </Suspense>
-    )
-  }
-
-  if (effectivePage === 'dispatch') {
-    return (
-      <Suspense fallback={<LoadingState text="Creating dispatch booking..." />}>
-        <DispatchBooking
-          user={user}
-          onBack={() => setPage('home')}
-          onSignIn={() => setPage('login')}
-          onBookingCreated={({ booking }) => {
-            setDispatchBookingId(booking.id)
-            setPage('dispatch-order-placed')
-          }}
-          onViewBookings={() => setPage('dispatch-history')}
-        />
-      </Suspense>
-    )
-  }
-
-  if (effectivePage === 'dispatch-history') {
-    return (
-      <Suspense fallback={<LoadingState text="Loading dispatch bookings..." />}>
-        <DispatchBookingHistory
-          user={user}
-          onBack={() => setPage('home')}
-          onBookDispatch={() => setPage('dispatch')}
-          onOpenBooking={(id) => {
-            setDispatchBookingId(id)
-            setPage('dispatch-order-placed')
-          }}
-          onSignIn={() => setPage('login')}
-        />
-      </Suspense>
-    )
-  }
-
-  if (effectivePage === 'dispatch-order-placed') {
-    return (
-      <Suspense fallback={<LoadingState text="Loading dispatch booking..." />}>
-        <DispatchOrderStatus
-          bookingId={dispatchBookingId}
-          user={user}
-          onBack={() => setPage('dispatch-history')}
-          onBookDispatch={() => setPage('dispatch')}
-          onOpenHistory={() => setPage('dispatch-history')}
-          onChat={async (dispatchBookingId) => {
-            const conversation = await getOrCreateConversation(null, null, null, null, dispatchBookingId)
-            if (conversation) {
-              setSelectedConversation(conversation)
-              setChatPartner({
-                user_id:
-                  conversation.provider_user_id === user?.user_id
-                    ? conversation.customer_user_id
-                    : conversation.provider_user_id,
-                name: user?.role === 'customer' ? 'Assigned rider' : 'Customer',
-              })
-              setPage('chat')
-            }
-          }}
-          onSignIn={() => setPage('login')}
         />
       </Suspense>
     )

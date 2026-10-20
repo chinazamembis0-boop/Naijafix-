@@ -43,7 +43,7 @@ function verificationIcon(status) {
   return '⏳'
 }
 
-function RiderDashboard({ user, onBack, onLogin, onSignup, onLogout }) {
+function RiderDashboard({ user, onBack, onLogin, onSignup, onLogout, onChatDispatch }) {
   const [rider, setRider] = useState(null)
   const [verification, setVerification] = useState(null)
   const [photoUrl, setPhotoUrl] = useState('')
@@ -589,115 +589,6 @@ if (loading) {
             My Deliveries ({myDeliveries.length})
           </button>
         </div>
-
-        {dispatchError && (
-          <p className="nf-form-error">{dispatchError}</p>
-        )}
-
-        <div className="nf-order-tabs nf-dispatch-tabs">
-          <button
-            className={`nf-order-tab ${dispatchActiveTab === 'available' ? 'nf-order-tab--active' : ''}`}
-            onClick={() => setDispatchActiveTab('available')}
-          >
-            Available Dispatch ({availableDispatches.length})
-          </button>
-          <button
-            className={`nf-order-tab ${dispatchActiveTab === 'my-dispatches' ? 'nf-order-tab--active' : ''}`}
-            onClick={() => setDispatchActiveTab('my-dispatches')}
-          >
-            My Dispatches ({myDispatches.length})
-          </button>
-        </div>
-
-        {displayDispatches.length === 0 ? (
-          <div className="empty-box">
-            <span>📦</span>
-            <h4>No dispatch bookings</h4>
-            <p>{dispatchActiveTab === 'available' ? 'No dispatch requests available right now.' : 'You have no active dispatch bookings.'}</p>
-          </div>
-        ) : (
-          <div className="nf-order-list">
-            {displayDispatches.map((booking) => (
-              <div key={booking.id} className="nf-order-card nf-dispatch-card">
-                <div className="nf-order-card-header">
-                  <h4>{dispatchBookingReference(booking.id)}</h4>
-                  <span className={`nf-order-status nf-order-status--${booking.status}`}>
-                    {dispatchStatusIcon(booking.status)} {dispatchStatusLabel(booking.status)}
-                  </span>
-                </div>
-                <p className="nf-order-address">📦 {booking.item_description}</p>
-                <p style={{ fontSize: 12, color: 'var(--nf-text-muted)' }}>
-                  📍 {booking.pickup_address} → 🎯 {booking.dropoff_address}
-                </p>
-
-                {!booking.rider_id &&
-                  (booking.status === 'pending' ||
-                    booking.status === 'searching_for_rider' ||
-                    booking.status === 'released') && (
-                  <button
-                    className="dash-btn dash-btn-primary dash-btn-full"
-                    onClick={() => handleClaimDispatch(booking.id)}
-                    disabled={busyBookingId === booking.id}
-                  >
-                    {busyBookingId === booking.id ? 'Claiming...' : 'Accept Dispatch'}
-                  </button>
-                )}
-
-                {booking.rider_id === rider.id && booking.status === 'accepted' && (
-                  <button
-                    className="dash-btn dash-btn-primary dash-btn-full"
-                    onClick={() => handleDispatchStatusUpdate(booking.id, 'picked_up')}
-                    disabled={busyBookingId === booking.id}
-                  >
-                    {busyBookingId === booking.id ? 'Updating...' : 'Mark Picked Up'}
-                  </button>
-                )}
-
-                {booking.rider_id === rider.id && booking.status === 'picked_up' && (
-                  <button
-                    className="dash-btn dash-btn-primary dash-btn-full"
-                    onClick={() => handleDispatchStatusUpdate(booking.id, 'in_transit')}
-                    disabled={busyBookingId === booking.id}
-                  >
-                    {busyBookingId === booking.id ? 'Updating...' : 'Start Delivery'}
-                  </button>
-                )}
-
-                {booking.rider_id === rider.id && booking.status === 'in_transit' && (
-                  <button
-                    className="dash-btn dash-btn-primary dash-btn-full"
-                    onClick={() => handleDispatchStatusUpdate(booking.id, 'delivered')}
-                    disabled={busyBookingId === booking.id}
-                  >
-                    {busyBookingId === booking.id ? 'Updating...' : 'Mark Delivered'}
-                  </button>
-                )}
-
-                {/* Rider release. The release_dispatch_booking(bigint, text)
-                    SECURITY DEFINER RPC only permits releasing a booking that
-                    is currently assigned to the caller AND in 'accepted'
-                    stage (migration 20261016000004:137). Show the control
-                    only for that status so a rider cannot attempt a release
-                    the server will reject. 'picked_up' and 'in_transit' are
-                    deliberately excluded: they are in-progress stages that
-                    can only advance via Mark Picked Up / Start Delivery. */}
-                {booking.rider_id === rider.id && booking.status === 'accepted' && (
-                  <button
-                    className="dash-btn dash-btn-outline dash-btn-full"
-                    onClick={() => {
-                      setDispatchCancelReason('')
-                      setDispatchCancelError('')
-                      setDispatchCancelConfirm(booking.id)
-                    }}
-                    disabled={dispatchCancelBusy === booking.id}
-                  >
-                    Release Dispatch
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
 
         {dispatchCancelError && (
           <p className="nf-form-error">{dispatchCancelError}</p>
