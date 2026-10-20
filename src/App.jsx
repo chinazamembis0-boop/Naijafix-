@@ -991,14 +991,14 @@ function Home({
                   className="secondary-button"
                   onClick={onRiderSignup}
                 >
-                  Become a Delivery Rider
+                  Become an Okada Rider
                 </button>
               )}
             </div>
 
             {onRiderSignup && (
               <p className="hero-rider-note">
-                Join Ewizzy as a motorcycle/Okada delivery and dispatch rider.
+                Join Ewizzy as an Okada rider.
               </p>
             )}
 
