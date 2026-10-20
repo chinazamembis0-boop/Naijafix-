@@ -2406,6 +2406,8 @@ select:focus-visible {
 .conversation-list {
   min-height: 100vh;
   background: var(--nf-bg);
+  display: flex;
+  flex-direction: column;
 }
 
 .chat-header {
@@ -2476,7 +2478,8 @@ select:focus-visible {
   flex-direction: column;
   gap: 10px;
   overflow-y: auto;
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .chat-message {
@@ -2522,9 +2525,12 @@ select:focus-visible {
   background: white;
   border-top: 1px solid #e2e8e4;
   padding: 10px 14px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   display: flex;
   gap: 10px;
   align-items: flex-end;
+  position: sticky;
+  bottom: 0;
 }
 
 .chat-composer input {
