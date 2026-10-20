@@ -928,6 +928,7 @@ function Home({
   onViewAllServices,
   onFood,
   onDispatch,
+  onOkada,
   setPage,
 }) {
   const [search, setSearch] = useState('')
@@ -1061,10 +1062,24 @@ function Home({
           </section>
         )}
 
+        {onOkada && (
+          <section className="section nf-home-food-section">
+            <button className="nf-home-food-banner" onClick={onOkada}>
+              <div className="nf-home-food-banner-content">
+                <span className="nf-home-food-icon">🏍️</span>
+                <div>
+                  <h3>Book an Okada Ride</h3>
+                  <p>Ride with an Ewizzy motorcycle passenger service</p>
+                </div>
+                <span className="nf-home-food-arrow">→</span>
+              </div>
+            </button>
+          </section>
+        )}
+
         <section className="section">
           <div className="section-heading">
             <span className="section-label">CATEGORIES</span>
-
             <h3>What do you need help with?</h3>
           </div>
 
@@ -10465,8 +10480,91 @@ function App() {
 
   const isInitialLoad = useRef(true)
 
-  const getOrCreateConversation = async (otherUserId, otherUserName, otherUserAvatar, bookingId) => {
+  const getOrCreateConversation = async (otherUserId, otherUserName, otherUserAvatar, bookingId, dispatchBookingId = null) => {
     if (!user?.user_id) return null
+
+    // Dispatch chat is keyed only by dispatch_booking_id. Participants are
+    // derived from the booking and assigned rider; caller-supplied IDs are
+    // never trusted for dispatch conversations.
+    if (dispatchBookingId != null) {
+      const { data: booking, error: bookingError } = await supabase
+        .from('dispatch_bookings')
+        .select('id, customer_user_id, rider_id')
+        .eq('id', dispatchBookingId)
+        .maybeSingle()
+
+      if (bookingError || !booking) {
+        alert('Could not load this dispatch booking for chat.')
+        return null
+      }
+
+      let riderUserId = null
+      if (booking.rider_id != null) {
+        const { data: rider, error: riderError } = await supabase
+          .from('riders')
+          .select('user_id')
+          .eq('id', booking.rider_id)
+          .maybeSingle()
+        if (riderError) {
+          alert('Could not verify the assigned rider for this dispatch booking.')
+          return null
+        }
+        riderUserId = rider?.user_id || null
+      }
+
+      const isCustomer = user.user_id === booking.customer_user_id
+      const isRider = !!riderUserId && user.user_id === riderUserId
+      if (!isCustomer && !isRider) {
+        alert('You are not allowed to chat for this dispatch booking.')
+        return null
+      }
+      if (!riderUserId) {
+        alert('Chat is available after a rider is assigned to this dispatch booking.')
+        return null
+      }
+
+      const otherId = isCustomer ? riderUserId : booking.customer_user_id
+      const otherName = isCustomer ? 'Assigned rider' : 'Customer'
+
+      const { data: existing, error: existingError } = await supabase
+        .from('conversations')
+        .select('*')
+        .eq('dispatch_booking_id', dispatchBookingId)
+        .maybeSingle()
+
+      if (existingError) {
+        if (/column .*dispatch_booking_id/i.test(existingError.message || '') || /does not exist/i.test(existingError.message || '')) {
+          alert('Dispatch chat is not available until the dispatch chat migration is applied.')
+        } else {
+          alert('Could not start conversation: ' + existingError.message)
+        }
+        return null
+      }
+      if (existing) return existing
+
+      const { data, error } = await supabase
+        .from('conversations')
+        .insert({
+          dispatch_booking_id: dispatchBookingId,
+          customer_user_id: booking.customer_user_id,
+          provider_user_id: riderUserId,
+          customer_name: isCustomer ? (user.name || 'Customer') : otherName,
+          provider_name: isCustomer ? otherName : (user.name || 'Rider'),
+        })
+        .select('*')
+        .single()
+
+      if (error) {
+        if (/column .*dispatch_booking_id/i.test(error.message || '') || /does not exist/i.test(error.message || '')) {
+          alert('Dispatch chat is not available until the dispatch chat migration is applied.')
+        } else {
+          console.error('Failed to create dispatch conversation:', error)
+          alert('Could not start conversation: ' + error.message)
+        }
+        return null
+      }
+      return data
+    }
 
     if (!otherUserId) {
       alert('Unable to start conversation: this provider profile is incomplete. Please contact Ewizzy support.')
@@ -11372,9 +11470,11 @@ const targetPage =
         partnerName={chatPartner?.name}
         partnerAvatar={chatPartner?.avatar_url}
         bookingContext={
-          selectedConversation?.booking_id
-            ? 'Booking #' + selectedConversation.booking_id
-            : null
+          selectedConversation?.dispatch_booking_id
+            ? 'Dispatch Booking #' + selectedConversation.dispatch_booking_id
+            : selectedConversation?.booking_id
+              ? 'Booking #' + selectedConversation.booking_id
+              : null
         }
         onBack={() => {
           setSelectedConversation(null)
@@ -11493,9 +11593,9 @@ const targetPage =
         <OkadaBooking
           user={user}
           onBack={() => setPage('home')}
-          onRideCreated={({ ride }) => {
-            setOkadaRideId(ride.id)
-            setPage('okada-ride-placed')
+          onRideCreated={(ride) => {
+            setOkadaRideId(ride?.id ?? null)
+            setPage('okada-history')
           }}
           onViewRides={() => setPage('okada-history')}
         />
@@ -11558,6 +11658,20 @@ const targetPage =
           onBack={() => setPage('dispatch-history')}
           onBookDispatch={() => setPage('dispatch')}
           onOpenHistory={() => setPage('dispatch-history')}
+          onChat={async (dispatchBookingId) => {
+            const conversation = await getOrCreateConversation(null, null, null, null, dispatchBookingId)
+            if (conversation) {
+              setSelectedConversation(conversation)
+              setChatPartner({
+                user_id:
+                  conversation.provider_user_id === user?.user_id
+                    ? conversation.customer_user_id
+                    : conversation.provider_user_id,
+                name: user?.role === 'customer' ? 'Assigned rider' : 'Customer',
+              })
+              setPage('chat')
+            }
+          }}
           onSignIn={() => setPage('login')}
         />
       </Suspense>
@@ -11585,6 +11699,20 @@ const targetPage =
           onLogin={() => setPage('login')}
           onSignup={() => setPage('rider-signup')}
           onLogout={() => setPage('login')}
+          onChatDispatch={async (dispatchBookingId) => {
+            const conversation = await getOrCreateConversation(null, null, null, null, dispatchBookingId)
+            if (conversation) {
+              setSelectedConversation(conversation)
+              setChatPartner({
+                user_id:
+                  conversation.provider_user_id === user?.user_id
+                    ? conversation.customer_user_id
+                    : conversation.provider_user_id,
+                name: user?.role === 'rider' ? 'Customer' : 'Assigned rider',
+              })
+              setPage('chat')
+            }
+          }}
         />
       </Suspense>
     )
@@ -11670,6 +11798,7 @@ const targetPage =
       onFood={() => setPage('food')}
       setPage={setPage}
       onDispatch={() => setPage('dispatch')}
+      onOkada={() => setPage('okada')}
       user={user}
     />
   )
