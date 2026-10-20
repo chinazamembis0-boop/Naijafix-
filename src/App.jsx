@@ -10463,7 +10463,49 @@ function App() {
   const [okadaRideId, setOkadaRideId] = useState(null)
   const [selectedServiceCategory, setSelectedServiceCategory] = useState('')
 
-  const [marketplaceBackPage, setMarketplaceBackPage] = useState('home')
+  const openVerifiedDashboard = async () => {
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser()
+
+    if (!authUser) {
+      setCurrentUser(null)
+      localStorage.removeItem('naijafixUser')
+      setPage('login')
+      return
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', authUser.id)
+      .maybeSingle()
+
+    if (profileError || !profile) {
+      console.error('Could not resolve dashboard profile:', profileError)
+      setCurrentUser(null)
+      localStorage.removeItem('naijafixUser')
+      setPage('login')
+      return
+    }
+
+    const appUser = buildAppUser(profile, authUser)
+    saveLocalAppUser(appUser)
+    setCurrentUser(appUser)
+
+    const role = String(appUser.role || 'customer').trim().toLowerCase()
+    setPage(
+      role === 'admin'
+        ? 'admin-dashboard'
+        : role === 'provider'
+          ? 'provider-dashboard'
+          : role === 'rider'
+            ? 'rider-dashboard'
+            : role === 'restaurant'
+              ? 'restaurant-dashboard'
+              : 'dashboard'
+    )
+  }
 
   const isInitialLoad = useRef(true)
 
@@ -10990,29 +11032,7 @@ const targetPage =
       <Signup
         onBack={() => setPage('home')}
         onLogin={() => {
-          const saved = JSON.parse(
-            localStorage.getItem(
-              'naijafixUser'
-            ) || 'null'
-          )
-
-          setCurrentUser(saved)
-
-          if (saved?.user_id) {
-            setPage(
-              saved.role === 'provider'
-                ? 'provider-dashboard'
-                : saved.role === 'rider'
-                ? 'rider-dashboard'
-                : saved.role === 'restaurant'
-                ? 'restaurant-dashboard'
-                : saved.role === 'admin'
-                ? 'admin-dashboard'
-                : 'dashboard'
-            )
-          } else {
-            setPage('login')
-          }
+          void openVerifiedDashboard()
         }}
       />
     )
@@ -11034,65 +11054,12 @@ const targetPage =
         initialRole="provider"
         onBack={() => setPage('home')}
         onLogin={() => {
-          const saved = JSON.parse(
-            localStorage.getItem(
-              'naijafixUser'
-            ) || 'null'
-          )
-
-          setCurrentUser(saved)
-
-          if (saved?.user_id) {
-            setPage(
-              saved.role === 'provider'
-                ? 'provider-dashboard'
-                : saved.role === 'rider'
-                ? 'rider-dashboard'
-                : saved.role === 'restaurant'
-                ? 'restaurant-dashboard'
-                : saved.role === 'admin'
-                ? 'admin-dashboard'
-                : 'dashboard'
-            )
-          } else {
-            setPage('login')
-          }
+          void openVerifiedDashboard()
         }}
       />
     )
   }
 
-  if (effectivePage === 'rider-signup') {
-    return (
-      <Signup
-        initialRole="rider"
-        onBack={() => setPage('home')}
-        onLogin={() => {
-          const saved = JSON.parse(
-            localStorage.getItem(
-              'naijafixUser'
-            ) || 'null'
-          )
-
-          setCurrentUser(saved)
-
-          if (saved?.user_id) {
-            setPage(
-              saved.role === 'rider'
-                ? 'rider-dashboard'
-                : saved.role === 'provider'
-                ? 'provider-dashboard'
-                : saved.role === 'admin'
-                ? 'admin-dashboard'
-                : 'dashboard'
-            )
-          } else {
-            setPage('login')
-          }
-        }}
-      />
-    )
-  }
 
   if (effectivePage === 'restaurant-signup') {
     return (
@@ -11729,3 +11696,6 @@ const targetPage =
 }
 
 export default App
+
+
+
