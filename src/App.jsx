@@ -42,7 +42,7 @@ const ShareableProvider = lazy(() => import('./components/ShareableProvider.jsx'
 const RestaurantSignup = lazy(() => import('./components/RestaurantSignup.jsx'))
 const DispatchBooking = lazy(() => import('./components/DispatchBooking.jsx'))
 const OkadaBooking = lazy(() => import('./components/OkadaBooking.jsx'))
-const OkadaHistory = lazy(() => import('./components/OkadaHistory.jsx'))
+const ImageAdCarousel = lazy(() => import('./components/ImageAdCarousel.jsx'))
 const DispatchBookingHistory = lazy(() => import('./components/DispatchBookingHistory.jsx'))
 const DispatchOrderStatus = lazy(() => import('./components/DispatchOrderStatus.jsx'))
 const TermsOfService = lazy(() => import('./components/PolicyPages.jsx').then(m => ({ default: m.TermsOfService })))
@@ -1064,6 +1064,9 @@ function Home({
           </section>
         )}
 
+        <Suspense fallback={null}>
+          <ImageAdCarousel />
+        </Suspense>
         <section className="section">
           <div className="section-heading">
             <span className="section-label">CATEGORIES</span>
