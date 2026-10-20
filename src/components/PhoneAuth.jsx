@@ -16,9 +16,56 @@ import {
 const RESEND_COOLDOWN_SECONDS = 45
 const MAX_VERIFY_ATTEMPTS = 5
 const OTP_LENGTH = 6
-const NEW_ACCOUNT_WINDOW_MS = 15 * 60 * 1000
 
-const ROBASE_OTP_FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/robase-otp`
+// Flags are rendered as image assets instead of emoji so they look identical
+// on Windows, Android and every other platform (Windows has no flag emoji font
+// and shows a blank box or the letters "NG"). The emoji pair is only used if
+// the image asset itself cannot be loaded.
+function isoToFlagEmoji(iso) {
+  const code = String(iso || '').toUpperCase()
+
+  if (!/^[A-Z]{2}$/.test(code)) return ''
+
+  return String.fromCodePoint(
+    ...[...code].map((letter) => 0x1f1e6 + letter.charCodeAt(0) - 65),
+  )
+}
+
+function CountryFlag({ iso }) {
+  const [assetFailed, setAssetFailed] = useState(false)
+  const code = String(iso || '').toLowerCase()
+  const useAsset = /^[a-z]{2}$/.test(code) && !assetFailed
+
+  if (!useAsset) {
+    return (
+      <span className="country-flag country-flag-emoji" aria-hidden="true">
+        {isoToFlagEmoji(iso)}
+      </span>
+    )
+  }
+
+  return (
+    <img
+      className="country-flag"
+      src={`https://flagcdn.com/w40/${code}.png`}
+      srcSet={`https://flagcdn.com/w80/${code}.png 2x`}
+      alt=""
+      aria-hidden="true"
+      width={20}
+      height={15}
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => setAssetFailed(true)}
+    />
+  )
+}
+
+// Supabase creates the auth user when the code is requested, and the
+// database trigger seeds a placeholder profile for it. That placeholder is
+// the only reliable marker of a genuinely new phone account, so it is used
+// instead of any timestamp comparison after verification.
+const PLACEHOLDER_PROFILE_NAME = 'Ewizzy user'
 
 function describeSendError(error, mode) {
   const message = String(error?.message || '')
@@ -93,9 +140,6 @@ export default function PhoneAuth({
   const [sentTo, setSentTo] = useState('')
   const [cooldown, setCooldown] = useState(0)
   const [attempts, setAttempts] = useState(0)
-
-  const otpRequestedAt = useRef(0)
-  const otpIdRef = useRef(null)
 
   useEffect(() => {
     if (cooldown <= 0) return undefined
@@ -179,35 +223,22 @@ export default function PhoneAuth({
 
     setSending(true)
     setStatus('sending')
-    otpRequestedAt.current = Date.now()
 
     try {
-      const response = await fetch(ROBASE_OTP_FUNCTION_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          action: 'send',
-          phone: parsed.e164,
+      // No options.data: seeding signup form fields into user metadata would
+      // stop the auth trigger from creating the placeholder profile that
+      // identifies a new account after verification.
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        phone: parsed.e164,
+        options: {
           shouldCreateUser: mode !== 'login',
-        }),
+        },
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        console.error('Phone OTP request failed:', data)
+      if (otpError) {
+        console.error('Phone OTP request failed:', otpError)
         setStatus('')
-        setError(describeSendError(data, mode))
-        return
-      }
-
-      if (!data.otp_id) {
-        console.error('No OTP ID returned:', data)
-        setStatus('')
-        setError('We could not send a verification code. Please try again.')
+        setError(describeSendError(otpError, mode))
         return
       }
 
@@ -217,8 +248,6 @@ export default function PhoneAuth({
       setStatus('sent')
       setStep('otp')
       setCooldown(RESEND_COOLDOWN_SECONDS)
-      // Store otp_id in a ref for verification
-      otpIdRef.current = data.otp_id
     } catch (otpError) {
       console.error('Unexpected phone OTP request error:', otpError)
       setStatus('')
@@ -245,77 +274,73 @@ export default function PhoneAuth({
       return
     }
 
-    const otpId = otpIdRef.current
-    if (!otpId) {
-      setError('Verification session expired. Please request a new code.')
-      return
-    }
-
     setVerifying(true)
     setStatus('verifying')
     beginPhoneAuthHandoff()
 
     try {
-      const response = await fetch(ROBASE_OTP_FUNCTION_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
-          action: 'verify',
-          otp_id: otpId,
-          code: token,
-          phone: sentTo,
-          shouldCreateUser: mode !== 'login',
-          isNewAccount: mode !== 'login',
-        }),
+      const { data, error: verifyError } = await supabase.auth.verifyOtp({
+        phone: sentTo,
+        token,
+        type: 'sms',
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        console.error('Phone OTP verification failed:', data)
+      if (verifyError) {
+        console.error('Phone OTP verification failed:', verifyError)
         const nextAttempts = attempts + 1
         setAttempts(nextAttempts)
         setStatus('')
         setCode('')
         setError(
-          describeVerifyError({ message: data.error || data.message }, MAX_VERIFY_ATTEMPTS - nextAttempts)
+          describeVerifyError(verifyError, MAX_VERIFY_ATTEMPTS - nextAttempts)
         )
         return
       }
 
-      const authUser = data.user
+       const authUser = data?.user
 
-      if (!authUser) {
+       if (!authUser) {
+         setStatus('')
+         setError('Verification did not return an account. Please try again.')
+         return
+       }
+
+       // Server-side phone reservation (best-effort; does not block client flow).
+       try {
+         await supabase.functions.invoke('phone-otp-reserve', {
+           body: { phone: sentTo, otp: token },
+         })
+       } catch (reserveError) {
+         console.error('Phone reservation call failed:', reserveError)
+       }
+
+      // Only the just-verified user's own profile is readable under RLS, so
+      // this is a self-check and never reveals whether another phone exists.
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name, email, role')
+        .eq('user_id', authUser.id)
+        .maybeSingle()
+
+      if (profileError) {
+        console.error('Profile lookup after phone verification failed:', profileError)
         setStatus('')
-        setError('Verification did not return an account. Please try again.')
+        setError(
+          'Your code was verified, but we could not load your Ewizzy profile. Please request a new code and try again.'
+        )
         return
       }
 
-      if (data.session?.access_token && data.session?.refresh_token) {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        })
-        if (sessionError) {
-          console.error('Failed to set Supabase session:', sessionError)
-        }
-      }
+      const isNewAccount =
+        mode === 'signup' &&
+        profile?.full_name === PLACEHOLDER_PROFILE_NAME &&
+        profile?.email == null &&
+        profile?.role === 'customer'
 
       setStatus('verified')
 
-      const createdAt = authUser.created_at
-        ? new Date(authUser.created_at).getTime()
-        : 0
-      const isNewAccount =
-        mode !== 'login' &&
-        createdAt > 0 &&
-        createdAt >= otpRequestedAt.current - NEW_ACCOUNT_WINDOW_MS
-
       if (onVerified) {
-        await onVerified(authUser, { phone: sentTo, isNewAccount: data.is_new_account || isNewAccount })
+        await onVerified(authUser, { phone: sentTo, isNewAccount })
       }
     } catch (verifyError) {
       console.error('Unexpected phone OTP verification error:', verifyError)
@@ -333,7 +358,6 @@ export default function PhoneAuth({
     setError('')
     setStatus('')
     setAttempts(0)
-    otpIdRef.current = null
   }
 
   if (step === 'otp') {
@@ -420,12 +444,15 @@ export default function PhoneAuth({
                 onClick={() => setCountryDropdownOpen(!countryDropdownOpen)}
                 aria-haspopup="listbox"
                 aria-expanded={countryDropdownOpen}
-                aria-label="Country"
+                aria-label={
+                  countryOption
+                    ? `Country: ${countryOption.name}, +${countryOption.callingCode}`
+                    : 'Country'
+                }
               >
                 {countryOption && (
                   <>
-                    <span className="country-flag" aria-hidden="true">🏳️</span>
-                    <span>{countryOption.name}</span>
+                    <CountryFlag iso={countryOption.iso} />
                     <span className="country-code">+{countryOption.callingCode}</span>
                   </>
                 )}
@@ -434,17 +461,27 @@ export default function PhoneAuth({
 
               {countryDropdownOpen && (
                 <div className="phone-country-dropdown" role="listbox" aria-label="Select country">
-                  <div className="country-search-wrap">
-                    <input
-                      type="search"
-                      className="country-search-input"
-                      placeholder="Search country"
-                      value={countrySearch}
-                      onChange={(e) => setCountrySearch(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      autoComplete="off"
-                      aria-label="Search country"
-                    />
+                  <div className="country-picker-head">
+                    <div className="country-search-wrap">
+                      <input
+                        type="search"
+                        className="country-search-input"
+                        placeholder="Search"
+                        value={countrySearch}
+                        onChange={(e) => setCountrySearch(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        autoComplete="off"
+                        aria-label="Search country"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="country-picker-close"
+                      onClick={handleCountrySelect.bind(null, country)}
+                      aria-label="Close country list"
+                    >
+                      ✕
+                    </button>
                   </div>
                   <ul className="country-list" role="listbox">
                     {filteredCountries.length > 0 ? (
@@ -456,7 +493,7 @@ export default function PhoneAuth({
                           className={`country-item ${option.iso === country ? 'selected' : ''}`}
                           onClick={() => handleCountrySelect(option.iso)}
                         >
-                          <span className="country-flag" aria-hidden="true">🏳️</span>
+                          <CountryFlag iso={option.iso} />
                           <span className="country-name">{option.name}</span>
                           <span className="country-code">+{option.callingCode}</span>
                         </li>
