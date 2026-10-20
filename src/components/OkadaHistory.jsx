@@ -14,15 +14,21 @@ function OkadaHistory({ user, onBack, onBookOkada }) {
       setLoading(false)
       return
     }
+    const t0 = performance.now()
+    console.log('[OkadaHistory] mount->query start', Math.round(t0), 'ms')
     setLoading(true)
     setError('')
     try {
+      const t1 = performance.now()
       const data = await fetchCustomerOkadaRides(user.user_id)
+      console.log('[OkadaHistory] query finished in', Math.round(performance.now() - t1), 'ms; rides:', (data || []).length)
       setRides(data)
     } catch (e) {
+      console.error('Could not load your Okada rides.')
       setError('Could not load your Okada rides.')
     }
     setLoading(false)
+    console.log('[OkadaHistory] total mount->done', Math.round(performance.now() - t0), 'ms')
   }
 
   useEffect(() => {
