@@ -8,6 +8,7 @@ function OkadaHistory({ user, onBack, onBookOkada }) {
   const [rides, setRides] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [diag, setDiag] = useState({ mountToQueryStart: null, queryDuration: null, total: null, count: 0, error: null })
 
   const load = async () => {
     if (!user?.user_id) {
@@ -15,20 +16,18 @@ function OkadaHistory({ user, onBack, onBookOkada }) {
       return
     }
     const t0 = performance.now()
-    console.log('[OkadaHistory] mount->query start', Math.round(t0), 'ms')
     setLoading(true)
     setError('')
     try {
       const t1 = performance.now()
       const data = await fetchCustomerOkadaRides(user.user_id)
-      console.log('[OkadaHistory] query finished in', Math.round(performance.now() - t1), 'ms; rides:', (data || []).length)
+      setDiag({ mountToQueryStart: Math.round(t1 - t0), queryDuration: Math.round(performance.now() - t1), total: Math.round(performance.now() - t0), count: (data || []).length, error: null })
       setRides(data)
     } catch (e) {
-      console.error('Could not load your Okada rides.')
+      setDiag({ mountToQueryStart: null, queryDuration: null, total: Math.round(performance.now() - t0), count: 0, error: 'query_failed' })
       setError('Could not load your Okada rides.')
     }
     setLoading(false)
-    console.log('[OkadaHistory] total mount->done', Math.round(performance.now() - t0), 'ms')
   }
 
   useEffect(() => {
@@ -53,6 +52,14 @@ function OkadaHistory({ user, onBack, onBookOkada }) {
       <main className="inner-content">
         <span className="section-label">OKADA RIDES</span>
         <h2>My Okada Rides</h2>
+        <div style={{ border: '1px dashed #999', padding: 8, marginBottom: 12, fontSize: 12 }}>
+          <strong>Temporary performance diagnostics</strong>
+          <div>Mount→query start: {diag.mountToQueryStart ?? '…'} ms</div>
+          <div>Query duration: {diag.queryDuration ?? '…'} ms</div>
+          <div>Total mount→done: {diag.total ?? '…'} ms</div>
+          <div>Rides returned: {diag.count}</div>
+          {diag.error && <div>Error: {diag.error}</div>}
+        </div>
         {loading ? (
           <div className="empty-box large-empty"><span>⏳</span><h4>Loading...</h4></div>
         ) : error ? (
