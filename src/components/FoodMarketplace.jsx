@@ -14,6 +14,7 @@ function FoodMarketplace({
   onRestaurantChange,
   onRestaurantDashboard,
   onRiderDashboard,
+  onDispatch,
 }) {
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -165,6 +166,11 @@ function FoodMarketplace({
           {onRiderDashboard && (
             <button className="dash-btn dash-btn-outline dash-btn-sm" onClick={onRiderDashboard}>
               🏍️ Rider
+            </button>
+          )}
+          {onDispatch && (
+            <button className="dash-btn dash-btn-outline dash-btn-sm" onClick={onDispatch}>
+              🚚 Dispatch Riders
             </button>
           )}
           {onViewCart && (

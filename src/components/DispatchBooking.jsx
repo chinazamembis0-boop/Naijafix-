@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { createDispatchBooking } from './DispatchData.js'
+import { formatNaira } from './foodUtils.js'
 import { Logo } from './Logo.jsx'
 
 function DispatchBooking({ user, onBack, onBookingCreated, onViewBookings }) {
@@ -15,6 +16,7 @@ function DispatchBooking({ user, onBack, onBookingCreated, onViewBookings }) {
     itemDescription: '',
     packageDetails: '',
     additionalInstructions: '',
+    fareEstimate: '',
   })
   const [booking, setBooking] = useState(null)
   const [creating, setCreating] = useState(false)
@@ -118,6 +120,12 @@ function DispatchBooking({ user, onBack, onBookingCreated, onViewBookings }) {
                 <div>
                   <h3>Package details</h3>
                   <p>{form.packageDetails}</p>
+                </div>
+              )}
+              {form.fareEstimate && (
+                <div>
+                  <h3>Fare estimate</h3>
+                  <p>{formatNaira(form.fareEstimate)}</p>
                 </div>
               )}
             </div>
@@ -264,6 +272,18 @@ function DispatchBooking({ user, onBack, onBookingCreated, onViewBookings }) {
                 value={form.additionalInstructions}
                 onChange={(e) => updateForm('additionalInstructions', e.target.value)}
               />
+            </label>
+            <label className="nf-field">
+              <span className="nf-field-label">Fare estimate (optional)</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                placeholder="e.g. 2500"
+                value={form.fareEstimate}
+                onChange={(e) => updateForm('fareEstimate', e.target.value)}
+              />
+              <span className="nf-field-hint">If you know the expected fare, enter it in naira. The rider will confirm the final amount.</span>
             </label>
           </div>
 

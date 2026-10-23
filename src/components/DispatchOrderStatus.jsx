@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { supabase } from '../supabase.js'
 import { fetchDispatchBooking, cancelDispatchBooking } from './DispatchData.js'
 import {
   dispatchBookingReference,
@@ -8,8 +9,9 @@ import {
 } from './DispatchData.js'
 import { Logo } from './Logo.jsx'
 import ConfirmDialog from './ConfirmDialog.jsx'
+import { formatNaira } from './foodUtils.js'
 
-function DispatchOrderStatus({ bookingId, user, onBack, onBookDispatch, onOpenHistory }) {
+function DispatchOrderStatus({ bookingId, user, onBack, onBookDispatch, onOpenHistory, onChat }) {
   const [booking, setBooking] = useState(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -18,6 +20,10 @@ function DispatchOrderStatus({ bookingId, user, onBack, onBookDispatch, onOpenHi
   const [cancelError, setCancelError] = useState('')
   const [cancelled, setCancelled] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
+  const [riderName, setRiderName] = useState('')
+  const [riderPhone, setRiderPhone] = useState('')
+  const [riderLoading, setRiderLoading] = useState(false)
+  const [riderError, setRiderError] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -40,6 +46,56 @@ function DispatchOrderStatus({ bookingId, user, onBack, onBookDispatch, onOpenHi
       cancelled = true
     }
   }, [bookingId, user])
+
+  /**
+   * Resolve rider contact details only when the booking is assigned to a
+   * rider. The customer is the only caller here — fetchDispatchBooking()
+   * already enforces customer ownership server-side — and the riders
+   * table RLS lets any authenticated user read active rider rows, so a
+   * phone number is only shown when one actually exists on the rider row.
+   */
+  useEffect(() => {
+    let cancelled = false
+
+    const loadRider = async () => {
+      if (!booking?.rider_id) {
+        setRiderName('')
+        setRiderPhone('')
+        setRiderError('')
+        setRiderLoading(false)
+        return
+      }
+
+      setRiderLoading(true)
+      setRiderError('')
+
+      const { data, error } = await supabase
+        .from('riders')
+        .select('id, full_name, phone, vehicle_type, active, available')
+        .eq('id', booking.rider_id)
+        .maybeSingle()
+
+      if (cancelled) return
+
+      if (error || !data) {
+        setRiderName('')
+        setRiderPhone('')
+        setRiderError('Rider details are not available right now.')
+        setRiderLoading(false)
+        return
+      }
+
+      setRiderName(data.full_name || '')
+      setRiderPhone((data.phone || '').trim())
+      setRiderError('')
+      setRiderLoading(false)
+    }
+
+    loadRider()
+    return () => {
+      cancelled = true
+    }
+  }, [booking?.rider_id])
 
   const handleCancel = async () => {
     setCancelling(true)
@@ -139,6 +195,50 @@ function DispatchOrderStatus({ bookingId, user, onBack, onBookDispatch, onOpenHi
                 <p><strong>Instructions:</strong> {booking.additional_instructions}</p>
               )}
             </div>
+
+            {booking.fare_estimate != null && (
+              <div className="nf-checkout-section">
+                <h3 className="nf-checkout-heading">Fare</h3>
+                <p className="nf-dispatch-fare">
+                  💰 {formatNaira(booking.fare_estimate)}
+                </p>
+              </div>
+            )}
+
+            {booking.rider_id && (
+              <div className="nf-checkout-section">
+                <h3 className="nf-checkout-heading">Rider</h3>
+                {riderLoading ? (
+                  <p className="nf-form-hint">Looking up rider details…</p>
+                ) : riderError ? (
+                  <p className="nf-form-error">{riderError}</p>
+                ) : riderName ? (
+                  <>
+                    <p><strong>Motorcycle / Okada:</strong> {riderName}</p>
+                    {riderPhone ? (
+                      <p>
+                        <a
+                          className="nf-inline-link"
+                          href={`tel:${riderPhone.replace(/\s/g, '')}`}
+                        >
+                          📞 Call rider
+                        </a>
+                      </p>
+                    ) : (
+                      <p className="nf-form-hint">Rider phone is not available yet.</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="nf-form-hint">Rider details are not available.</p>
+                )}
+              </div>
+            )}
+
+            {booking.rider_id && onChat && (
+              <button className="dash-btn dash-btn-primary dash-btn-full" onClick={() => onChat(booking.id)}>
+                Chat with Rider
+              </button>
+            )}
 
             <div className="nf-checkout-section">
               <h3 className="nf-checkout-heading">Booking Status</h3>

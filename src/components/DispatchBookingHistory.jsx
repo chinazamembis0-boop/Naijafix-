@@ -6,6 +6,7 @@ import {
   dispatchStatusIcon,
   isDispatchCancellable,
 } from './DispatchData.js'
+import { formatNaira } from './foodUtils.js'
 import { Logo } from './Logo.jsx'
 import ConfirmDialog from './ConfirmDialog.jsx'
 
@@ -170,6 +171,12 @@ function DispatchBookingHistory({ user, onBack, onBookDispatch, onOpenBooking, o
                           <span>📍 {booking.pickup_address}</span>
                           <span>🎯 {booking.dropoff_address}</span>
                         </div>
+
+                        {booking.fare_estimate != null && (
+                          <p className="nf-history-fare">
+                            💰 Fare: {formatNaira(booking.fare_estimate)}
+                          </p>
+                        )}
 
                         {booking.rider_id && (
                           <p className="nf-history-rider-hint">
