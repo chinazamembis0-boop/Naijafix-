@@ -16,6 +16,7 @@ function RestaurantSignup({ user, onBack, onSuccess }) {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
 
   const updateForm = (field, value) => {
     setForm((current) => ({
@@ -27,6 +28,7 @@ function RestaurantSignup({ user, onBack, onSuccess }) {
   const handleSubmit = async (event) => {
     event.preventDefault()
     setError('')
+    setSuccess(false)
     setLoading(true)
 
     if (!user?.user_id) {
@@ -38,6 +40,41 @@ function RestaurantSignup({ user, onBack, onSuccess }) {
     const name = form.name.trim()
     if (!name) {
       setError('Restaurant name is required.')
+      setLoading(false)
+      return
+    }
+
+    const phone = form.phone.trim()
+    if (!phone) {
+      setError('Phone number is required.')
+      setLoading(false)
+      return
+    }
+
+    const email = form.email.trim()
+    if (!email) {
+      setError('Email address is required.')
+      setLoading(false)
+      return
+    }
+
+    const address = form.address.trim()
+    if (!address) {
+      setError('Address is required.')
+      setLoading(false)
+      return
+    }
+
+    const city = form.city.trim()
+    if (!city) {
+      setError('City is required.')
+      setLoading(false)
+      return
+    }
+
+    const cuisine = form.cuisine.trim()
+    if (!cuisine) {
+      setError('Cuisine type is required.')
       setLoading(false)
       return
     }
@@ -68,11 +105,11 @@ function RestaurantSignup({ user, onBack, onSuccess }) {
           owner_user_id: user.user_id,
           name,
           description: form.description.trim() || null,
-          phone: form.phone.trim() || null,
-          email: form.email.trim() || null,
-          address: form.address.trim() || null,
-          city: form.city.trim() || null,
-          cuisine: form.cuisine.trim() || null,
+          phone,
+          email,
+          address,
+          city,
+          cuisine,
           delivery_fee: Number(form.delivery_fee) || 0,
           estimated_delivery_minutes: Number(form.estimated_delivery_minutes) || 30,
           is_open: true,
@@ -88,6 +125,7 @@ function RestaurantSignup({ user, onBack, onSuccess }) {
         return
       }
 
+      setSuccess(true)
       if (onSuccess) {
         onSuccess(data)
       }
@@ -107,112 +145,166 @@ function RestaurantSignup({ user, onBack, onSuccess }) {
       </header>
 
       <main className="inner-content">
-        <span className="section-label">RESTAURANT</span>
-        <h2>Register Your Restaurant</h2>
-        <p>Create your restaurant profile and start receiving orders on Ewizzy.</p>
+        <div className="rsvp-card">
+          <span className="section-label">RESTAURANT</span>
+          <h2>Register Your Restaurant</h2>
+          <p>Create your restaurant profile and start receiving orders on Ewizzy.</p>
 
-        {error && (
-          <div className="empty-box" style={{ marginBottom: 16 }}>
-            <span>⚠️</span>
-            <h4>{error}</h4>
-          </div>
-        )}
+          {error && (
+            <div className="rsvp-message rsvp-message-error" role="alert">
+              <span>⚠️</span>
+              {error}
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit}>
-          <label>Restaurant Name *</label>
-          <input
-            type="text"
-            placeholder="e.g. Mama's Kitchen"
-            value={form.name}
-            onChange={(event) => updateForm('name', event.target.value)}
-            required
-          />
+          {success && (
+            <div className="rsvp-message rsvp-message-success" role="alert">
+              <span>✅</span>
+              Restaurant registered successfully! Redirecting to your dashboard…
+            </div>
+          )}
 
-          <label>Description</label>
-          <textarea
-            placeholder="Tell customers about your restaurant..."
-            value={form.description}
-            onChange={(event) => updateForm('description', event.target.value)}
-            rows={3}
-            style={{
-              width: '100%',
-              padding: '12px 14px',
-              border: '1px solid #d1d5db',
-              borderRadius: 12,
-              fontSize: 16,
-              fontFamily: 'inherit',
-              resize: 'vertical',
-            }}
-          />
+          <form onSubmit={handleSubmit} className="rsvp-form">
+          <fieldset className="rsvp-section">
+            <legend>Restaurant Information</legend>
+            <div className="rsvp-grid">
+              <div className="rsvp-field">
+                <label htmlFor="rsvp-name">Restaurant Name</label>
+                <span className="rsvp-required">Required</span>
+                <input
+                  id="rsvp-name"
+                  type="text"
+                  placeholder="e.g. Mama's Kitchen"
+                  value={form.name}
+                  onChange={(event) => updateForm('name', event.target.value)}
+                  required
+                />
+              </div>
+              <div className="rsvp-field rsvp-field-full">
+                <label htmlFor="rsvp-description">Description</label>
+                <textarea
+                  id="rsvp-description"
+                  placeholder="Tell customers about your restaurant — what you serve, your story, your specialties…"
+                  value={form.description}
+                  onChange={(event) => updateForm('description', event.target.value)}
+                  rows={4}
+                />
+              </div>
+            </div>
+          </fieldset>
 
-          <label>Phone</label>
-          <input
-            type="tel"
-            placeholder="08012345678"
-            value={form.phone}
-            onChange={(event) => updateForm('phone', event.target.value)}
-          />
+          <fieldset className="rsvp-section">
+            <legend>Contact Information</legend>
+            <div className="rsvp-grid">
+              <div className="rsvp-field">
+                <label htmlFor="rsvp-phone">Phone</label>
+                <span className="rsvp-required">Required</span>
+                <input
+                  id="rsvp-phone"
+                  type="tel"
+                  placeholder="08012345678"
+                  value={form.phone}
+                  onChange={(event) => updateForm('phone', event.target.value)}
+                  required
+                />
+              </div>
+              <div className="rsvp-field">
+                <label htmlFor="rsvp-email">Email</label>
+                <span className="rsvp-required">Required</span>
+                <input
+                  id="rsvp-email"
+                  type="email"
+                  placeholder="restaurant@example.com"
+                  value={form.email}
+                  onChange={(event) => updateForm('email', event.target.value)}
+                  required
+                />
+              </div>
+            </div>
+          </fieldset>
 
-          <label>Email</label>
-          <input
-            type="email"
-            placeholder="restaurant@example.com"
-            value={form.email}
-            onChange={(event) => updateForm('email', event.target.value)}
-          />
+          <fieldset className="rsvp-section">
+            <legend>Restaurant Location</legend>
+            <div className="rsvp-grid">
+              <div className="rsvp-field">
+                <label htmlFor="rsvp-address">Address</label>
+                <span className="rsvp-required">Required</span>
+                <input
+                  id="rsvp-address"
+                  type="text"
+                  placeholder="Street address"
+                  value={form.address}
+                  onChange={(event) => updateForm('address', event.target.value)}
+                  required
+                />
+              </div>
+              <div className="rsvp-field">
+                <label htmlFor="rsvp-city">City</label>
+                <span className="rsvp-required">Required</span>
+                <input
+                  id="rsvp-city"
+                  type="text"
+                  placeholder="e.g. Lagos"
+                  value={form.city}
+                  onChange={(event) => updateForm('city', event.target.value)}
+                  required
+                />
+              </div>
+            </div>
+          </fieldset>
 
-          <label>Address</label>
-          <input
-            type="text"
-            placeholder="Street address"
-            value={form.address}
-            onChange={(event) => updateForm('address', event.target.value)}
-          />
-
-          <label>City</label>
-          <input
-            type="text"
-            placeholder="e.g. Lagos"
-            value={form.city}
-            onChange={(event) => updateForm('city', event.target.value)}
-          />
-
-          <label>Cuisine</label>
-          <input
-            type="text"
-            placeholder="e.g. Nigerian, Fast Food"
-            value={form.cuisine}
-            onChange={(event) => updateForm('cuisine', event.target.value)}
-          />
-
-          <label>Delivery Fee (₦)</label>
-          <input
-            type="number"
-            placeholder="0"
-            min="0"
-            step="100"
-            value={form.delivery_fee}
-            onChange={(event) => updateForm('delivery_fee', event.target.value)}
-          />
-
-          <label>Estimated Delivery Time (minutes)</label>
-          <input
-            type="number"
-            placeholder="30"
-            min="1"
-            value={form.estimated_delivery_minutes}
-            onChange={(event) => updateForm('estimated_delivery_minutes', event.target.value)}
-          />
+          <fieldset className="rsvp-section">
+            <legend>Cuisine and Delivery</legend>
+            <div className="rsvp-grid">
+              <div className="rsvp-field">
+                <label htmlFor="rsvp-cuisine">Cuisine</label>
+                <span className="rsvp-required">Required</span>
+                <input
+                  id="rsvp-cuisine"
+                  type="text"
+                  placeholder="e.g. Nigerian, Fast Food"
+                  value={form.cuisine}
+                  onChange={(event) => updateForm('cuisine', event.target.value)}
+                  required
+                />
+              </div>
+              <div className="rsvp-field">
+                <label htmlFor="rsvp-delivery-fee">Delivery Fee (₦)</label>
+                <input
+                  id="rsvp-delivery-fee"
+                  type="number"
+                  placeholder="0"
+                  min="0"
+                  step="100"
+                  value={form.delivery_fee}
+                  onChange={(event) => updateForm('delivery_fee', event.target.value)}
+                />
+              </div>
+              <div className="rsvp-field">
+                <label htmlFor="rsvp-delivery-time">Estimated Delivery Time</label>
+                <input
+                  id="rsvp-delivery-time"
+                  type="number"
+                  placeholder="30"
+                  min="1"
+                  step="5"
+                  value={form.estimated_delivery_minutes}
+                  onChange={(event) => updateForm('estimated_delivery_minutes', event.target.value)}
+                />
+                <span className="rsvp-hint">minutes</span>
+              </div>
+            </div>
+          </fieldset>
 
           <button
             type="submit"
-            className="primary-full"
+            className="primary-full rsvp-submit"
             disabled={loading}
-            style={{ marginTop: 8 }}
           >
-            {loading ? 'Creating Restaurant...' : 'Register Restaurant'}
+            {loading ? 'Creating Restaurant…' : 'Register Restaurant'}
           </button>
         </form>
+        </div>
       </main>
     </div>
   )
