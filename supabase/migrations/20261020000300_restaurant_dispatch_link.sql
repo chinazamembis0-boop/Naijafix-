@@ -245,7 +245,10 @@ begin
 
   -- Restaurant owner field protection. Restaurant owners may only cancel
   -- their own eligible, unassigned bookings; they cannot modify protected
-  -- booking fields.
+  -- booking fields. Server-managed audit fields (accepted_at, picked_up_at,
+  -- delivered_at, cancelled_at, cancelled_by, cancel_reason, released_at,
+  -- released_by, created_at, updated_at) are stamped by the trigger itself
+  -- and are immutable for restaurant owners.
   if v_is_restaurant and not v_is_admin and not v_is_customer then
     if new.customer_user_id          is distinct from old.customer_user_id
        or new.pickup_contact_name    is distinct from old.pickup_contact_name
@@ -260,7 +263,17 @@ begin
        or new.package_details        is distinct from old.package_details
        or new.additional_instructions is distinct from old.additional_instructions
        or new.fare_estimate          is distinct from old.fare_estimate
-       or new.rider_id               is distinct from old.rider_id then
+       or new.rider_id               is distinct from old.rider_id
+       or new.accepted_at            is distinct from old.accepted_at
+       or new.picked_up_at           is distinct from old.picked_up_at
+       or new.delivered_at           is distinct from old.delivered_at
+       or new.cancelled_at           is distinct from old.cancelled_at
+       or new.cancelled_by           is distinct from old.cancelled_by
+       or new.cancel_reason          is distinct from old.cancel_reason
+       or new.released_at            is distinct from old.released_at
+       or new.released_by            is distinct from old.released_by
+       or new.created_at             is distinct from old.created_at
+       or new.updated_at             is distinct from old.updated_at then
       raise exception
         'Restaurant owners may not modify protected dispatch booking fields'
         using errcode = '42501';
