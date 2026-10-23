@@ -120,6 +120,9 @@ declare
   v_is_customer boolean := false;
   v_is_restaurant boolean := false;
   v_is_assigned_rider boolean := false;
+  v_rider_id bigint := public.current_rider_id();
+  v_is_release boolean := false;
+  v_is_claim boolean := false;
 begin
   -- Only enforce when a real user is making the call
   if v_uid is null then
@@ -153,14 +156,46 @@ begin
   -- Resolve assigned rider status
   if not v_is_admin
      and old.rider_id is not null
-     and old.rider_id = (select public.current_rider_id()) then
+     and old.rider_id = v_rider_id then
     v_is_assigned_rider := true;
+  end if;
+
+  -- Release recognition. Self-authorizing: no external marker.
+  if old.rider_id = v_rider_id
+     and new.rider_id is null
+     and new.status = 'released'
+     and old.status = 'accepted'
+  then
+    v_is_release := true;
+  end if;
+
+  -- Claim recognition. Self-authorizing: no external marker.
+  if old.rider_id is null
+     and new.rider_id = v_rider_id
+     and new.status = 'accepted'
+     and old.status in ('pending', 'searching_for_rider', 'released')
+  then
+    v_is_claim := true;
+  end if;
+
+  -- Rider_id gate: only claim RPC may assign rider_id
+  if new.rider_id is distinct from old.rider_id and not v_is_admin and not v_is_release then
+    if not (
+      old.rider_id is null
+      and new.rider_id = v_rider_id
+      and new.status = 'accepted'
+    ) then
+      raise exception
+        'rider_id may only be assigned through claim_dispatch_booking()'
+        using errcode = '42501';
+    end if;
   end if;
 
   -- Status transition guard
   if new.status is distinct from old.status then
     if not v_is_admin then
-      if not public.dispatch_booking_transition_allowed(old.status, new.status) then
+      if not v_is_release
+         and not public.dispatch_booking_transition_allowed(old.status, new.status) then
         raise exception
           'Illegal dispatch booking status transition: % -> %', old.status, new.status
           using errcode = '22023';
@@ -176,47 +211,118 @@ begin
     end if;
   end if;
 
-  -- Assigned rider may only change status (fulfilment), not customer/address/etc.
-  if v_is_assigned_rider and not v_is_admin then
-    if new.customer_user_id   is distinct from old.customer_user_id
-       or new.pickup_contact_name   is distinct from old.pickup_contact_name
-       or new.pickup_contact_phone  is distinct from old.pickup_contact_phone
-       or new.pickup_address        is distinct from old.pickup_address
-       or new.pickup_area           is distinct from old.pickup_area
-       or new.recipient_name        is distinct from old.recipient_name
-       or new.recipient_phone       is distinct from old.recipient_phone
-       or new.dropoff_address       is distinct from old.dropoff_address
-       or new.dropoff_area          is distinct from old.dropoff_area
-       or new.item_description      is distinct from old.item_description
-       or new.package_details       is distinct from old.package_details
+  -- Customer field protection. A legitimate rider claim is recognized
+  -- above and exempted here: it is the ONLY customer-role write that may
+  -- change rider_id or accepted_at, and only for the exact unassigned
+  -- -> accepted transition.
+  if v_is_customer and not v_is_admin and not v_is_claim then
+    if new.customer_user_id          is distinct from old.customer_user_id
+       or new.pickup_contact_name    is distinct from old.pickup_contact_name
+       or new.pickup_contact_phone   is distinct from old.pickup_contact_phone
+       or new.pickup_address         is distinct from old.pickup_address
+       or new.pickup_area            is distinct from old.pickup_area
+       or new.recipient_name         is distinct from old.recipient_name
+       or new.recipient_phone        is distinct from old.recipient_phone
+       or new.dropoff_address        is distinct from old.dropoff_address
+       or new.dropoff_area           is distinct from old.dropoff_area
+       or new.item_description       is distinct from old.item_description
+       or new.package_details        is distinct from old.package_details
        or new.additional_instructions is distinct from old.additional_instructions
-       or new.fare_estimate         is distinct from old.fare_estimate
-       or new.rider_id              is distinct from old.rider_id then
+       or new.fare_estimate          is distinct from old.fare_estimate
+       or new.rider_id               is distinct from old.rider_id
+       or new.accepted_at            is distinct from old.accepted_at
+       or new.picked_up_at           is distinct from old.picked_up_at
+       or new.delivered_at           is distinct from old.delivered_at
+       or new.cancelled_at           is distinct from old.cancelled_at
+       or new.cancelled_by           is distinct from old.cancelled_by
+       or new.created_at             is distinct from old.created_at
+       or new.updated_at             is distinct from old.updated_at then
       raise exception
-        'Riders may not modify protected dispatch booking fields'
+        'Customers may only cancel a dispatch booking; no other fields may change'
         using errcode = '42501';
     end if;
   end if;
 
-  -- Restaurant owner may only cancel, not modify protected fields
+  -- Restaurant owner field protection. Restaurant owners may only cancel
+  -- their own eligible, unassigned bookings; they cannot modify protected
+  -- booking fields.
   if v_is_restaurant and not v_is_admin and not v_is_customer then
-    if new.customer_user_id   is distinct from old.customer_user_id
-       or new.pickup_contact_name   is distinct from old.pickup_contact_name
-       or new.pickup_contact_phone  is distinct from old.pickup_contact_phone
-       or new.pickup_address        is distinct from old.pickup_address
-       or new.pickup_area           is distinct from old.pickup_area
-       or new.recipient_name        is distinct from old.recipient_name
-       or new.recipient_phone       is distinct from old.recipient_phone
-       or new.dropoff_address       is distinct from old.dropoff_address
-       or new.dropoff_area          is distinct from old.dropoff_area
-       or new.item_description      is distinct from old.item_description
-       or new.package_details       is distinct from old.package_details
+    if new.customer_user_id          is distinct from old.customer_user_id
+       or new.pickup_contact_name    is distinct from old.pickup_contact_name
+       or new.pickup_contact_phone   is distinct from old.pickup_contact_phone
+       or new.pickup_address         is distinct from old.pickup_address
+       or new.pickup_area            is distinct from old.pickup_area
+       or new.recipient_name         is distinct from old.recipient_name
+       or new.recipient_phone        is distinct from old.recipient_phone
+       or new.dropoff_address        is distinct from old.dropoff_address
+       or new.dropoff_area           is distinct from old.dropoff_area
+       or new.item_description       is distinct from old.item_description
+       or new.package_details        is distinct from old.package_details
        or new.additional_instructions is distinct from old.additional_instructions
-       or new.fare_estimate         is distinct from old.fare_estimate
-       or new.rider_id              is distinct from old.rider_id then
+       or new.fare_estimate          is distinct from old.fare_estimate
+       or new.rider_id               is distinct from old.rider_id then
       raise exception
         'Restaurant owners may not modify protected dispatch booking fields'
         using errcode = '42501';
+    end if;
+  end if;
+
+  -- Assigned-rider field protection. During a normal rider update only
+  -- status may change. During a valid release an explicit allow-list is
+  -- enforced.
+  if v_is_assigned_rider and not v_is_admin then
+    if not v_is_release then
+      if new.customer_user_id          is distinct from old.customer_user_id
+         or new.pickup_contact_name    is distinct from old.pickup_contact_name
+         or new.pickup_contact_phone   is distinct from old.pickup_contact_phone
+         or new.pickup_address         is distinct from old.pickup_address
+         or new.pickup_area            is distinct from old.pickup_area
+         or new.recipient_name         is distinct from old.recipient_name
+         or new.recipient_phone        is distinct from old.recipient_phone
+         or new.dropoff_address        is distinct from old.dropoff_address
+         or new.dropoff_area           is distinct from old.dropoff_area
+         or new.item_description       is distinct from old.item_description
+         or new.package_details        is distinct from old.package_details
+         or new.additional_instructions is distinct from old.additional_instructions
+         or new.fare_estimate          is distinct from old.fare_estimate
+         or new.rider_id               is distinct from old.rider_id
+         or new.accepted_at            is distinct from old.accepted_at
+         or new.picked_up_at           is distinct from old.picked_up_at
+         or new.delivered_at           is distinct from old.delivered_at
+         or new.cancelled_at           is distinct from old.cancelled_at
+         or new.cancelled_by           is distinct from old.cancelled_by
+         or new.cancel_reason          is distinct from old.cancel_reason
+         or new.created_at             is distinct from old.created_at
+         or new.updated_at             is distinct from old.updated_at then
+        raise exception
+          'Riders may only change the status of a dispatch booking'
+          using errcode = '42501';
+      end if;
+    else
+      -- Release allow-list
+      if new.customer_user_id          is distinct from old.customer_user_id
+         or new.pickup_contact_name    is distinct from old.pickup_contact_name
+         or new.pickup_contact_phone   is distinct from old.pickup_contact_phone
+         or new.pickup_address         is distinct from old.pickup_address
+         or new.pickup_area            is distinct from old.pickup_area
+         or new.recipient_name         is distinct from old.recipient_name
+         or new.recipient_phone        is distinct from old.recipient_phone
+         or new.dropoff_address        is distinct from old.dropoff_address
+         or new.dropoff_area           is distinct from old.dropoff_area
+         or new.item_description       is distinct from old.item_description
+         or new.package_details        is distinct from old.package_details
+         or new.additional_instructions is distinct from old.additional_instructions
+         or new.fare_estimate          is distinct from old.fare_estimate
+         or new.accepted_at            is distinct from old.accepted_at
+         or new.picked_up_at           is distinct from old.picked_up_at
+         or new.delivered_at           is distinct from old.delivered_at
+         or new.cancelled_at           is distinct from old.cancelled_at
+         or new.cancelled_by           is distinct from old.cancelled_by
+         or new.created_at             is distinct from old.created_at then
+        raise exception
+          'A release may only clear the rider and set status=released'
+          using errcode = '42501';
+      end if;
     end if;
   end if;
 
@@ -234,9 +340,12 @@ begin
     if new.status = 'cancelled' then
       new.cancelled_at := now();
       new.cancelled_by := v_uid;
+    elsif new.status = 'released' and v_is_release then
+      new.released_at := now();
+      new.released_by := v_uid;
     else
-      new.cancelled_at := null;
-      new.cancelled_by := null;
+      new.cancelled_at := old.cancelled_at;
+      new.cancelled_by := old.cancelled_by;
     end if;
   elsif new.status = 'cancelled' then
     new.cancelled_at := old.cancelled_at;
