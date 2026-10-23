@@ -2759,9 +2759,15 @@ select:focus-visible {
 
 .nf-category-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 15px;
   margin-bottom: 20px;
+}
+
+@media (min-width: 768px) {
+  .nf-category-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
 }
 
 .nf-category-card {
@@ -2790,6 +2796,10 @@ select:focus-visible {
 .nf-category-card strong {
   display: block;
   font-size: 14px;
+  overflow-wrap: break-word;
+  word-break: normal;
+  line-height: 1.2;
+  max-width: 100%;
 }
 
 .nf-category-card span {
