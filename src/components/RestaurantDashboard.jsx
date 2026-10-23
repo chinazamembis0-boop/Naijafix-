@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase, getSignedStorageUrl, uploadPrivateFile } from '../supabase.js'
 import { fetchRestaurantOrders, updateFoodOrderStatus } from './FoodData.js'
+import { fetchRestaurantDispatchBookings } from './DispatchData.js'
 import { foodOrderReference, formatNaira, restaurantActionLabel, restaurantNextStatus, restaurantStatusLabel } from './foodUtils.js'
 import { Logo } from './Logo.jsx'
 
 const RESTAURANT_IMAGE_BUCKET = 'restaurant-images'
 
-function RestaurantDashboard({ user, onBack, onRegister }) {
+function RestaurantDashboard({ user, onBack, onRegister, onRequestDispatch }) {
   const [restaurant, setRestaurant] = useState(null)
   const [orders, setOrders] = useState([])
+  const [restaurantDispatchBookings, setRestaurantDispatchBookings] = useState([])
+  const [showDispatchForm, setShowDispatchForm] = useState(false)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('pending')
   const [logoUrl, setLogoUrl] = useState('')
@@ -155,6 +158,18 @@ function RestaurantDashboard({ user, onBack, onRegister }) {
       setOrders(data)
     }
     loadOrders()
+  }, [restaurant])
+
+  useEffect(() => {
+    const loadRestaurantDispatchBookings = async () => {
+      if (!restaurant?.id) {
+        setRestaurantDispatchBookings([])
+        return
+      }
+      const data = await fetchRestaurantDispatchBookings(restaurant.id)
+      setRestaurantDispatchBookings(data)
+    }
+    loadRestaurantDispatchBookings()
   }, [restaurant])
 
   const handleStatusUpdate = async (orderId, newStatus) => {
@@ -325,6 +340,32 @@ function RestaurantDashboard({ user, onBack, onRegister }) {
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
           ))}
+        </div>
+
+        <div className="nf-dispatch-section">
+          <button
+            className="dash-btn dash-btn-primary dash-btn-full"
+            onClick={() => {
+              setShowDispatchForm(true)
+              onRequestDispatch?.(restaurant?.id)
+            }}
+          >
+            🚚 Request Dispatch Rider
+          </button>
+          {restaurantDispatchBookings.length > 0 && (
+            <div className="nf-dispatch-list">
+              <h3>Your Delivery Requests</h3>
+              {restaurantDispatchBookings.map((b) => (
+                <div key={b.id} className="nf-dispatch-card">
+                  <h4>#{100000 + b.id}</h4>
+                  <p><strong>Status:</strong> {b.status}</p>
+                  <p><strong>Recipient:</strong> {b.recipient_name}</p>
+                  <p><strong>Drop-off:</strong> {b.dropoff_address}</p>
+                  {b.rider_id && <p><strong>Rider assigned:</strong> Yes</p>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {filteredOrders.length === 0 ? (

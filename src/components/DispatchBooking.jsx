@@ -3,7 +3,7 @@ import { createDispatchBooking } from './DispatchData.js'
 import { formatNaira } from './foodUtils.js'
 import { Logo } from './Logo.jsx'
 
-function DispatchBooking({ user, onBack, onBookingCreated, onViewBookings }) {
+function DispatchBooking({ user, onBack, onBookingCreated, onViewBookings, restaurantId, foodOrderId }) {
   const [form, setForm] = useState({
     pickupContactName: '',
     pickupContactPhone: '',
@@ -58,6 +58,8 @@ function DispatchBooking({ user, onBack, onBookingCreated, onViewBookings }) {
     setCreating(true)
     const result = await createDispatchBooking({
       customerUserId: user.user_id,
+      restaurantId: restaurantId || null,
+      foodOrderId: foodOrderId || null,
       pickupContactName: form.pickupContactName.trim(),
       pickupContactPhone: form.pickupContactPhone.trim(),
       pickupAddress: form.pickupAddress.trim(),
@@ -88,12 +90,13 @@ function DispatchBooking({ user, onBack, onBookingCreated, onViewBookings }) {
           <Logo size="small" showTagline={false} />
         </header>
         <main className="inner-content">
-          <div className="empty-box large-empty">
+            <div className="empty-box large-empty">
             <span>✅</span>
-            <h2>Dispatch booking created</h2>
+            <h2>{restaurantId ? 'Delivery Request Created' : 'Dispatch booking created'}</h2>
             <p>
-              Your parcel delivery request has been submitted to Ewizzy riders.
-              A rider will accept it shortly.
+              {restaurantId
+                ? 'Your restaurant delivery request has been submitted to Ewizzy riders. A rider will accept it shortly.'
+                : 'Your parcel delivery request has been submitted to Ewizzy riders. A rider will accept it shortly.'}
             </p>
             <div className="nf-booking-reference-card">
               <span className="nf-booking-reference-label">Booking reference</span>
@@ -147,11 +150,12 @@ function DispatchBooking({ user, onBack, onBookingCreated, onViewBookings }) {
         <Logo size="small" showTagline={false} />
       </header>
       <main className="inner-content">
-        <span className="section-label">BOOK A DISPATCH RIDER</span>
-        <h2>Send a Parcel with Ewizzy</h2>
+        <span className="section-label">{restaurantId ? 'RESTAURANT DELIVERY' : 'BOOK A DISPATCH RIDER'}</span>
+        <h2>{restaurantId ? 'Request Delivery Rider' : 'Send a Parcel with Ewizzy'}</h2>
         <p>
-          Request an Ewizzy motorcycle/Okada rider to collect and deliver
-          parcels or other permitted items. No restaurant order needed.
+          {restaurantId
+            ? 'Request an Ewizzy dispatch rider to collect and deliver items from your restaurant.'
+            : 'Request an Ewizzy motorcycle/Okada rider to collect and deliver parcels or other permitted items. No restaurant order needed.'}
         </p>
 
         <form onSubmit={handleSubmit}>

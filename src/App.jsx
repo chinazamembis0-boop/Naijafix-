@@ -10476,6 +10476,8 @@ function App() {
   const [foodRestaurant, setFoodRestaurant] = useState(null)
   const [foodPlacedOrderId, setFoodPlacedOrderId] = useState(null)
   const [dispatchBookingId, setDispatchBookingId] = useState(null)
+  const [dispatchRestaurantId, setDispatchRestaurantId] = useState(null)
+  const [dispatchFoodOrderId, setDispatchFoodOrderId] = useState(null)
   const [foodBackPage, setFoodBackPage] = useState('home')
   const [marketplaceBackPage, setMarketplaceBackPage] = useState('home')
   const [selectedServiceCategory, setSelectedServiceCategory] = useState('')
@@ -11556,9 +11558,13 @@ const targetPage =
           onBack={() => setPage('home')}
           onBookingCreated={(booking) => {
             setDispatchBookingId(booking.id)
+            setDispatchRestaurantId(null)
+            setDispatchFoodOrderId(null)
             setPage('dispatch-order')
           }}
           onViewBookings={() => setPage('dispatch-history')}
+          restaurantId={dispatchRestaurantId}
+          foodOrderId={dispatchFoodOrderId}
         />
       </Suspense>
     )
@@ -11606,6 +11612,11 @@ const targetPage =
           user={user}
           onBack={() => setPage('home')}
           onRegister={() => setPage('restaurant-signup')}
+          onRequestDispatch={(restaurantId) => {
+            setDispatchRestaurantId(restaurantId)
+            setDispatchFoodOrderId(null)
+            setPage('dispatch')
+          }}
         />
       </Suspense>
     )

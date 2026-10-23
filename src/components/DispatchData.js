@@ -68,6 +68,8 @@ export function dispatchBookingReference(bookingId) {
  */
 export async function createDispatchBooking({
   customerUserId,
+  restaurantId = null,
+  foodOrderId = null,
   pickupContactName,
   pickupContactPhone,
   pickupAddress,
@@ -108,6 +110,8 @@ export async function createDispatchBooking({
       .from('dispatch_bookings')
       .insert({
         customer_user_id: customerUserId,
+        restaurant_id: restaurantId ? Number(restaurantId) : null,
+        food_order_id: foodOrderId ? Number(foodOrderId) : null,
         pickup_contact_name: pickupContactName.trim(),
         pickup_contact_phone: pickupContactPhone.trim(),
         pickup_address: pickupAddress.trim(),
@@ -468,6 +472,36 @@ export async function fetchRiderDispatchBookings(riderId) {
     return data || []
   } catch (error) {
     console.error('Error fetching rider dispatch bookings:', error)
+    return []
+  }
+}
+
+/**
+ * Fetch dispatch bookings created by a restaurant owner.
+ *
+ * Scoped to the restaurant the caller owns, so a restaurant can see only
+ * its own delivery requests. RLS remains the authoritative access layer;
+ * this is query scoping only.
+ */
+export async function fetchRestaurantDispatchBookings(restaurantId) {
+  const id = Number(restaurantId)
+  if (!Number.isFinite(id) || id <= 0) {
+    return []
+  }
+  try {
+    const { data, error } = await supabase
+      .from('dispatch_bookings')
+      .select('*')
+      .eq('restaurant_id', id)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Failed to fetch restaurant dispatch bookings:', error)
+      return []
+    }
+    return data || []
+  } catch (error) {
+    console.error('Error fetching restaurant dispatch bookings:', error)
     return []
   }
 }
